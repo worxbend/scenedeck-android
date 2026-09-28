@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -26,8 +27,9 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
 
-    // The ONLY module allowed to speak obs-websocket v5 (see docs/ARCHITECTURE.md).
-    api(libs.ktobs.core)
+    // The ONLY module allowed to speak obs-websocket v5 (see docs/ARCHITECTURE.md
+    // and core/obs/README.md for the ktobs spike verdict).
+    implementation(libs.ktobs.core)
     implementation(libs.ktobs.ktor)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
@@ -35,4 +37,9 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockwebserver)
 }

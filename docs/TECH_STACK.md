@@ -107,6 +107,7 @@ junit = "4.13.2"
 mockk = "1.14.11"
 turbine = "1.2.1"
 detekt = "1.23.8"
+mockwebserver = "5.5.0"     # :core:obs protocol tests (matches ktor's okhttp 5.5.0)
 ui-text-google-fonts = "1.12.1"
 roborazzi = "1.75.0"
 robolectric = "4.17"

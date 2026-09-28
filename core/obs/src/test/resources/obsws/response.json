@@ -1,0 +1,1 @@
+{"op":7,"d":{"requestType":"%TYPE%","requestId":"%ID%","requestStatus":{"result":true,"code":100}%DATA%}}
