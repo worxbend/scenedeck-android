@@ -3,6 +3,8 @@
 # parameters and use PascalCase names. MagicNumber is off: color/design tokens are
 # hex literals by nature in a design-system-heavy project.
 complexity:
+  CyclomaticComplexMethod:
+    ignoreAnnotated: [ 'Composable', 'Preview' ]
   LongMethod:
     ignoreAnnotated: [ 'Composable', 'Preview' ]
   LongParameterList:

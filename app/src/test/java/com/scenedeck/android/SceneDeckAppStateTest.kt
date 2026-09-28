@@ -2,7 +2,7 @@ package com.scenedeck.android
 
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
-import com.scenedeck.android.feature.settings.DarkMode
+import com.scenedeck.android.core.data.DarkMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

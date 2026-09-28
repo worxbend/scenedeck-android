@@ -25,9 +25,25 @@ kotlin {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
-    implementation(project(":core:obs"))
+    // Re-exported: ObsClient is the repository layer's input boundary (the interface
+    // only — ktobs/Ktor stay hidden inside :core:obs).
+    api(project(":core:obs"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
 
+    // @Immutable on ConnectionProfile (Compose stability for UiState lists).
+    compileOnly(platform(libs.androidx.compose.bom))
+    compileOnly(libs.androidx.compose.runtime)
+
+    implementation(libs.javax.inject)
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.room.runtime)
+    testImplementation(libs.androidx.room.ktx)
+    testImplementation(libs.androidx.datastore.preferences)
 }

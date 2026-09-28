@@ -108,6 +108,12 @@ mockk = "1.14.11"
 turbine = "1.2.1"
 detekt = "1.23.8"
 mockwebserver = "5.5.0"     # :core:obs protocol tests (matches ktor's okhttp 5.5.0)
+datastore-preferences = "1.2.1"
+androidx-test-core = "1.7.0"
+javax-inject = "1"
+camerax = "1.6.2"           # QR pairing (M2)
+mlkit-barcode = "17.3.0"    # QR pairing (M2)
+# coroutines-guava reuses the kotlinx-coroutines pin
 ui-text-google-fonts = "1.12.1"
 roborazzi = "1.75.0"
 robolectric = "4.17"

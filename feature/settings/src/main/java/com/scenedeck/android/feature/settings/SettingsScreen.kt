@@ -18,15 +18,12 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
@@ -47,11 +44,12 @@ fun SettingsScreen(
     onMotionLevelChange: (MotionLevel) -> Unit,
     dynamicColor: Boolean,
     onDynamicColorChange: (Boolean) -> Unit,
+    haptics: Boolean,
+    onHapticsChange: (Boolean) -> Unit,
+    keepScreenOn: Boolean,
+    onKeepScreenOnChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // TODO(M2): hoist haptics into persisted settings state with the rest.
-    var hapticsEnabled by rememberSaveable { mutableStateOf(true) }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -127,8 +125,16 @@ fun SettingsScreen(
         ToggleRow(
             title = "Haptics",
             subtitle = "Tactile confirmation on deck presses and transport controls",
-            checked = hapticsEnabled,
-            onCheckedChange = { hapticsEnabled = it },
+            checked = haptics,
+            onCheckedChange = onHapticsChange,
+        )
+
+        SectionLabel("Display")
+        ToggleRow(
+            title = "Keep screen on",
+            subtitle = "Prevent the display from sleeping while connected to OBS",
+            checked = keepScreenOn,
+            onCheckedChange = onKeepScreenOnChange,
         )
         Spacer(Modifier.height(32.dp))
     }
@@ -178,6 +184,10 @@ private fun SettingsScreenPreview() {
             onMotionLevelChange = {},
             dynamicColor = false,
             onDynamicColorChange = {},
+            haptics = true,
+            onHapticsChange = {},
+            keepScreenOn = false,
+            onKeepScreenOnChange = {},
         )
     }
 }
