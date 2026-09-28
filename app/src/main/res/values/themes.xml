@@ -3,4 +3,14 @@
     <!-- Base platform theme for the Compose host activity. UI theming lives in
          :core:designsystem (SceneDeckTheme); this is only the window theme. -->
     <style name="Theme.SceneDeck" parent="android:Theme.Material.NoActionBar" />
+
+    <!-- Launch theme: androidX core-splashscreen. MainActivity must call
+         installSplashScreen() before super.onCreate(); afterwards the window
+         falls back to postSplashScreenTheme. -->
+    <style name="Theme.SceneDeck.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.SceneDeck</item>
+    </style>
 </resources>

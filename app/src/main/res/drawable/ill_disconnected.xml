@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Empty-state illustration seed: disconnected plug with a drooping cable and
+     a "zzz" idle motif. Brand palette only (violet / lavender / indigo). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- Plug body -->
+    <path
+        android:fillColor="#7C5CFF"
+        android:pathData="M27,30 h30 a7,7 0 0 1 7,7 v10 a7,7 0 0 1 -7,7 h-30 a7,7 0 0 1 -7,-7 v-10 a7,7 0 0 1 7,-7 z" />
+
+    <!-- Prongs -->
+    <path
+        android:fillColor="#A79BFA"
+        android:pathData="M12,34 h10 a2,2 0 0 1 2,2 v2 a2,2 0 0 1 -2,2 h-10 a2,2 0 0 1 -2,-2 v-2 a2,2 0 0 1 2,-2 z" />
+    <path
+        android:fillColor="#A79BFA"
+        android:pathData="M12,44 h10 a2,2 0 0 1 2,2 v2 a2,2 0 0 1 -2,2 h-10 a2,2 0 0 1 -2,-2 v-2 a2,2 0 0 1 2,-2 z" />
+
+    <!-- Drooping cable -->
+    <path
+        android:strokeColor="#A79BFA"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M64,42 C76,42 80,56 72,66 C66,74 54,78 46,72" />
+
+    <!-- "zzz" idle motif -->
+    <path
+        android:strokeColor="#7C5CFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M62,24 h9 l-9,9 h9" />
+    <path
+        android:strokeColor="#7C5CFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.7"
+        android:pathData="M76,13 h7 l-7,7 h7" />
+</vector>

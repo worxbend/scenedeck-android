@@ -27,7 +27,7 @@ re-verify against Maven Central / AndroidX release notes at kickoff and quarterl
 | Design system | `androidx.compose.material3` | **1.5.0-alpha29 (Expressive)**, explicit pin overrides BOM | M3 Expressive is the design direction; opt in via `@ExperimentalMaterial3ExpressiveApi` where needed, fall back to stable M3 surface |
 | Adaptive / large screens | `material3-adaptive` (nav suite, list-detail) | via BOM | phone + tablet/foldable support |
 | Navigation | **Navigation 3** (`androidx.navigation3`) | **1.2.0** (stable) | app-owned back stack, Compose-native; fallback: Navigation Compose 2.9 type-safe routes |
-| Icons | **compose-icons** (Lucide + Material Symbols packs) | **NOT on Maven Central** (verified 2026-09-28) — TODO: re-check or pick alternative | modern, consistent icon set beyond stock Material icons |
+| Icons | Hand-ported **Lucide-style `ImageVector` catalogue** in `:core:designsystem/icons/` (`SceneIcon`, `SceneDeckIcons`) — compose-icons Lucide pack is **NOT on Maven Central** (verified 2026-09-28); re-check periodically | modern, consistent icon set beyond stock Material icons |
 | Images | **Coil 3** (`coil-compose`) | **3.6.3** | scene screenshot thumbnails |
 | Charts | Custom Canvas composables (meters/gauges/trends) | — | full control of OBS-style meter look; evaluate Vico only if scope grows |
 | Splash | `androidx.core:core-splashscreen` | latest | branded launch |
@@ -65,7 +65,8 @@ re-verify against Maven Central / AndroidX release notes at kickoff and quarterl
 |---|---|---|
 | Unit tests | JUnit4/5, **MockK**, **Turbine**, coroutines-test | flow-first testing |
 | UI tests | Compose Test (`createComposeRule`), semantics testTags | — |
-| Screenshot tests | **Roborazzi** | golden-shot regression for themes/cards |
+| Screenshot tests | **Roborazzi 1.75.0** (`io.github.takahirom.roborazzi` plugin) + **Robolectric 4.17** (`:core:designsystem` only; goldens: `recordRoborazziDebug` / `verifyRoborazziDebug`, plain `testDebugUnitTest` verifies by default) | golden-shot regression for themes/cards |
+| Fonts | `androidx.compose.ui:ui-text-google-fonts` **1.12.1** (Inter + JetBrains Mono downloadable fonts) | brand typography without bundling font files |
 | Lint/format | **detekt** + **ktlint** (or ktfmt) + Android Lint | CI gate |
 | Performance | **Baseline Profiles** + Macrobenchmark | cold start + deck scroll/meter jank budgets |
 | Dependency updates | Renovate or Dependabot | keep BOM current |
@@ -106,5 +107,8 @@ junit = "4.13.2"
 mockk = "1.14.11"
 turbine = "1.2.1"
 detekt = "1.23.8"
+ui-text-google-fonts = "1.12.1"
+roborazzi = "1.75.0"
+robolectric = "4.17"
 # compose-icons Lucide pack: NOT published on Maven Central — TODO re-check
 ```

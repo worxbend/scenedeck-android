@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: tile-stack mark centered in the 66dp safe zone.
+     Mark geometry mirrors ic_scenedeck_logo (512 space), scaled 0.27 about the
+     512-space center and translated so the center lands at (54,54). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:translateX="-202"
+        android:translateY="-202"
+        android:scaleX="0.24"
+        android:scaleY="0.24"
+        android:pivotX="256"
+        android:pivotY="256">
+
+        <!-- Back tile: brand violet -->
+        <group
+            android:rotation="-18"
+            android:pivotX="256"
+            android:pivotY="330">
+            <path
+                android:fillColor="#7C5CFF"
+                android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z" />
+        </group>
+
+        <!-- Middle tile: light lavender -->
+        <path
+            android:fillColor="#A79BFA"
+            android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z" />
+
+        <!-- Top tile: tally red, glowing, live dot -->
+        <group
+            android:rotation="18"
+            android:pivotX="256"
+            android:pivotY="330">
+            <path android:pathData="M381,262 a125,125 0 1 1 -250,0 a125,125 0 1 1 250,0 z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="radial"
+                        android:centerX="256"
+                        android:centerY="262"
+                        android:gradientRadius="125"
+                        android:startColor="#73FF3B4E"
+                        android:centerColor="#24FF3B4E"
+                        android:endColor="#00FF3B4E" />
+                </aapt:attr>
+            </path>
+            <path android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="linear"
+                        android:startX="256"
+                        android:startY="187"
+                        android:endX="256"
+                        android:endY="337"
+                        android:startColor="#FF5563"
+                        android:endColor="#F02A3F" />
+                </aapt:attr>
+            </path>
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M273,262 a17,17 0 1 1 -34,0 a17,17 0 1 1 34,0 z" />
+        </group>
+    </group>
+</vector>

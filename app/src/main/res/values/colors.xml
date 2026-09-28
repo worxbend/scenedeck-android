@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive icon / splash background -->
+    <color name="ic_launcher_background">#14101F</color>
+
+    <!-- SceneDeck brand palette (source of truth: assets/brand/README.md) -->
+    <color name="brand_indigo">#14101F</color>
+    <color name="brand_indigo_deep">#0D0A16</color>
+    <color name="brand_indigo_glow">#201A38</color>
+    <color name="brand_violet">#7C5CFF</color>
+    <color name="brand_violet_light">#A79BFA</color>
+    <color name="brand_tally">#FF3B4E</color>
+    <color name="brand_preview">#34D399</color>
+</resources>

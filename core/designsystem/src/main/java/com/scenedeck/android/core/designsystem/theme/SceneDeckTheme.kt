@@ -2,59 +2,101 @@ package com.scenedeck.android.core.designsystem.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.scenedeck.android.core.designsystem.theme.families.colorSchemeFor
+import com.scenedeck.android.core.designsystem.theme.families.sceneDeckColorsFor
 
+/**
+ * Built-in theme families (docs/DESIGN_SYSTEM.md §2). Each family ships a light and a
+ * dark `ColorScheme` in `theme/families/` plus product-semantic [SceneDeckColors].
+ * "Material You" is not a family: pass `dynamicColor = true` to [SceneDeckTheme].
+ */
 enum class ThemeFamily {
+    /** Default. Signature deep-space indigo + electric violet accent. */
     SCENEDECK,
+
+    /** Faithful to OBS Studio's dark UI: grey-blue panels, teal accent. */
+    OBS,
+
+    /** Near-black, high-contrast white/violet. */
+    OBSIDIAN,
+
+    /** Arctic blue-grey (canonical Nord palette). */
+    NORD,
+
+    /** Classic Dracula purple/pink. */
+    DRACULA,
+
+    /** Solarized base tones. */
+    SOLARIZED_DARK,
+
+    /** Broadcast red tally accents. */
+    STREAM_RED,
+
+    /** Rich purple production vibe. */
+    STUDIO_PURPLE,
+
+    /** Warm coral/amber; light-friendly. */
+    SUNSET_CORAL,
+
+    /** Fresh green-teal; light-friendly. */
+    MINT_CONTROL,
+
+    /** Accessibility-max contrast. */
+    HIGH_CONTRAST,
 }
 
-// Placeholder palette — deep indigo/violet accent. The design-system agent will
-// replace this with the full token set from docs/DESIGN_SYSTEM.md.
-private val SceneDeckDarkColorScheme = darkColorScheme(
-    primary = Color(0xFFCBB8FF),
-    onPrimary = Color(0xFF331069),
-    primaryContainer = Color(0xFF4A2F81),
-    onPrimaryContainer = Color(0xFFE9DDFF),
-    secondary = Color(0xFFCBC2DB),
-    surface = Color(0xFF141218),
-    background = Color(0xFF141218),
-)
+/** Accessor for design-system theme values outside of `MaterialTheme`'s own surface. */
+object SceneDeckTheme {
+    /** Product-semantic colors (tally, preview, meter zones, warnings) for the current family. */
+    val colors: SceneDeckColors
+        @Composable get() = LocalSceneDeckColors.current
+}
 
-private val SceneDeckLightColorScheme = lightColorScheme(
-    primary = Color(0xFF6247A6),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE9DDFF),
-    onPrimaryContainer = Color(0xFF1D0050),
-    secondary = Color(0xFF625B70),
-    surface = Color(0xFFFDF7FF),
-    background = Color(0xFFFDF7FF),
-)
-
+/**
+ * SceneDeck theme wrapper: M3 Expressive theme + per-family color scheme +
+ * [SceneDeckColors] semantics + Inter/JetBrains Mono typography.
+ *
+ * @param family one of the built-in [ThemeFamily] palettes.
+ * @param darkTheme dark/light resolution of the family scheme.
+ * @param dynamicColor "Material You": derive the scheme from the wallpaper on Android 12+,
+ * overriding [family] (semantic colors fall back to the family-independent defaults).
+ * @param motionLevel user motion preference, mapped via [motionSchemeFor].
+ */
 @Composable
 fun SceneDeckTheme(
     family: ThemeFamily = ThemeFamily.SCENEDECK,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    motionLevel: MotionLevel = MotionLevel.FULL,
     content: @Composable () -> Unit,
 ) {
-    val baseScheme = when (family) {
-        ThemeFamily.SCENEDECK ->
-            if (darkTheme) SceneDeckDarkColorScheme else SceneDeckLightColorScheme
+    val baseScheme = colorSchemeFor(family, darkTheme)
+    val dynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val colorScheme = if (dynamic) {
+        val context = LocalContext.current
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else {
+        baseScheme
     }
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val semanticColors =
+        if (dynamic) {
+            if (darkTheme) SceneDeckColors.Dark else SceneDeckColors.Light
+        } else {
+            sceneDeckColorsFor(family, darkTheme)
         }
-
-        else -> baseScheme
+    CompositionLocalProvider(LocalSceneDeckColors provides semanticColors) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            shapes = SceneDeckShapes,
+            typography = SceneDeckTypography,
+            motionScheme = motionSchemeFor(motionLevel),
+            content = content,
+        )
     }
-    MaterialTheme(colorScheme = colorScheme, content = content)
 }

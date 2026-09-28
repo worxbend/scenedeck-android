@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed (monochrome) icon: same fanned tile stack as the foreground mark,
+     flattened to a single alpha channel. All three tiles are rings; the live
+     dot on the top tile stays solid. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:translateX="-202"
+        android:translateY="-202"
+        android:scaleX="0.24"
+        android:scaleY="0.24"
+        android:pivotX="256"
+        android:pivotY="256">
+
+        <!-- Back tile ring -->
+        <group
+            android:rotation="-18"
+            android:pivotX="256"
+            android:pivotY="330">
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillType="evenOdd"
+                android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z M182,203 h148 a20,20 0 0 1 20,20 v78 a20,20 0 0 1 -20,20 h-148 a20,20 0 0 1 -20,-20 v-78 a20,20 0 0 1 20,-20 z" />
+        </group>
+
+        <!-- Middle tile ring -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z M182,203 h148 a20,20 0 0 1 20,20 v78 a20,20 0 0 1 -20,20 h-148 a20,20 0 0 1 -20,-20 v-78 a20,20 0 0 1 20,-20 z" />
+
+        <!-- Top tile ring + solid live dot -->
+        <group
+            android:rotation="18"
+            android:pivotX="256"
+            android:pivotY="330">
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillType="evenOdd"
+                android:pathData="M176,187 h160 a30,30 0 0 1 30,30 v90 a30,30 0 0 1 -30,30 h-160 a30,30 0 0 1 -30,-30 v-90 a30,30 0 0 1 30,-30 z M182,203 h148 a20,20 0 0 1 20,20 v78 a20,20 0 0 1 -20,20 h-148 a20,20 0 0 1 -20,-20 v-78 a20,20 0 0 1 20,-20 z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M273,262 a17,17 0 1 1 -34,0 a17,17 0 1 1 34,0 z" />
+        </group>
+    </group>
+</vector>
