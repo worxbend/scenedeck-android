@@ -1,0 +1,19 @@
+# detekt config — layered on top of detekt defaults (buildUponDefaultConfig = true).
+# Compose-friendly tweaks: Composable functions are allowed to be long, take many
+# parameters and use PascalCase names. MagicNumber is off: color/design tokens are
+# hex literals by nature in a design-system-heavy project.
+complexity:
+  LongMethod:
+    ignoreAnnotated: [ 'Composable', 'Preview' ]
+  LongParameterList:
+    ignoreAnnotated: [ 'Composable', 'Preview' ]
+naming:
+  FunctionNaming:
+    ignoreAnnotated: [ 'Composable', 'Preview' ]
+  MatchingDeclarationName:
+    excludes: [ '**/SceneDeckTheme.kt' ] # ThemeFamily enum intentionally colocated
+style:
+  MagicNumber:
+    active: false
+  UnusedPrivateMember:
+    ignoreAnnotated: [ 'Composable', 'Preview' ]

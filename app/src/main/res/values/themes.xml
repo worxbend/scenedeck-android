@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base platform theme for the Compose host activity. UI theming lives in
+         :core:designsystem (SceneDeckTheme); this is only the window theme. -->
+    <style name="Theme.SceneDeck" parent="android:Theme.Material.NoActionBar" />
+</resources>
