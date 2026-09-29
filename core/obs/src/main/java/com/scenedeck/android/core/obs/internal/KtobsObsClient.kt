@@ -55,6 +55,22 @@ import com.rejeq.ktobs.event.transitions.SceneTransitionStartedEvent
 import com.rejeq.ktobs.event.transitions.SceneTransitionStartedEventData
 import com.rejeq.ktobs.event.ui.StudioModeStateChangedEvent
 import com.rejeq.ktobs.event.ui.StudioModeStateChangedEventData
+import com.rejeq.ktobs.event.inputs.InputAudioBalanceChangedEvent
+import com.rejeq.ktobs.event.inputs.InputAudioBalanceChangedEventData
+import com.rejeq.ktobs.event.inputs.InputAudioMonitorTypeChangedEvent
+import com.rejeq.ktobs.event.inputs.InputAudioMonitorTypeChangedEventData
+import com.rejeq.ktobs.event.inputs.InputAudioSyncOffsetChangedEvent
+import com.rejeq.ktobs.event.inputs.InputAudioSyncOffsetChangedEventData
+import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackEndedEvent
+import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackEndedEventData
+import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEvent
+import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEventData
+import com.rejeq.ktobs.event.outputs.ReplayBufferSavedEvent
+import com.rejeq.ktobs.event.outputs.ReplayBufferSavedEventData
+import com.rejeq.ktobs.event.outputs.ReplayBufferStateChangedEvent
+import com.rejeq.ktobs.event.outputs.ReplayBufferStateChangedEventData
+import com.rejeq.ktobs.event.outputs.VirtualcamStateChangedEvent
+import com.rejeq.ktobs.event.outputs.VirtualcamStateChangedEventData
 import com.rejeq.ktobs.ktor.ObsSessionBuilder
 import com.rejeq.ktobs.ktor.runDefaultReceiver
 import com.rejeq.ktobs.request.general.getStats
@@ -86,11 +102,29 @@ import com.rejeq.ktobs.request.transitions.setCurrentSceneTransitionDuration
 import com.rejeq.ktobs.request.transitions.triggerStudioModeTransition
 import com.rejeq.ktobs.request.ui.getStudioModeEnabled
 import com.rejeq.ktobs.request.ui.setStudioModeEnabled
+import com.rejeq.ktobs.request.inputs.getInputAudioBalance
+import com.rejeq.ktobs.request.inputs.getInputAudioMonitorType
+import com.rejeq.ktobs.request.inputs.getInputAudioSyncOffset
+import com.rejeq.ktobs.request.inputs.setInputAudioBalance
+import com.rejeq.ktobs.request.inputs.setInputAudioMonitorType
+import com.rejeq.ktobs.request.inputs.setInputAudioSyncOffset
+import com.rejeq.ktobs.request.mediainputs.getMediaInputStatus
+import com.rejeq.ktobs.request.mediainputs.setMediaInputCursor
+import com.rejeq.ktobs.request.mediainputs.triggerMediaInputAction
+import com.rejeq.ktobs.request.outputs.getLastReplayBufferReplay
+import com.rejeq.ktobs.request.outputs.getReplayBufferStatus
+import com.rejeq.ktobs.request.outputs.getVirtualCamStatus
+import com.rejeq.ktobs.request.outputs.saveReplayBuffer
+import com.rejeq.ktobs.request.outputs.toggleReplayBuffer
+import com.rejeq.ktobs.request.outputs.toggleVirtualCam
+import com.rejeq.ktobs.request.sceneitems.setSceneItemEnabled
 import com.rejeq.ktobs.request.stream.getStreamStatus
 import com.rejeq.ktobs.request.stream.startStream
 import com.rejeq.ktobs.request.stream.stopStream
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.MediaActionKind
+import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
@@ -480,6 +514,57 @@ internal class KtobsObsClient(
         decodeImageData(response.imageData)
     }
 
+    // ── Power features (M7) ─────────────────────────────────────────────────
+
+    override suspend fun getVirtualCamStatus() = request { it.getVirtualCamStatus() }
+
+    override suspend fun toggleVirtualCam() = request { it.toggleVirtualCam() }
+
+    override suspend fun getReplayBufferStatus() = request { it.getReplayBufferStatus() }
+
+    override suspend fun toggleReplayBuffer() = request { it.toggleReplayBuffer() }
+
+    override suspend fun saveReplayBuffer() = request { it.saveReplayBuffer() }
+
+    override suspend fun getLastReplayBufferReplay() = request { it.getLastReplayBufferReplay() }
+
+    override suspend fun getMediaInputStatus(inputName: String) =
+        request { it.getMediaInputStatus(inputName = inputName).toDomain() }
+
+    override suspend fun setMediaInputCursor(inputName: String, cursorMs: Long) =
+        request { it.setMediaInputCursor(inputName = inputName, mediaCursor = cursorMs) }
+
+    override suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind) =
+        request { it.triggerMediaInputAction(inputName = inputName, mediaAction = action.toKtobs()) }
+
+    override suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) =
+        request {
+            it.setSceneItemEnabled(
+                sceneName = sceneName,
+                sceneUuid = null,
+                sceneItemId = sceneItemId,
+                enabled = enabled,
+            )
+        }
+
+    override suspend fun getInputAudioBalance(inputName: String) =
+        request { it.getInputAudioBalance(inputName = inputName) }
+
+    override suspend fun setInputAudioBalance(inputName: String, balance: Double) =
+        request { it.setInputAudioBalance(name = inputName, balance = balance) }
+
+    override suspend fun getInputAudioSyncOffset(inputName: String) =
+        request { it.getInputAudioSyncOffset(inputName = inputName) }
+
+    override suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) =
+        request { it.setInputAudioSyncOffset(name = inputName, offset = offsetMs) }
+
+    override suspend fun getInputAudioMonitorType(inputName: String) =
+        request { it.getInputAudioMonitorType(inputName = inputName).toDomain() }
+
+    override suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) =
+        request { it.setInputAudioMonitorType(name = inputName, type = monitorType.toKtobs()) }
+
     // ── Event fan-out ───────────────────────────────────────────────────────
 
     private fun ObsSession.dispatchEvent(event: EventOpCode) {
@@ -493,7 +578,14 @@ internal class KtobsObsClient(
                 InputCreatedEvent, InputRemovedEvent, InputNameChangedEvent,
                 InputMuteStateChangedEvent, InputVolumeChangedEvent,
                 -> dispatchInputEvent(event)
-                StreamStateChangedEvent, RecordStateChangedEvent -> dispatchOutputEvent(event)
+                StreamStateChangedEvent, RecordStateChangedEvent,
+                VirtualcamStateChangedEvent, ReplayBufferStateChangedEvent,
+                ReplayBufferSavedEvent,
+                -> dispatchOutputEvent(event)
+                MediaInputPlaybackStartedEvent, MediaInputPlaybackEndedEvent,
+                InputAudioBalanceChangedEvent, InputAudioSyncOffsetChangedEvent,
+                InputAudioMonitorTypeChangedEvent,
+                -> dispatchInputEvent(event)
                 CurrentProfileChangedEvent, ProfileListChangedEvent,
                 CurrentSceneCollectionChangedEvent, SceneCollectionListChangedEvent,
                 StudioModeStateChangedEvent,
@@ -539,6 +631,7 @@ internal class KtobsObsClient(
         _events.tryEmit(domain)
     }
 
+    @Suppress("CyclomaticComplexMethod") // flat event-type dispatch table
     private fun ObsSession.dispatchInputEvent(event: EventOpCode) {
         val domain: ObsEvent = when (event.eventType) {
             InputCreatedEvent ->
@@ -557,6 +650,22 @@ internal class KtobsObsClient(
                 event.get<InputVolumeChangedEventData>().let {
                     ObsEvent.InputVolumeChanged(it.inputName, it.inputVolumeMul, it.inputVolumeDb)
                 }
+            MediaInputPlaybackStartedEvent ->
+                ObsEvent.MediaInputPlaybackStarted(event.get<MediaInputPlaybackStartedEventData>().inputName)
+            MediaInputPlaybackEndedEvent ->
+                ObsEvent.MediaInputPlaybackEnded(event.get<MediaInputPlaybackEndedEventData>().inputName)
+            InputAudioBalanceChangedEvent ->
+                event.get<InputAudioBalanceChangedEventData>().let {
+                    ObsEvent.InputAudioBalanceChanged(it.inputName, it.inputAudioBalance)
+                }
+            InputAudioSyncOffsetChangedEvent ->
+                event.get<InputAudioSyncOffsetChangedEventData>().let {
+                    ObsEvent.InputAudioSyncOffsetChanged(it.inputName, it.inputAudioSyncOffset)
+                }
+            InputAudioMonitorTypeChangedEvent ->
+                event.get<InputAudioMonitorTypeChangedEventData>().let {
+                    ObsEvent.InputAudioMonitorTypeChanged(it.inputName, it.monitorType.toDomain())
+                }
             else -> return
         }
         _events.tryEmit(domain)
@@ -568,6 +677,16 @@ internal class KtobsObsClient(
                 event.get<StreamStateChangedEventData>().let {
                     ObsEvent.StreamStateChanged(it.outputActive, it.outputState)
                 }
+            VirtualcamStateChangedEvent ->
+                event.get<VirtualcamStateChangedEventData>().let {
+                    ObsEvent.VirtualcamStateChanged(it.outputActive, it.outputState)
+                }
+            ReplayBufferStateChangedEvent ->
+                event.get<ReplayBufferStateChangedEventData>().let {
+                    ObsEvent.ReplayBufferStateChanged(it.outputActive, it.outputState)
+                }
+            ReplayBufferSavedEvent ->
+                ObsEvent.ReplayBufferSaved(event.get<ReplayBufferSavedEventData>().savedReplayPath)
             RecordStateChangedEvent ->
                 event.get<RecordStateChangedEventData>().let {
                     ObsEvent.RecordStateChanged(it.outputActive, it.outputState, it.outputPath)

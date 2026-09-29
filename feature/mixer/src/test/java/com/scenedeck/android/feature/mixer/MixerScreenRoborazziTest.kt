@@ -11,6 +11,8 @@ import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.MediaStateKind
+import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.ObsVersionInfo
 import org.junit.Rule
@@ -38,9 +40,12 @@ class MixerScreenRoborazziTest {
             activeScene = "Cam 1",
             displayedScene = "Cam 1",
             inputs = listOf(
+                MixerInputState(
+                    "Test Tone 440", MixerScope.SCENE, null, 0.7,
+                    muted = false, locked = false, inputKind = "ffmpeg_source",
+                ),
                 MixerInputState("Desktop Audio", MixerScope.GLOBAL, null, 1.0, muted = false, locked = false),
                 MixerInputState("Mic/Aux", MixerScope.GLOBAL, null, 0.8, muted = true, locked = false),
-                MixerInputState("Test Tone 440", MixerScope.SCENE, null, 0.7, muted = false, locked = false),
                 MixerInputState(
                     "Nested Tone",
                     MixerScope.NESTED,
@@ -60,6 +65,13 @@ class MixerScreenRoborazziTest {
                         motionLevel = MotionLevel.OFF,
                         hapticsEnabled = false,
                         callbacks = MixerCallbacks(),
+                        mediaStatus = mapOf(
+                            "Test Tone 440" to MediaStatus(
+                                state = MediaStateKind.PLAYING,
+                                durationMs = 60_000,
+                                cursorMs = 12_345,
+                            ),
+                        ),
                     )
                 }
             }

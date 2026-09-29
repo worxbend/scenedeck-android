@@ -67,6 +67,8 @@ re-verify against Maven Central / AndroidX release notes at kickoff and quarterl
 | UI tests | Compose Test (`createComposeRule`), semantics testTags | — |
 | Screenshot tests | **Roborazzi 1.75.0** (`io.github.takahirom.roborazzi` plugin) + **Robolectric 4.17** (`:core:designsystem` only; goldens: `recordRoborazziDebug` / `verifyRoborazziDebug`, plain `testDebugUnitTest` verifies by default) | golden-shot regression for themes/cards |
 | Fonts | `androidx.compose.ui:ui-text-google-fonts` **1.12.1** (Inter + JetBrains Mono downloadable fonts) | brand typography without bundling font files |
+| Widgets | **Glance 1.2.0** (`androidx.glance:glance-appwidget`) + androidx-core **1.19.1** | home-screen mini-deck (M7) |
+| Camera/QR | CameraX **1.6.2** + ML Kit barcode **17.3.0** | `obsws://` QR pairing (M2) |
 | Lint/format | **detekt** + **ktlint** (or ktfmt) + Android Lint | CI gate |
 | Performance | **Baseline Profiles** + Macrobenchmark | cold start + deck scroll/meter jank budgets |
 | Dependency updates | Renovate or Dependabot | keep BOM current |

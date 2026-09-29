@@ -30,6 +30,8 @@ data class Telemetry(
     val record: RecordStatus? = null,
     /** Rolling bitrate computed from consecutive `GetStreamStatus` byte counters. */
     val bitrateKbps: Int = 0,
+    val virtualCamActive: Boolean = false,
+    val replayBufferActive: Boolean = false,
 )
 
 @Singleton
@@ -61,6 +63,8 @@ class StatsRepository @Inject constructor(
                 val stats = client.getStats()
                 val stream = client.getStreamStatus()
                 val record = client.getRecordStatus()
+                val virtualCam = runCatching { client.getVirtualCamStatus() }.getOrDefault(false)
+                val replayBuffer = runCatching { client.getReplayBufferStatus() }.getOrDefault(false)
                 val nowMs = nowMs()
                 val bitrate = computeBitrateKbps(
                     active = stream.active,
@@ -76,6 +80,8 @@ class StatsRepository @Inject constructor(
                     stream = stream,
                     record = record,
                     bitrateKbps = bitrate,
+                    virtualCamActive = virtualCam,
+                    replayBufferActive = replayBuffer,
                 )
             }
             delay(POLL_INTERVAL_MS)

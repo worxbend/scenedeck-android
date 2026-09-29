@@ -87,6 +87,7 @@ fun LiveScreen(
     val motionLevel by viewModel.motionLevel.collectAsStateWithLifecycle()
     val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
     val previewsEnabled by viewModel.previewsEnabled.collectAsStateWithLifecycle()
+    val sceneItemsVersion by viewModel.sceneItemsVersion.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -107,7 +108,13 @@ fun LiveScreen(
                 onSceneTap = viewModel::onSceneTap,
                 onStreamClick = viewModel::onStreamClick,
                 onRecordClick = viewModel::onRecordClick,
+                onToggleVirtualCam = viewModel::toggleVirtualCam,
+                onToggleReplayBuffer = viewModel::toggleReplayBuffer,
+                onSaveReplay = viewModel::saveReplayBuffer,
                 onQuickEditSave = viewModel::saveSceneMeta,
+                sceneItemsVersion = sceneItemsVersion,
+                onLoadSceneItems = viewModel::loadSceneItems,
+                onToggleSceneItem = viewModel::toggleSceneItem,
                 onReorder = viewModel::reorderDeck,
                 onMixerMute = viewModel::toggleMixerMute,
                 onOpenMixer = onNavigateToMixer,
@@ -178,7 +185,13 @@ internal fun LiveDeckContent(
     onSceneTap: (String) -> Unit,
     onStreamClick: () -> Unit,
     onRecordClick: () -> Unit,
+    onToggleVirtualCam: () -> Unit,
+    onToggleReplayBuffer: () -> Unit,
+    onSaveReplay: () -> Unit,
     onQuickEditSave: (sceneName: String, primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
+    sceneItemsVersion: Int = 0,
+    onLoadSceneItems: (suspend (String) -> List<com.scenedeck.android.core.model.SceneItemInfo>)? = null,
+    onToggleSceneItem: (sceneName: String, itemId: Int, enabled: Boolean) -> Unit = { _, _, _ -> },
     onReorder: (List<String>) -> Unit,
     onMixerMute: (String, Boolean) -> Unit,
     onOpenMixer: () -> Unit,
@@ -257,6 +270,11 @@ internal fun LiveDeckContent(
             pulseTally = true,
             onToggleStream = onStreamClick,
             onToggleRecord = onRecordClick,
+            virtualCamActive = telemetry.virtualCamActive,
+            replayBufferActive = telemetry.replayBufferActive,
+            onToggleVirtualCam = onToggleVirtualCam,
+            onToggleReplayBuffer = onToggleReplayBuffer,
+            onSaveReplay = onSaveReplay,
         )
         if (deckState.studioMode) {
             Spacer(Modifier.height(12.dp))
@@ -266,6 +284,7 @@ internal fun LiveDeckContent(
                 onCutClick = onCutClick,
                 onTransitionSelect = onTransitionSelect,
                 onTransitionDurationChange = onTransitionDurationChange,
+                motionLevel = motionLevel,
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -334,6 +353,9 @@ internal fun LiveDeckContent(
                 onQuickEditSave(scene.name, primary, accentArgb, iconName)
                 quickEdit = null
             },
+            sceneItemsVersion = sceneItemsVersion,
+            onLoadSceneItems = onLoadSceneItems?.let { loader -> { loader(scene.name) } },
+            onToggleSceneItem = { itemId, enabled -> onToggleSceneItem(scene.name, itemId, enabled) },
         )
     }
 }

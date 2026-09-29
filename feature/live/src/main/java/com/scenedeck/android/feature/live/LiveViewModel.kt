@@ -150,6 +150,49 @@ class LiveViewModel @Inject constructor(
         }
     }
 
+    // ── Virtual cam & replay buffer (M7) ────────────────────────────────────
+
+    // ── Scene item visibility (M7) ──────────────────────────────────────────
+
+    /** Bumped on SceneItemEnableStateChanged so open sheets refetch. */
+    private val _sceneItemsVersion = MutableStateFlow(0)
+    val sceneItemsVersion: StateFlow<Int> = _sceneItemsVersion.asStateFlow()
+
+    suspend fun loadSceneItems(sceneName: String): List<com.scenedeck.android.core.model.SceneItemInfo> =
+        runCatching { obsState.getSceneItemList(sceneName) }.getOrDefault(emptyList())
+
+    fun toggleSceneItem(sceneName: String, itemId: Int, enabled: Boolean) {
+        viewModelScope.launch {
+            runCatching { obsState.setSceneItemEnabled(sceneName, itemId, enabled) }
+                .onFailure { _errors.tryEmit("Couldn't toggle scene source") }
+        }
+    }
+
+    fun toggleVirtualCam() {
+        viewModelScope.launch {
+            runCatching { obsState.toggleVirtualCam() }
+                .onFailure { _errors.tryEmit("Couldn't toggle virtual cam") }
+        }
+    }
+
+    fun toggleReplayBuffer() {
+        viewModelScope.launch {
+            runCatching { obsState.toggleReplayBuffer() }
+                .onFailure { _errors.tryEmit("Couldn't toggle replay buffer") }
+        }
+    }
+
+    fun saveReplayBuffer() {
+        viewModelScope.launch {
+            runCatching {
+                obsState.saveReplayBuffer()
+                obsState.getLastReplayBufferReplay()
+            }
+                .onSuccess { path -> _errors.tryEmit("Replay saved: ${path.substringAfterLast('/')}") }
+                .onFailure { _errors.tryEmit("Couldn't save replay") }
+        }
+    }
+
     fun toggleMixerMute(inputName: String, muted: Boolean) {
         viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
     }
@@ -265,6 +308,13 @@ class LiveViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { client.volumeMeters.collect { mixerLevels.update(it) } }
+        viewModelScope.launch {
+            client.events.collect { event ->
+                if (event is com.scenedeck.android.core.model.ObsEvent.SceneItemEnableStateChanged) {
+                    _sceneItemsVersion.value += 1
+                }
+            }
+        }
     }
 
     private companion object {

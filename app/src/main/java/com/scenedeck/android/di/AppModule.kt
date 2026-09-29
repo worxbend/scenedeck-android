@@ -5,6 +5,7 @@ import androidx.annotation.VisibleForTesting
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.scenedeck.android.background.BackgroundSettingsStore
 import com.scenedeck.android.core.data.KeystoreSecretsStore
 import com.scenedeck.android.core.data.SecretsStore
 import com.scenedeck.android.core.data.di.ApplicationScope
@@ -67,6 +68,12 @@ object AppModule {
     @Singleton
     fun provideSecretsStore(@ApplicationContext context: Context): SecretsStore =
         KeystoreSecretsStore(context)
+
+    @Provides
+    @Singleton
+    fun provideBackgroundSettingsStore(
+        @ApplicationContext context: Context,
+    ): BackgroundSettingsStore = BackgroundSettingsStore(context)
 
     @Provides
     @Singleton

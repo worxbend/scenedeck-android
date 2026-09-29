@@ -5,8 +5,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -33,12 +34,14 @@ import com.scenedeck.android.core.model.ConnectionState
 /**
  * Persistent bottom strip (sits above the navigation bar): tappable connection
  * indicator (real [ConnectionState]), FPS, dropped frames, CPU and bitrate.
+ * Long-pressing the connection indicator opens the app-level Background sheet.
  */
 @Composable
 fun StatusStrip(
     state: StatusStripState,
     modifier: Modifier = Modifier,
     onConnectionClick: () -> Unit = {},
+    onConnectionLongClick: () -> Unit = {},
     animateConnection: Boolean = true,
 ) {
     Surface(
@@ -57,6 +60,7 @@ fun StatusStrip(
                 state = state.connection,
                 animate = animateConnection,
                 onClick = onConnectionClick,
+                onLongClick = onConnectionLongClick,
             )
             MonoStat(value = "%.1f".format(state.fps), label = "FPS")
             MonoStat(value = state.droppedFrames.toString(), label = "DROP")
@@ -66,11 +70,13 @@ fun StatusStrip(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConnectionIndicator(
     state: ConnectionState,
     animate: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val colors = SceneDeckTheme.colors
     val (dotColor, label, pulse) = when (state) {
@@ -95,7 +101,13 @@ private fun ConnectionIndicator(
 
     Row(
         modifier = Modifier
-            .clickable(role = Role.Button, onClickLabel = "Open connections", onClick = onClick)
+            .combinedClickable(
+                role = Role.Button,
+                onClickLabel = "Open connections",
+                onClick = onClick,
+                onLongClickLabel = "Background settings",
+                onLongClick = onLongClick,
+            )
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

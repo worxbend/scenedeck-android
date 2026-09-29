@@ -7,7 +7,10 @@ import com.scenedeck.android.core.data.MixerInputState
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.MediaActionKind
+import com.scenedeck.android.core.model.MediaStateKind
 import com.scenedeck.android.core.model.MixerScope
+import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
@@ -78,6 +81,7 @@ internal class FaderWriteBatcher(
 }
 
 @HiltViewModel
+@Suppress("TooManyFunctions") // one screen's intents; callbacks stay grouped by domain
 class MixerViewModel @Inject constructor(
     private val mixer: MixerRepository,
     private val settings: SettingsRepository,
@@ -86,6 +90,9 @@ class MixerViewModel @Inject constructor(
 
     /** Live meter levels for this screen (read by VolumeMeter in draw phase). */
     val levelsStore = MeterLevelsStore()
+
+    /** Media playback status per media-kind input (polled in the repository). */
+    val mediaStatus = mixer.mediaStatus
 
     private val mode = MutableStateFlow(MixerMode.ACTIVE)
     private val grouping = MutableStateFlow(MixerGrouping.SCOPE)
@@ -196,6 +203,50 @@ class MixerViewModel @Inject constructor(
 
     fun toggleLock(inputName: String, locked: Boolean) {
         viewModelScope.launch { mixer.setLocked(inputName, locked) }
+    }
+
+    // ── Media controls (M7) ─────────────────────────────────────────────────
+
+    fun mediaPlayPause(inputName: String) {
+        val state = mediaStatus.value[inputName]?.state
+        viewModelScope.launch {
+            mixer.triggerMediaInputAction(
+                inputName,
+                if (state == MediaStateKind.PLAYING) MediaActionKind.PAUSE else MediaActionKind.PLAY,
+            )
+        }
+    }
+
+    fun mediaRestart(inputName: String) {
+        viewModelScope.launch { mixer.triggerMediaInputAction(inputName, MediaActionKind.RESTART) }
+    }
+
+    // ── Audio extras (M7) ───────────────────────────────────────────────────
+
+    suspend fun loadAudioExtras(inputName: String): AudioExtras = AudioExtras(
+        balance = runCatching { mixer.getInputAudioBalance(inputName) }.getOrDefault(0.5),
+        syncOffsetMs = runCatching { mixer.getInputAudioSyncOffset(inputName) }.getOrDefault(0),
+        monitorType = runCatching { mixer.getInputAudioMonitorType(inputName) }
+            .getOrDefault(MonitorTypeKind.NONE),
+    )
+
+    private val extrasBatchers = mutableMapOf<String, FaderWriteBatcher>()
+
+    private fun extrasBatcher(key: String, send: suspend (String, Double) -> Unit) =
+        extrasBatchers.getOrPut(key) { FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS, send) }
+
+    fun setAudioBalance(inputName: String, balance: Double) {
+        extrasBatcher("balance") { name, value -> mixer.setInputAudioBalance(name, value) }
+            .preview(inputName, balance)
+    }
+
+    fun setAudioSyncOffset(inputName: String, offsetMs: Int) {
+        extrasBatcher("syncOffset") { name, value -> mixer.setInputAudioSyncOffset(name, value.toInt()) }
+            .preview(inputName, offsetMs.toDouble())
+    }
+
+    fun setAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) {
+        viewModelScope.launch { mixer.setInputAudioMonitorType(inputName, monitorType) }
     }
 
     private inline fun patchSelected(name: String, transform: (DiscoveredInput) -> DiscoveredInput) {

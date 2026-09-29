@@ -43,6 +43,7 @@ import com.scenedeck.android.feature.stats.StatsScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
 import com.scenedeck.android.navigation.icon
 import com.scenedeck.android.navigation.label
+import com.scenedeck.android.ui.components.BackgroundSettingsSheet
 import com.scenedeck.android.ui.components.KeepScreenOnEffect
 import com.scenedeck.android.ui.components.StatusStrip
 import com.scenedeck.android.ui.components.StatusStripState
@@ -98,6 +99,7 @@ private fun SceneDeckShell(
     val backStack = rememberNavBackStack(startDestination)
     val current = backStack.lastOrNull() as? SceneDeckDestination
     var moreSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var backgroundSheetOpen by rememberSaveable { mutableStateOf(false) }
 
     fun selectTopLevel(destination: SceneDeckDestination) {
         if (current == destination) return
@@ -152,9 +154,14 @@ private fun SceneDeckShell(
                 StatusStrip(
                     state = stripState,
                     onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
+                    onConnectionLongClick = { backgroundSheetOpen = true },
                     animateConnection = appState.motionLevel != MotionLevel.OFF,
                 )
             }
+        }
+
+        if (backgroundSheetOpen) {
+            BackgroundSettingsSheet(onDismiss = { backgroundSheetOpen = false })
         }
 
         if (moreSheetOpen) {

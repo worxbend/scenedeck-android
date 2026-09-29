@@ -10,5 +10,7 @@ data class MixerCallbacks(
     val onVolumeCommit: (String, Double) -> Unit = { _, _ -> },
     val onToggleMute: (String, Boolean) -> Unit = { _, _ -> },
     val onToggleLock: (String, Boolean) -> Unit = { _, _ -> },
+    val onMediaPlayPause: (String) -> Unit = {},
+    val onMediaRestart: (String) -> Unit = {},
 )
 

@@ -56,6 +56,8 @@ class LiveDeckRoborazziTest {
                 skippedFrames = 1,
                 totalFrames = 45_000,
             ),
+            virtualCamActive = true,
+            replayBufferActive = true,
         )
 
         composeRule.setContent {
@@ -94,6 +96,9 @@ class LiveDeckRoborazziTest {
                         onSceneTap = {},
                         onStreamClick = {},
                         onRecordClick = {},
+                        onToggleVirtualCam = {},
+                        onToggleReplayBuffer = {},
+                        onSaveReplay = {},
                         onQuickEditSave = { _, _, _, _ -> },
                         onReorder = {},
                         onMixerMute = { _, _ -> },

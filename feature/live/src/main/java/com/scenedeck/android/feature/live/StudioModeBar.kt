@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.designsystem.components.TBar
+import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
 /**
@@ -42,6 +44,7 @@ fun StudioModeBar(
     onTransitionSelect: (String) -> Unit,
     onTransitionDurationChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    motionLevel: MotionLevel = MotionLevel.FULL,
 ) {
     var pickerOpen by remember { mutableStateOf(false) }
     val colors = SceneDeckTheme.colors
@@ -88,6 +91,11 @@ fun StudioModeBar(
         TextButton(onClick = { pickerOpen = true }) {
             Text(text = "▾", color = colors.preview)
         }
+        TBar(
+            motionLevel = motionLevel,
+            onTrigger = onTransitionClick,
+            modifier = Modifier.height(56.dp),
+        )
     }
 
     if (pickerOpen) {

@@ -108,13 +108,22 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   host probes in E2E); thumbnails gated to Live-visible + Ready with a
   settings toggle. (Macrobenchmark overhead check moves to M8 perf pass.)
 
-## M7 — Power features
+## M7 — Power features ✅ SHIPPED
 
 - Virtual camera + replay buffer controls; media source play/pause; scene item
-  visibility toggles; audio balance/sync-offset/monitor type.
-- Foreground service + notification quick controls (volume, mute, stream toggle).
-- Home screen widget (scene grid mini-deck).
-- **Exit:** feature-complete gate; battery/background audit passed.
+  visibility toggles; audio balance/sync-offset/monitor type. **All shipped, E2E-verified
+  against live OBS** (replay buffer unavailable on the flatpak test rig — error 604 path
+  handled gracefully, fixture-tested).
+- T-bar gesture shipped (M6 deferral closed).
+- Foreground service (dataSync, STICKY, 6 h budget handling) + ongoing notification with
+  live scene/state + Disconnect action; keep-alive toggle via long-press on the status
+  strip connection area. Battery audit: no wakelock/alarm leaks, clean stop/restart.
+- Glance home-screen mini-deck (6 PRIMARY scenes, tally highlight, connect-then-act),
+  `scenedeck://scene/{name}` deep link.
+- **Exit:** feature-complete gate; battery/background audit passed. ✅
+- Follow-ups for M8: stream/record actions in notification; widget refresh affordance;
+  Glance goldens; replay-unavailable snackbar copy; lock glyph icon; ring buffer into
+  StatsRepository.
 
 ## M8 — Polish & launch
 

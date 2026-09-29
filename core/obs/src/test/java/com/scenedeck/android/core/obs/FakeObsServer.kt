@@ -191,6 +191,15 @@ internal class FakeObsServer(
             "GetSceneTransitionList" to "get_scene_transition_list.json",
             "GetCurrentSceneTransition" to "get_current_scene_transition.json",
             "GetSourceScreenshot" to "get_source_screenshot.json",
+            "GetVirtualCamStatus" to "get_virtualcam_status.json",
+            "ToggleVirtualCam" to "toggle_virtualcam.json",
+            "GetReplayBufferStatus" to "get_replay_buffer_status.json",
+            "ToggleReplayBuffer" to "toggle_replay_buffer.json",
+            "GetLastReplayBufferReplay" to "get_last_replay_buffer_replay.json",
+            "GetMediaInputStatus" to "get_media_input_status.json",
+            "GetInputAudioBalance" to "get_input_audio_balance.json",
+            "GetInputAudioSyncOffset" to "get_input_audio_sync_offset.json",
+            "GetInputAudioMonitorType" to "get_input_audio_monitor_type.json",
         )
     }
 }

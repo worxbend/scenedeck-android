@@ -39,9 +39,26 @@ sealed interface ObsEvent {
         val volumeDb: Double,
     ) : ObsEvent
 
+    data class InputAudioBalanceChanged(val inputName: String, val balance: Double) : ObsEvent
+
+    data class InputAudioSyncOffsetChanged(val inputName: String, val offsetMs: Int) : ObsEvent
+
+    data class InputAudioMonitorTypeChanged(val inputName: String, val monitorType: MonitorTypeKind) : ObsEvent
+
+    // ── Media inputs ────────────────────────────────────────────────────────
+    data class MediaInputPlaybackStarted(val inputName: String) : ObsEvent
+
+    data class MediaInputPlaybackEnded(val inputName: String) : ObsEvent
+
     // ── Outputs ─────────────────────────────────────────────────────────────
     /** [state] is the raw OBS state (e.g. `OBS_WEBSOCKET_OUTPUT_STARTED`). */
     data class StreamStateChanged(val active: Boolean, val state: String) : ObsEvent
+
+    data class VirtualcamStateChanged(val active: Boolean, val state: String) : ObsEvent
+
+    data class ReplayBufferStateChanged(val active: Boolean, val state: String) : ObsEvent
+
+    data class ReplayBufferSaved(val outputPath: String) : ObsEvent
 
     data class RecordStateChanged(
         val active: Boolean,

@@ -12,6 +12,8 @@ data class DiscoveredInput(
     val scopePath: String?,
     val volumeMul: Double,
     val muted: Boolean,
+    /** OBS input kind (e.g. ffmpeg_source); null for special inputs. */
+    val inputKind: String? = null,
 )
 
 /**
@@ -30,7 +32,7 @@ internal class AudioDiscovery(private val client: ObsClient) {
         runCatching { client.getSpecialInputs() }.getOrNull()?.names?.forEach { name ->
             probe(name)?.let { (mul, muted) ->
                 result[name] = DiscoveredInput(name, MixerScope.GLOBAL, scopePath = null,
-                    volumeMul = mul, muted = muted)
+                    volumeMul = mul, muted = muted, inputKind = null)
             }
         }
 
@@ -106,6 +108,7 @@ internal class AudioDiscovery(private val client: ObsClient) {
                 scopePath = if (scope == MixerScope.SCENE) null else path,
                 volumeMul = mul,
                 muted = muted,
+                inputKind = item.inputKind,
             )
         }
     }

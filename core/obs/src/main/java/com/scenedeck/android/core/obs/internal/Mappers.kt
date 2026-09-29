@@ -9,7 +9,11 @@ import com.rejeq.ktobs.request.config.GetProfileListResponse
 import com.rejeq.ktobs.request.config.GetSceneCollectionListResponse
 import com.rejeq.ktobs.request.general.GetStatsResponse
 import com.rejeq.ktobs.request.general.GetVersionResponse
+import com.rejeq.ktobs.model.MediaAction
+import com.rejeq.ktobs.model.MediaState
+import com.rejeq.ktobs.model.MonitorType
 import com.rejeq.ktobs.request.inputs.GetSpecialInputsResponse
+import com.rejeq.ktobs.request.mediainputs.GetMediaInputStatusResponse
 import com.rejeq.ktobs.request.record.GetRecordStatusResponse
 import com.rejeq.ktobs.request.scenes.GetCurrentPreviewSceneResponse
 import com.rejeq.ktobs.request.scenes.GetCurrentProgramSceneResponse
@@ -27,6 +31,10 @@ import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.CurrentTransition
+import com.scenedeck.android.core.model.MediaActionKind
+import com.scenedeck.android.core.model.MediaStateKind
+import com.scenedeck.android.core.model.MediaStatus
+import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.TransitionInfo
 import com.scenedeck.android.core.model.TransitionListSnapshot
@@ -127,3 +135,43 @@ internal fun GetCurrentSceneTransitionResponse.toDomain() = CurrentTransition(
     configurable = configurable,
     fixed = fixed,
 )
+
+
+internal fun MediaState.toDomain(): MediaStateKind = when (this) {
+    MediaState.None -> MediaStateKind.NONE
+    MediaState.Playing -> MediaStateKind.PLAYING
+    MediaState.Opening -> MediaStateKind.OPENING
+    MediaState.Buffering -> MediaStateKind.BUFFERING
+    MediaState.Paused -> MediaStateKind.PAUSED
+    MediaState.Stopped -> MediaStateKind.STOPPED
+    MediaState.Ended -> MediaStateKind.ENDED
+    MediaState.Error -> MediaStateKind.ERROR
+}
+
+internal fun GetMediaInputStatusResponse.toDomain() = MediaStatus(
+    state = mediaState.toDomain(),
+    durationMs = mediaDuration,
+    cursorMs = mediaCursor,
+)
+
+internal fun MediaActionKind.toKtobs(): MediaAction = when (this) {
+    MediaActionKind.NONE -> MediaAction.NONE
+    MediaActionKind.PLAY -> MediaAction.Play
+    MediaActionKind.PAUSE -> MediaAction.Pause
+    MediaActionKind.STOP -> MediaAction.Stop
+    MediaActionKind.RESTART -> MediaAction.Restart
+    MediaActionKind.NEXT -> MediaAction.Next
+    MediaActionKind.PREVIOUS -> MediaAction.Previous
+}
+
+internal fun MonitorType.toDomain(): MonitorTypeKind = when (this) {
+    MonitorType.None -> MonitorTypeKind.NONE
+    MonitorType.MonitorOnly -> MonitorTypeKind.MONITOR_ONLY
+    MonitorType.MonitorAndOutput -> MonitorTypeKind.MONITOR_AND_OUTPUT
+}
+
+internal fun MonitorTypeKind.toKtobs(): MonitorType = when (this) {
+    MonitorTypeKind.NONE -> MonitorType.None
+    MonitorTypeKind.MONITOR_ONLY -> MonitorType.MonitorOnly
+    MonitorTypeKind.MONITOR_AND_OUTPUT -> MonitorType.MonitorAndOutput
+}

@@ -34,6 +34,9 @@ androidx-test-core = "1.7.0"
 ui-text-google-fonts = "1.12.1" # BOM 2026.09.00-managed version; pinned explicitly for clarity
 roborazzi = "1.75.0"
 robolectric = "4.17"
+# M7b platform power features (:app only) — Glance home-screen widget.
+glance = "1.2.0"                  # latest stable (1.3.0 is alpha); verified 2026-09-29
+androidx-core = "1.19.1"          # ContextCompat/ServiceCompat for the keep-alive FGS
 # TODO: br.com.devsrsouza.compose.icons Lucide pack is NOT published on Maven Central
 # (verified 2026-09-28). Re-check later or pick an alternative icon source.
 
@@ -92,6 +95,10 @@ roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", versi
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+# M7b appends (see [versions] note above)
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

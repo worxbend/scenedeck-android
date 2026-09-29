@@ -101,13 +101,13 @@ colors, icons, ordering) lives in a local registry on the device.
 | Multiple connection profiles | named, QR pairing, last-used default | M2 |
 | Studio mode (preview/program) + transition control | **SHIPPED M6**: one-tap Studio toggle; deck drives preview (green), TRANSITION + CUT commit to program (red); OBS-side changes from other clients tracked live | M6 ✅ |
 | Scene/source **screenshot preview** (`GetSourceScreenshot`) | **SHIPPED M6**: throttled JPEG thumbnails on deck cards (360 px q50; program/preview 2.5 s, others 10 s; only while Live visible + Ready; "Previews" toggle, default ON) | M6 ✅ |
-| Transition picker + duration | **SHIPPED M6**: bottom-sheet picker + debounced duration slider. T-bar gesture **deferred to M7 stretch** | M6 ✅ (T-bar M7) |
-| Virtual camera & replay buffer controls | desktop excludes | M7 |
-| Scene item visibility toggles | quick "hide camera" style actions | M7 |
-| Audio balance / sync offset / monitor type | desktop excludes | M7 |
-| Widgets & Wear OS tile | scene switch from home screen / watch | M8 |
-| Media controls (play/pause media sources) | `TriggerMediaInputAction` | M7 |
-| Quick-volume notification / foreground service | keep meters alive, control from shade | M7 |
+| Transition picker + duration + T-bar | **SHIPPED M6/M7**: bottom-sheet picker + debounced duration slider (M6); T-bar pull gesture arms ≥80% and fires on release, spring-back honors MotionLevel (M7) | M6 ✅ M7 ✅ |
+| Virtual camera & replay buffer controls | **SHIPPED M7**: transport-row chips + Save Replay button (non-destructive, no Output Safety); graceful handling of OBS error 604 (replay unavailable) | M7 ✅ |
+| Scene item visibility toggles | **SHIPPED M7**: "Sources" section in the deck card quick-edit sheet, live via `SceneItemEnableStateChanged` | M7 ✅ |
+| Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
+| Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
+| Media controls (play/pause media sources) | **SHIPPED M7**: play/pause/restart + state chip on media-kind mixer strips (2 s poll) | M7 ✅ |
+| Quick-volume notification / foreground service | **SHIPPED M7**: keep-alive foreground service (dataSync, STICKY, timeout handling) + ongoing notification with live state + Disconnect action; `scenedeck://scene/{name}` deep link for automation | M7 ✅ |
 
 Explicitly **out of scope** (same as desktop): input creation/editing, filters,
 scene item transforms, scripting, Twitch/StreamElements integration (v1).

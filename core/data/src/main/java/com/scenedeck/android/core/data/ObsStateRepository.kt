@@ -204,4 +204,19 @@ class ObsStateRepository @Inject constructor(
     ) = registry.update(sceneName, role, accentColorArgb, iconName)
 
     suspend fun reorderDeck(orderedSceneNames: List<String>) = registry.reorder(orderedSceneNames)
+
+    // ── Power features (M7) ─────────────────────────────────────────────────
+
+    suspend fun toggleVirtualCam(): Boolean = client.toggleVirtualCam()
+
+    suspend fun toggleReplayBuffer(): Boolean = client.toggleReplayBuffer()
+
+    suspend fun saveReplayBuffer() = client.saveReplayBuffer()
+
+    suspend fun getLastReplayBufferReplay(): String = client.getLastReplayBufferReplay()
+
+    suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) =
+        client.setSceneItemEnabled(sceneName, sceneItemId, enabled)
+
+    suspend fun getSceneItemList(sceneName: String) = client.getSceneItemList(sceneName)
 }

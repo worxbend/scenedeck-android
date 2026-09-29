@@ -11,6 +11,9 @@ import com.scenedeck.android.core.model.SceneCollectionListSnapshot
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.CurrentTransition
+import com.scenedeck.android.core.model.MediaActionKind
+import com.scenedeck.android.core.model.MediaStatus
+import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.TransitionListSnapshot
@@ -132,6 +135,47 @@ interface ObsClient {
         width: Int? = 360,
         height: Int? = null,
     ): ByteArray = error(NOT_IMPLEMENTED)
+
+    // ── Power features (M7) — default bodies keep pre-M7 fakes compiling ──────
+
+    suspend fun getVirtualCamStatus(): Boolean = error(NOT_IMPLEMENTED)
+
+    /** Returns the new active state. */
+    suspend fun toggleVirtualCam(): Boolean = error(NOT_IMPLEMENTED)
+
+    suspend fun getReplayBufferStatus(): Boolean = error(NOT_IMPLEMENTED)
+
+    /** Returns the new active state. */
+    suspend fun toggleReplayBuffer(): Boolean = error(NOT_IMPLEMENTED)
+
+    suspend fun saveReplayBuffer() = Unit
+
+    /** Filesystem path of the last saved replay. */
+    suspend fun getLastReplayBufferReplay(): String = error(NOT_IMPLEMENTED)
+
+    suspend fun getMediaInputStatus(inputName: String): MediaStatus = error(NOT_IMPLEMENTED)
+
+    suspend fun setMediaInputCursor(inputName: String, cursorMs: Long) = Unit
+
+    suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind) = Unit
+
+    // ── Scene items ─────────────────────────────────────────────────────────
+
+    suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) = Unit
+
+    // ── Audio extras ────────────────────────────────────────────────────────
+
+    suspend fun getInputAudioBalance(inputName: String): Double = error(NOT_IMPLEMENTED)
+
+    suspend fun setInputAudioBalance(inputName: String, balance: Double) = Unit
+
+    suspend fun getInputAudioSyncOffset(inputName: String): Int = error(NOT_IMPLEMENTED)
+
+    suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) = Unit
+
+    suspend fun getInputAudioMonitorType(inputName: String): MonitorTypeKind = error(NOT_IMPLEMENTED)
+
+    suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) = Unit
 
     // ── Config ──────────────────────────────────────────────────────────────
     suspend fun getProfileList(): ProfileListSnapshot
