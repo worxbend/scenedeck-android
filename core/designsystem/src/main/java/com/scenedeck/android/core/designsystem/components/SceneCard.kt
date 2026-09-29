@@ -29,8 +29,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -57,6 +61,10 @@ fun SceneCard(
     modifier: Modifier = Modifier,
     accentColor: Color? = null,
     pending: Boolean = false,
+    /** Studio-mode preview state (green, PRODUCT LAW per SceneDeckColors.preview). */
+    preview: Boolean = false,
+    /** Live scene thumbnail (GetSourceScreenshot); icon shows when null. */
+    thumbnail: ImageBitmap? = null,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
 ) {
@@ -72,6 +80,7 @@ fun SceneCard(
     val containerColor by animateColorAsState(
         targetValue = when {
             active -> colors.program
+            preview -> colors.preview.copy(alpha = 0.45f)
             accentColor != null -> accentColor.copy(alpha = 0.35f)
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
@@ -79,21 +88,30 @@ fun SceneCard(
         label = "sceneCardContainer",
     )
     val contentColor by animateColorAsState(
-        targetValue = if (active) colors.onProgram else MaterialTheme.colorScheme.onSurface,
+        targetValue = when {
+            active -> colors.onProgram
+            preview -> colors.onPreview
+            else -> MaterialTheme.colorScheme.onSurface
+        },
         animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         label = "sceneCardContent",
     )
+    val glowColor = when {
+        active -> colors.program.copy(alpha = 0.85f)
+        preview -> colors.preview.copy(alpha = 0.95f)
+        else -> colors.program.copy(alpha = 0.85f)
+    }
     val glowWidth by animateDpAsState(
-        targetValue = if (active) 3.dp else 0.dp,
+        targetValue = if (active || preview) 3.dp else 0.dp,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "sceneCardGlow",
     )
     val shape = MaterialTheme.shapes.large
 
-    val stateDescription = if (active) {
-        "active, current program scene"
-    } else {
-        "ready, double-tap to switch"
+    val stateDescription = when {
+        active -> "active, current program scene"
+        preview -> "on preview, double-tap to transition"
+        else -> "ready, double-tap to switch"
     }
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -110,7 +128,7 @@ fun SceneCard(
             .then(
                 if (glowWidth > 0.dp) {
                     Modifier.border(
-                        BorderStroke(glowWidth, colors.program.copy(alpha = 0.85f)),
+                        BorderStroke(glowWidth, glowColor),
                         shape,
                     )
                 } else {
@@ -133,6 +151,26 @@ fun SceneCard(
                 )
                 .padding(14.dp),
         ) {
+            if (thumbnail != null) {
+                Image(
+                    bitmap = thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alpha = if (active || preview) 0.85f else 0.65f,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Scrim for label readability over video frames.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)),
+                                startY = 120f,
+                            ),
+                        ),
+                )
+            }
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.SpaceBetween,
@@ -141,13 +179,15 @@ fun SceneCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = contentColor,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier
+                        .size(28.dp)
+                        .alpha(if (thumbnail != null) 0.55f else 1f),
                 )
                 Text(
                     text = label,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                    color = contentColor,
+                    color = if (thumbnail != null) Color.White else contentColor,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

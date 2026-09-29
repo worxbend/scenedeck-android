@@ -46,6 +46,8 @@ data class SettingsSnapshot(
     val mixerSelectedScene: String? = null,
     /** Mixer grouping: SCOPE / SCENE_PATH / NONE. */
     val mixerGrouping: String = "SCOPE",
+    /** Scene preview thumbnails on deck cards (M6). */
+    val scenePreviewsEnabled: Boolean = true,
 )
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
@@ -75,6 +77,7 @@ class SceneDeckSettingsStore private constructor(
                 mixerMode = prefs[KEY_MIXER_MODE] ?: "ACTIVE",
                 mixerSelectedScene = prefs[KEY_MIXER_SELECTED_SCENE],
                 mixerGrouping = prefs[KEY_MIXER_GROUPING] ?: "SCOPE",
+                scenePreviewsEnabled = prefs[KEY_SCENE_PREVIEWS_ENABLED] ?: true,
             )
         }
         .distinctUntilChanged()
@@ -117,6 +120,8 @@ class SceneDeckSettingsStore private constructor(
 
     suspend fun setMixerGrouping(value: String) = edit { it[KEY_MIXER_GROUPING] = value }
 
+    suspend fun setScenePreviewsEnabled(value: Boolean) = edit { it[KEY_SCENE_PREVIEWS_ENABLED] = value }
+
     private suspend fun edit(transform: (MutablePreferences) -> Unit) {
         dataStore.edit(transform)
     }
@@ -144,5 +149,6 @@ class SceneDeckSettingsStore private constructor(
         private val KEY_MIXER_MODE = stringPreferencesKey("mixerMode")
         private val KEY_MIXER_SELECTED_SCENE = stringPreferencesKey("mixerSelectedScene")
         private val KEY_MIXER_GROUPING = stringPreferencesKey("mixerGrouping")
+        private val KEY_SCENE_PREVIEWS_ENABLED = booleanPreferencesKey("scenePreviewsEnabled")
     }
 }

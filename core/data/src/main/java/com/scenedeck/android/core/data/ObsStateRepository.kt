@@ -2,6 +2,8 @@ package com.scenedeck.android.core.data
 
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.CurrentTransition
+import com.scenedeck.android.core.model.TransitionInfo
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneSummary
@@ -23,7 +25,10 @@ data class SceneCardState(
     /** SceneIcon catalogue entry name (null = default clapperboard). */
     val iconName: String?,
     val sortOrder: Int,
+    /** On program (red tally). */
     val isActive: Boolean,
+    /** On preview (studio mode only, green). */
+    val isPreview: Boolean = false,
 )
 
 /** Everything the Live deck renders. */
@@ -32,6 +37,12 @@ data class DeckState(
     /** PRIMARY scenes only, registry order then name. */
     val scenes: List<SceneCardState> = emptyList(),
     val currentProgramScene: String? = null,
+    /** OBS studio mode flag (preview/program workflow). */
+    val studioMode: Boolean = false,
+    /** Current preview scene (studio mode only). */
+    val previewScene: String? = null,
+    val currentTransition: CurrentTransition? = null,
+    val transitions: List<TransitionInfo> = emptyList(),
 )
 
 /**
@@ -40,6 +51,7 @@ data class DeckState(
  * entry are treated as PRIMARY so the deck shows everything until Inventory (M5).
  */
 @Singleton
+@Suppress("TooManyFunctions") // deck state + studio control surface
 class ObsStateRepository @Inject constructor(
     private val client: ObsClient,
     private val registry: RegistryRepository,
@@ -47,16 +59,38 @@ class ObsStateRepository @Inject constructor(
 ) {
     private val sceneList = MutableStateFlow<List<SceneSummary>>(emptyList())
     private val programScene = MutableStateFlow<String?>(null)
+    private val studioMode = MutableStateFlow(false)
+    private val previewScene = MutableStateFlow<String?>(null)
+    private val currentTransition = MutableStateFlow<CurrentTransition?>(null)
+    private val transitions = MutableStateFlow<List<TransitionInfo>>(emptyList())
+
+    private data class StudioSnapshot(
+        val studioMode: Boolean,
+        val previewScene: String?,
+        val currentTransition: CurrentTransition?,
+        val transitions: List<TransitionInfo>,
+    )
+
+    private val studio = combine(
+        studioMode, previewScene, currentTransition, transitions,
+    ) { mode, preview, transition, list ->
+        StudioSnapshot(mode, preview, transition, list)
+    }
 
     val deckState: StateFlow<DeckState> = combine(
         client.connectionState,
         sceneList,
         programScene,
         registry.entries,
-    ) { connection, scenes, program, entries ->
+        studio,
+    ) { connection, scenes, program, entries, studioSnap ->
         DeckState(
             connectionState = connection,
             currentProgramScene = program,
+            studioMode = studioSnap.studioMode,
+            previewScene = studioSnap.previewScene,
+            currentTransition = studioSnap.currentTransition,
+            transitions = studioSnap.transitions,
             scenes = scenes.map { scene ->
                 val entry = entries.firstOrNull { it.sceneName == scene.name }
                 SceneCardState(
@@ -66,6 +100,7 @@ class ObsStateRepository @Inject constructor(
                     iconName = entry?.iconName,
                     sortOrder = entry?.sortOrder ?: Int.MAX_VALUE,
                     isActive = scene.name == program,
+                    isPreview = studioSnap.studioMode && scene.name == studioSnap.previewScene,
                 )
             }
                 .filter { it.role == SceneRole.PRIMARY }
@@ -93,6 +128,20 @@ class ObsStateRepository @Inject constructor(
                     is ObsEvent.CurrentProgramSceneChanged ->
                         programScene.value = event.sceneName
 
+                    is ObsEvent.StudioModeStateChanged -> {
+                        studioMode.value = event.enabled
+                        refreshStudio()
+                    }
+
+                    is ObsEvent.CurrentPreviewSceneChanged ->
+                        previewScene.value = event.sceneName
+
+                    is ObsEvent.CurrentSceneTransitionChanged,
+                    is ObsEvent.CurrentSceneTransitionDurationChanged,
+                    -> refreshTransition()
+
+                    is ObsEvent.SceneTransitionStarted, is ObsEvent.SceneTransitionEnded -> Unit
+
                     is ObsEvent.SceneListChanged -> {
                         sceneList.value = event.scenes
                         registry.deleteStale(event.scenes.map { it.name })
@@ -110,8 +159,40 @@ class ObsStateRepository @Inject constructor(
             sceneList.value = list.scenes
             programScene.value = list.currentProgramScene
             registry.deleteStale(list.scenes.map { it.name })
+            refreshStudio()
         }
     }
+
+    private suspend fun refreshStudio() {
+        runCatching {
+            studioMode.value = client.getStudioModeEnabled()
+            if (studioMode.value) {
+                previewScene.value = client.getCurrentPreviewScene()
+            } else {
+                previewScene.value = null
+            }
+        }
+        refreshTransition()
+    }
+
+    private suspend fun refreshTransition() {
+        runCatching {
+            currentTransition.value = client.getCurrentSceneTransition()
+            transitions.value = client.getSceneTransitionList().transitions
+        }
+    }
+
+    suspend fun setStudioModeEnabled(enabled: Boolean) = client.setStudioModeEnabled(enabled)
+
+    suspend fun setCurrentPreviewScene(sceneName: String) = client.setCurrentPreviewScene(sceneName)
+
+    suspend fun triggerStudioModeTransition() = client.triggerStudioModeTransition()
+
+    suspend fun setCurrentSceneTransition(transitionName: String) =
+        client.setCurrentSceneTransition(transitionName)
+
+    suspend fun setCurrentSceneTransitionDuration(durationMs: Int) =
+        client.setCurrentSceneTransitionDuration(durationMs)
 
     suspend fun setCurrentProgramScene(sceneName: String) = client.setCurrentProgramScene(sceneName)
 

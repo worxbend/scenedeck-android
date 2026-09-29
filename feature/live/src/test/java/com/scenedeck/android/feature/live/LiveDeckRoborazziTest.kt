@@ -90,6 +90,7 @@ class LiveDeckRoborazziTest {
                         ),
                         mixerLevels = com.scenedeck.android.core.designsystem.components.MeterLevelsStore(),
                         motionLevel = MotionLevel.FULL,
+                        thumbnails = emptyMap(),
                         onSceneTap = {},
                         onStreamClick = {},
                         onRecordClick = {},
@@ -97,6 +98,13 @@ class LiveDeckRoborazziTest {
                         onReorder = {},
                         onMixerMute = { _, _ -> },
                         onOpenMixer = {},
+                        onStudioToggle = {},
+                        onTransitionClick = {},
+                        onCutClick = {},
+                        onTransitionSelect = {},
+                        onTransitionDurationChange = {},
+                        previewsEnabled = true,
+                        onPreviewsToggle = {},
                     )
                 }
             }

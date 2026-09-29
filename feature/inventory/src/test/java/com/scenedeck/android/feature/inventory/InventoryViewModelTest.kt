@@ -183,7 +183,25 @@ class InventoryViewModelTest {
             ),
         )
 
-        private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
+    
+    override suspend fun getStudioModeEnabled(): Boolean = false
+    override suspend fun setStudioModeEnabled(enabled: Boolean) = Unit
+    override suspend fun getCurrentPreviewScene(): String = unused()
+    override suspend fun setCurrentPreviewScene(sceneName: String) = unused()
+    override suspend fun triggerStudioModeTransition() = unused()
+    override suspend fun getSceneTransitionList() = unused()
+    override suspend fun getCurrentSceneTransition() = unused()
+    override suspend fun setCurrentSceneTransition(transitionName: String) = unused()
+    override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
+    override suspend fun getSourceScreenshot(
+        sourceName: String,
+        format: String,
+        compressionQuality: Int,
+        width: Int?,
+        height: Int?,
+    ): ByteArray = unused()
+
+    private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 
         override suspend fun getVersion() = unused()
         override suspend fun getStats() = unused()

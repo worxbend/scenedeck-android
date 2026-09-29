@@ -100,11 +100,13 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 ## M6 — Studio mode, transitions, previews (beyond desktop)
 
-- Studio mode toggle: deck drives preview, TRANSITION button + T-bar gesture,
-  cut/transition picker + duration.
-- `GetSourceScreenshot` thumbnails on scene cards (throttled, Coil 3, perf-guarded).
-- **Exit:** two-commute test: preview/program flow matches OBS studio mode exactly;
-  thumbnails < 5% CPU overhead (macrobenchmark).
+- Studio mode toggle: deck drives preview, TRANSITION + CUT buttons,
+  transition picker + duration slider. (T-bar gesture deferred to M7 stretch.)
+- `GetSourceScreenshot` thumbnails on scene cards (throttled, perf-guarded,
+  ByteArray decode in :core:data — Coil not needed for raw frames).
+- **Exit:** preview/program flow matches OBS studio mode exactly (verified via
+  host probes in E2E); thumbnails gated to Live-visible + Ready with a
+  settings toggle. (Macrobenchmark overhead check moves to M8 perf pass.)
 
 ## M7 — Power features
 

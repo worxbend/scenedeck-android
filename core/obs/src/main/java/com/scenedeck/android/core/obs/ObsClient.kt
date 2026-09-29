@@ -10,8 +10,10 @@ import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneCollectionListSnapshot
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
+import com.scenedeck.android.core.model.CurrentTransition
 import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.StreamStatus
+import com.scenedeck.android.core.model.TransitionListSnapshot
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.internal.KtobsObsClient
 import kotlinx.coroutines.CoroutineScope
@@ -96,6 +98,41 @@ interface ObsClient {
 
     suspend fun stopRecord()
 
+    // ── Studio mode & transitions (M6) ──────────────────────────────────────
+    // Default bodies keep pre-M6 fakes compiling (they fail loudly if called).
+
+    suspend fun getStudioModeEnabled(): Boolean = error(NOT_IMPLEMENTED)
+
+    suspend fun setStudioModeEnabled(enabled: Boolean) = Unit
+
+    suspend fun getCurrentPreviewScene(): String = error(NOT_IMPLEMENTED)
+
+    suspend fun setCurrentPreviewScene(sceneName: String) = Unit
+
+    /** Commits preview → program with the current transition. */
+    suspend fun triggerStudioModeTransition() = Unit
+
+    suspend fun getSceneTransitionList(): TransitionListSnapshot = error(NOT_IMPLEMENTED)
+
+    suspend fun getCurrentSceneTransition(): CurrentTransition = error(NOT_IMPLEMENTED)
+
+    suspend fun setCurrentSceneTransition(transitionName: String) = Unit
+
+    suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = Unit
+
+    /**
+     * Scene screenshot (OBS `GetSourceScreenshot`) as encoded image bytes
+     * (JPEG when [format] is "jpeg"). Throws [ObsRequestFailedException] on
+     * sources that can't be captured.
+     */
+    suspend fun getSourceScreenshot(
+        sourceName: String,
+        format: String = "jpeg",
+        compressionQuality: Int = 50,
+        width: Int? = 360,
+        height: Int? = null,
+    ): ByteArray = error(NOT_IMPLEMENTED)
+
     // ── Config ──────────────────────────────────────────────────────────────
     suspend fun getProfileList(): ProfileListSnapshot
 
@@ -118,6 +155,8 @@ class ObsNotConnectedException : IllegalStateException("Not connected to OBS")
  * OBS answered a request with `result: false`. [statusCode] is the obs-websocket
  * `RequestStatus.code` name (e.g. `ResourceNotFound`).
  */
+private const val NOT_IMPLEMENTED = "ObsClient member not implemented (added in M6)"
+
 class ObsRequestFailedException(
     val requestType: String,
     val statusCode: String,

@@ -186,6 +186,11 @@ internal class FakeObsServer(
             "GetProfileList" to "get_profile_list.json",
             "GetSceneCollectionList" to "get_scene_collection_list.json",
             "GetStats" to "get_stats.json",
+            "GetStudioModeEnabled" to "get_studio_mode_enabled.json",
+            "GetCurrentPreviewScene" to "get_current_preview_scene.json",
+            "GetSceneTransitionList" to "get_scene_transition_list.json",
+            "GetCurrentSceneTransition" to "get_current_scene_transition.json",
+            "GetSourceScreenshot" to "get_source_screenshot.json",
         )
     }
 }

@@ -31,6 +31,8 @@ data class UserSettings(
     val mixerMode: String = "ACTIVE",
     val mixerSelectedScene: String? = null,
     val mixerGrouping: String = "SCOPE",
+    /** Scene preview thumbnails on deck cards (M6). */
+    val scenePreviewsEnabled: Boolean = true,
 )
 
 @Singleton
@@ -79,6 +81,8 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setMixerGrouping(value: String) = store.setMixerGrouping(value)
 
+    suspend fun setScenePreviewsEnabled(value: Boolean) = store.setScenePreviewsEnabled(value)
+
     private suspend fun persist(settings: UserSettings) {
         store.setThemeFamily(settings.themeFamily)
         store.setDarkMode(settings.darkMode.name)
@@ -97,6 +101,7 @@ class SettingsRepository @Inject constructor(
         store.setMixerMode(settings.mixerMode)
         store.setMixerSelectedScene(settings.mixerSelectedScene)
         store.setMixerGrouping(settings.mixerGrouping)
+        store.setScenePreviewsEnabled(settings.scenePreviewsEnabled)
     }
 
     private fun SettingsSnapshot.toUserSettings() = UserSettings(
@@ -117,6 +122,7 @@ class SettingsRepository @Inject constructor(
         mixerMode = mixerMode,
         mixerSelectedScene = mixerSelectedScene,
         mixerGrouping = mixerGrouping,
+        scenePreviewsEnabled = scenePreviewsEnabled,
     )
 
     private fun String.toDarkModeOrDefault(): DarkMode =

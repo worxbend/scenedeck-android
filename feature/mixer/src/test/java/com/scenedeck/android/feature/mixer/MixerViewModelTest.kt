@@ -85,7 +85,7 @@ class MixerViewModelTest {
         // Discovery for "Quiet A" completes asynchronously: globals remain only.
         val state = awaitState {
             it.displayedScene == "Quiet A" &&
-                it.inputs.none { input -> input.name == "Test Tone 440" }
+                it.inputs.map { input -> input.name } == listOf("Desktop Audio", "Mic/Aux")
         }
         assertEquals(MixerMode.SELECTED, state.mode)
         assertTrue(state.notInProgram) // program is still "Cam 1"

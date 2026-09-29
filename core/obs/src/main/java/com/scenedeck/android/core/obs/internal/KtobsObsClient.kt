@@ -41,8 +41,18 @@ import com.rejeq.ktobs.event.scenes.SceneListChangedEvent
 import com.rejeq.ktobs.event.scenes.SceneListChangedEventData
 import com.rejeq.ktobs.event.scenes.SceneNameChangedEvent
 import com.rejeq.ktobs.event.scenes.SceneNameChangedEventData
+import com.rejeq.ktobs.event.scenes.CurrentPreviewSceneChangedEvent
+import com.rejeq.ktobs.event.scenes.CurrentPreviewSceneChangedEventData
 import com.rejeq.ktobs.event.scenes.SceneRemovedEvent
 import com.rejeq.ktobs.event.scenes.SceneRemovedEventData
+import com.rejeq.ktobs.event.transitions.CurrentSceneTransitionChangedEvent
+import com.rejeq.ktobs.event.transitions.CurrentSceneTransitionChangedEventData
+import com.rejeq.ktobs.event.transitions.CurrentSceneTransitionDurationChangedEvent
+import com.rejeq.ktobs.event.transitions.CurrentSceneTransitionDurationChangedEventData
+import com.rejeq.ktobs.event.transitions.SceneTransitionEndedEvent
+import com.rejeq.ktobs.event.transitions.SceneTransitionEndedEventData
+import com.rejeq.ktobs.event.transitions.SceneTransitionStartedEvent
+import com.rejeq.ktobs.event.transitions.SceneTransitionStartedEventData
 import com.rejeq.ktobs.event.ui.StudioModeStateChangedEvent
 import com.rejeq.ktobs.event.ui.StudioModeStateChangedEventData
 import com.rejeq.ktobs.ktor.ObsSessionBuilder
@@ -66,6 +76,16 @@ import com.rejeq.ktobs.request.sceneitems.getSceneItemList
 import com.rejeq.ktobs.request.scenes.getCurrentProgramScene
 import com.rejeq.ktobs.request.scenes.getSceneList
 import com.rejeq.ktobs.request.scenes.setCurrentProgramScene
+import com.rejeq.ktobs.request.scenes.getCurrentPreviewScene
+import com.rejeq.ktobs.request.scenes.setCurrentPreviewScene
+import com.rejeq.ktobs.request.sources.getSourceScreenshot
+import com.rejeq.ktobs.request.transitions.getCurrentSceneTransition
+import com.rejeq.ktobs.request.transitions.getSceneTransitionList
+import com.rejeq.ktobs.request.transitions.setCurrentSceneTransition
+import com.rejeq.ktobs.request.transitions.setCurrentSceneTransitionDuration
+import com.rejeq.ktobs.request.transitions.triggerStudioModeTransition
+import com.rejeq.ktobs.request.ui.getStudioModeEnabled
+import com.rejeq.ktobs.request.ui.setStudioModeEnabled
 import com.rejeq.ktobs.request.stream.getStreamStatus
 import com.rejeq.ktobs.request.stream.startStream
 import com.rejeq.ktobs.request.stream.stopStream
@@ -125,6 +145,14 @@ internal fun exponentialBackoffMillis(attempt: Int): Long {
     require(attempt >= 1) { "attempt must be >= 1, was $attempt" }
     val shift = (attempt - 1).coerceAtMost(MAX_BACKOFF_SHIFT)
     return minOf(BASE_BACKOFF_MS shl shift, MAX_BACKOFF_MS)
+}
+
+private const val DATA_URI_PREFIX = "base64,"
+
+/** OBS `imageData` is a data URI ("data:image/jpeg;base64,<payload>"). */
+internal fun decodeImageData(imageData: String): ByteArray {
+    val payload = imageData.substringAfter(DATA_URI_PREFIX, imageData)
+    return java.util.Base64.getDecoder().decode(payload)
 }
 
 private fun defaultHttpClient(): HttpClient = HttpClient(OkHttp) {
@@ -406,6 +434,52 @@ internal class KtobsObsClient(
     override suspend fun setCurrentSceneCollection(collectionName: String) =
         request { it.setCurrentSceneCollection(collectionName) }
 
+    // ── Studio mode & transitions (M6) ──────────────────────────────────────
+
+    override suspend fun getStudioModeEnabled() = request { it.getStudioModeEnabled() }
+
+    override suspend fun setStudioModeEnabled(enabled: Boolean) =
+        request { it.setStudioModeEnabled(enabled) }
+
+    override suspend fun getCurrentPreviewScene() =
+        request { it.getCurrentPreviewScene().toDomain() }
+
+    override suspend fun setCurrentPreviewScene(sceneName: String) =
+        request { it.setCurrentPreviewScene(name = sceneName) }
+
+    override suspend fun triggerStudioModeTransition() =
+        request { it.triggerStudioModeTransition() }
+
+    override suspend fun getSceneTransitionList() =
+        request { it.getSceneTransitionList().toDomain() }
+
+    override suspend fun getCurrentSceneTransition() =
+        request { it.getCurrentSceneTransition().toDomain() }
+
+    override suspend fun setCurrentSceneTransition(transitionName: String) =
+        request { it.setCurrentSceneTransition(transitionName) }
+
+    override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) =
+        request { it.setCurrentSceneTransitionDuration(durationMs) }
+
+    override suspend fun getSourceScreenshot(
+        sourceName: String,
+        format: String,
+        compressionQuality: Int,
+        width: Int?,
+        height: Int?,
+    ): ByteArray = request {
+        val response = it.getSourceScreenshot(
+            /* sourceName = */ sourceName,
+            /* sourceUuid = */ null,
+            /* imageFormat = */ format,
+            /* imageWidth = */ width,
+            /* imageHeight = */ height,
+            /* imageCompressionQuality = */ compressionQuality,
+        )
+        decodeImageData(response.imageData)
+    }
+
     // ── Event fan-out ───────────────────────────────────────────────────────
 
     private fun ObsSession.dispatchEvent(event: EventOpCode) {
@@ -424,6 +498,10 @@ internal class KtobsObsClient(
                 CurrentSceneCollectionChangedEvent, SceneCollectionListChangedEvent,
                 StudioModeStateChangedEvent,
                 -> dispatchConfigEvent(event)
+                CurrentPreviewSceneChangedEvent, SceneTransitionStartedEvent,
+                SceneTransitionEndedEvent, CurrentSceneTransitionChangedEvent,
+                CurrentSceneTransitionDurationChangedEvent,
+                -> dispatchStudioEvent(event)
             }
         }
     }
@@ -494,6 +572,27 @@ internal class KtobsObsClient(
                 event.get<RecordStateChangedEventData>().let {
                     ObsEvent.RecordStateChanged(it.outputActive, it.outputState, it.outputPath)
                 }
+            else -> return
+        }
+        _events.tryEmit(domain)
+    }
+
+    private fun ObsSession.dispatchStudioEvent(event: EventOpCode) {
+        val domain: ObsEvent = when (event.eventType) {
+            CurrentPreviewSceneChangedEvent ->
+                ObsEvent.CurrentPreviewSceneChanged(event.get<CurrentPreviewSceneChangedEventData>().sceneName)
+            SceneTransitionStartedEvent ->
+                ObsEvent.SceneTransitionStarted(event.get<SceneTransitionStartedEventData>().transitionName)
+            SceneTransitionEndedEvent ->
+                ObsEvent.SceneTransitionEnded(event.get<SceneTransitionEndedEventData>().transitionName)
+            CurrentSceneTransitionChangedEvent ->
+                ObsEvent.CurrentSceneTransitionChanged(
+                    event.get<CurrentSceneTransitionChangedEventData>().transitionName,
+                )
+            CurrentSceneTransitionDurationChangedEvent ->
+                ObsEvent.CurrentSceneTransitionDurationChanged(
+                    event.get<CurrentSceneTransitionDurationChangedEventData>().transitionDuration,
+                )
             else -> return
         }
         _events.tryEmit(domain)

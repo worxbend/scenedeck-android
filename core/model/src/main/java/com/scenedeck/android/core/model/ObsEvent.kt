@@ -58,6 +58,16 @@ sealed interface ObsEvent {
 
     data class SceneCollectionListChanged(val collections: List<String>) : ObsEvent
 
-    // ── Studio mode (M6) ────────────────────────────────────────────────────
+    // ── Studio mode & transitions (M6) ──────────────────────────────────────
     data class StudioModeStateChanged(val enabled: Boolean) : ObsEvent
+
+    data class CurrentPreviewSceneChanged(val sceneName: String) : ObsEvent
+
+    data class SceneTransitionStarted(val transitionName: String) : ObsEvent
+
+    data class SceneTransitionEnded(val transitionName: String) : ObsEvent
+
+    data class CurrentSceneTransitionChanged(val transitionName: String) : ObsEvent
+
+    data class CurrentSceneTransitionDurationChanged(val durationMs: Int) : ObsEvent
 }

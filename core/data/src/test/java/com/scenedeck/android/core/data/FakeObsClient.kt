@@ -29,6 +29,9 @@ internal open class FakeObsClient(
         RecordStatus(false, false, "00:00:00.000", 0, 0),
 ) : ObsClient {
 
+    var studioModeEnabled = false
+    var previewScene = ""
+
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
@@ -64,6 +67,38 @@ internal open class FakeObsClient(
     override suspend fun getStreamStatus(): StreamStatus = streamStatusResponse
 
     override suspend fun getRecordStatus(): RecordStatus = recordStatusResponse
+
+
+    // ── Studio mode & transitions (M6) ──────────────────────────────────────
+
+    open override suspend fun getStudioModeEnabled(): Boolean = studioModeEnabled
+    open override suspend fun setStudioModeEnabled(enabled: Boolean) {
+        studioModeEnabled = enabled
+    }
+
+    open override suspend fun getCurrentPreviewScene(): String = previewScene
+    open override suspend fun setCurrentPreviewScene(sceneName: String) {
+        previewScene = sceneName
+    }
+
+    open override suspend fun triggerStudioModeTransition() = Unit
+    open override suspend fun getSceneTransitionList() = unused()
+    open override suspend fun getCurrentSceneTransition() = unused()
+    open override suspend fun setCurrentSceneTransition(transitionName: String) = Unit
+    open override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = Unit
+    val screenshotCalls = mutableListOf<String>()
+    var screenshotBytes: ByteArray = ByteArray(0)
+
+    open override suspend fun getSourceScreenshot(
+        sourceName: String,
+        format: String,
+        compressionQuality: Int,
+        width: Int?,
+        height: Int?,
+    ): ByteArray {
+        screenshotCalls += sourceName
+        return screenshotBytes
+    }
 
     private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 

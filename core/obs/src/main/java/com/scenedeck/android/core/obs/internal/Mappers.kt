@@ -1,4 +1,8 @@
+@file:Suppress("TooManyFunctions") // one mapper per response type is the point of this file
+
 package com.scenedeck.android.core.obs.internal
+
+/** ktobs response/model types → :core:model domain types. */
 
 import com.rejeq.ktobs.model.SceneItem
 import com.rejeq.ktobs.request.config.GetProfileListResponse
@@ -7,9 +11,12 @@ import com.rejeq.ktobs.request.general.GetStatsResponse
 import com.rejeq.ktobs.request.general.GetVersionResponse
 import com.rejeq.ktobs.request.inputs.GetSpecialInputsResponse
 import com.rejeq.ktobs.request.record.GetRecordStatusResponse
+import com.rejeq.ktobs.request.scenes.GetCurrentPreviewSceneResponse
 import com.rejeq.ktobs.request.scenes.GetCurrentProgramSceneResponse
 import com.rejeq.ktobs.request.scenes.GetSceneListResponse
 import com.rejeq.ktobs.request.stream.GetStreamStatusResponse
+import com.rejeq.ktobs.request.transitions.GetCurrentSceneTransitionResponse
+import com.rejeq.ktobs.request.transitions.GetSceneTransitionListResponse
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.ProfileListSnapshot
@@ -19,9 +26,12 @@ import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.SpecialInputs
+import com.scenedeck.android.core.model.CurrentTransition
 import com.scenedeck.android.core.model.StreamStatus
+import com.scenedeck.android.core.model.TransitionInfo
+import com.scenedeck.android.core.model.TransitionListSnapshot
 
-/** ktobs response/model types → :core:model domain types. */
+
 internal fun GetVersionResponse.toDomain() = ObsVersionInfo(
     obsVersion = obsVersion,
     obsWebSocketVersion = obsWebSocketVersion,
@@ -35,6 +45,8 @@ internal fun GetSceneListResponse.toDomain() = SceneListSnapshot(
 )
 
 internal fun GetCurrentProgramSceneResponse.toDomain(): String = currProgramName ?: name
+
+internal fun GetCurrentPreviewSceneResponse.toDomain(): String = (currPreviewName ?: name).orEmpty()
 
 internal fun SceneItem.toDomain() = SceneItemInfo(
     id = id,
@@ -93,4 +105,25 @@ internal fun GetProfileListResponse.toDomain() = ProfileListSnapshot(
 internal fun GetSceneCollectionListResponse.toDomain() = SceneCollectionListSnapshot(
     currentCollection = currentName,
     collections = collections,
+)
+
+
+internal fun GetSceneTransitionListResponse.toDomain() = TransitionListSnapshot(
+    currentName = currentName.orEmpty(),
+    transitions = transitions.map {
+        TransitionInfo(
+            name = it.name,
+            kind = it.kind,
+            fixed = it.fixed,
+            durationMs = it.duration,
+        )
+    },
+)
+
+internal fun GetCurrentSceneTransitionResponse.toDomain() = CurrentTransition(
+    name = name,
+    kind = kind,
+    durationMs = duration,
+    configurable = configurable,
+    fixed = fixed,
 )

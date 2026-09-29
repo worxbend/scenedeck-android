@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -45,6 +50,7 @@ import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
+import androidx.compose.ui.graphics.asImageBitmap
 import com.scenedeck.android.core.designsystem.components.SceneCard
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
@@ -79,6 +85,8 @@ fun LiveScreen(
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val mixerState by viewModel.mixerState.collectAsStateWithLifecycle()
     val motionLevel by viewModel.motionLevel.collectAsStateWithLifecycle()
+    val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
+    val previewsEnabled by viewModel.previewsEnabled.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -95,6 +103,7 @@ fun LiveScreen(
                 mixerState = mixerState,
                 mixerLevels = viewModel.mixerLevels,
                 motionLevel = motionLevel,
+                thumbnails = thumbnails,
                 onSceneTap = viewModel::onSceneTap,
                 onStreamClick = viewModel::onStreamClick,
                 onRecordClick = viewModel::onRecordClick,
@@ -102,6 +111,13 @@ fun LiveScreen(
                 onReorder = viewModel::reorderDeck,
                 onMixerMute = viewModel::toggleMixerMute,
                 onOpenMixer = onNavigateToMixer,
+                onStudioToggle = viewModel::toggleStudioMode,
+                onTransitionClick = viewModel::onTransitionClick,
+                onCutClick = viewModel::onCutClick,
+                onTransitionSelect = viewModel::selectTransition,
+                onTransitionDurationChange = viewModel::setTransitionDuration,
+                previewsEnabled = previewsEnabled,
+                onPreviewsToggle = viewModel::togglePreviews,
             )
 
             else -> DisconnectedPlaceholder(
@@ -158,6 +174,7 @@ internal fun LiveDeckContent(
     mixerState: com.scenedeck.android.core.data.MixerState,
     mixerLevels: com.scenedeck.android.core.designsystem.components.MeterLevelsStore,
     motionLevel: MotionLevel,
+    thumbnails: Map<String, android.graphics.Bitmap>,
     onSceneTap: (String) -> Unit,
     onStreamClick: () -> Unit,
     onRecordClick: () -> Unit,
@@ -165,6 +182,13 @@ internal fun LiveDeckContent(
     onReorder: (List<String>) -> Unit,
     onMixerMute: (String, Boolean) -> Unit,
     onOpenMixer: () -> Unit,
+    onStudioToggle: (Boolean) -> Unit,
+    onTransitionClick: () -> Unit,
+    onCutClick: () -> Unit,
+    onTransitionSelect: (String) -> Unit,
+    onTransitionDurationChange: (Int) -> Unit,
+    previewsEnabled: Boolean,
+    onPreviewsToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -205,11 +229,25 @@ internal fun LiveDeckContent(
             .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(32.dp))
-        Text(
-            text = "Live",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Live",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            FilterChip(
+                selected = previewsEnabled,
+                onClick = { onPreviewsToggle(!previewsEnabled) },
+                label = { Text("Previews") },
+            )
+            Spacer(Modifier.size(8.dp))
+            FilterChip(
+                selected = deckState.studioMode,
+                onClick = { onStudioToggle(!deckState.studioMode) },
+                label = { Text("Studio") },
+            )
+        }
         Spacer(Modifier.height(16.dp))
         TransportBar(
             streaming = streaming,
@@ -220,6 +258,16 @@ internal fun LiveDeckContent(
             onToggleStream = onStreamClick,
             onToggleRecord = onRecordClick,
         )
+        if (deckState.studioMode) {
+            Spacer(Modifier.height(12.dp))
+            StudioModeBar(
+                deckState = deckState,
+                onTransitionClick = onTransitionClick,
+                onCutClick = onCutClick,
+                onTransitionSelect = onTransitionSelect,
+                onTransitionDurationChange = onTransitionDurationChange,
+            )
+        }
         Spacer(Modifier.height(12.dp))
         EmbeddedMixerRow(
             mixerState = mixerState,
@@ -251,7 +299,9 @@ internal fun LiveDeckContent(
                             label = scene.name,
                             icon = sceneIconFor(scene.iconName),
                             active = scene.isActive,
+                            preview = scene.isPreview,
                             accentColor = scene.accentColorArgb?.let { Color(it) },
+                            thumbnail = thumbnails[scene.name]?.asImageBitmap(),
                             pending = pendingScene == scene.name,
                             onClick = {
                                 if (hapticsEnabled) {

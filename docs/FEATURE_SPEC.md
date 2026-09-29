@@ -99,9 +99,9 @@ colors, icons, ordering) lives in a local registry on the device.
 | Feature | Notes | Phase |
 |---|---|---|
 | Multiple connection profiles | named, QR pairing, last-used default | M2 |
-| Studio mode (preview/program) + transition control | desktop explicitly excludes | M6 |
-| Scene/source **screenshot preview** (`GetSourceScreenshot`) | throttled JPEG thumbnails on deck cards | M6 |
-| Transition picker + duration + T-bar style gesture | `SetCurrentSceneTransition` etc. | M6 |
+| Studio mode (preview/program) + transition control | **SHIPPED M6**: one-tap Studio toggle; deck drives preview (green), TRANSITION + CUT commit to program (red); OBS-side changes from other clients tracked live | M6 ✅ |
+| Scene/source **screenshot preview** (`GetSourceScreenshot`) | **SHIPPED M6**: throttled JPEG thumbnails on deck cards (360 px q50; program/preview 2.5 s, others 10 s; only while Live visible + Ready; "Previews" toggle, default ON) | M6 ✅ |
+| Transition picker + duration | **SHIPPED M6**: bottom-sheet picker + debounced duration slider. T-bar gesture **deferred to M7 stretch** | M6 ✅ (T-bar M7) |
 | Virtual camera & replay buffer controls | desktop excludes | M7 |
 | Scene item visibility toggles | quick "hide camera" style actions | M7 |
 | Audio balance / sync offset / monitor type | desktop excludes | M7 |

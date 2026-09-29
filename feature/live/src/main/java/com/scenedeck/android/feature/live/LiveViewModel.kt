@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.ObsStateRepository
+import android.graphics.Bitmap
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.MixerState
+import com.scenedeck.android.core.data.ScreenshotRepository
 import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.data.OutputSafetyGate
@@ -50,8 +52,12 @@ class LiveViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val client: ObsClient,
     private val mixerRepository: MixerRepository,
+    screenshots: ScreenshotRepository,
     stats: StatsRepository,
 ) : ViewModel() {
+
+    /** Scene thumbnails for deck cards (throttled inside the repository). */
+    val thumbnails: StateFlow<Map<String, Bitmap>> = screenshots.thumbnails
 
     /** Embedded mixer row state (follows the program scene). */
     val mixerState: StateFlow<MixerState> = mixerRepository.mixerState
@@ -79,6 +85,11 @@ class LiveViewModel @Inject constructor(
         .map { it.haptics }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    /** "Scene previews" setting (default ON): gate for the screenshot pipeline. */
+    val previewsEnabled: StateFlow<Boolean> = settings.settings
+        .map { it.scenePreviewsEnabled }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     val motionLevel: StateFlow<MotionLevel> = settings.settings
         .map { runCatching { MotionLevel.valueOf(it.motionLevel) }.getOrDefault(MotionLevel.FULL) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
@@ -98,8 +109,18 @@ class LiveViewModel @Inject constructor(
 
     // ── Deck ────────────────────────────────────────────────────────────────
 
+    /** Tap semantics: studio mode → switch preview; otherwise → switch program. */
+    @Suppress("ReturnCount") // guard clauses keep tap semantics readable
     fun onSceneTap(sceneName: String) {
         if (deckState.value.connectionState !is ConnectionState.Ready) return
+        if (deckState.value.studioMode) {
+            if (deckState.value.previewScene == sceneName) return
+            viewModelScope.launch {
+                runCatching { obsState.setCurrentPreviewScene(sceneName) }
+                    .onFailure { _errors.tryEmit("Couldn't preview $sceneName") }
+            }
+            return
+        }
         if (deckState.value.currentProgramScene == sceneName) return
         pendingWatch?.cancel()
         pendingWatch = viewModelScope.launch {
@@ -131,6 +152,55 @@ class LiveViewModel @Inject constructor(
 
     fun toggleMixerMute(inputName: String, muted: Boolean) {
         viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
+    }
+
+    // ── Studio mode & transitions (M6) ──────────────────────────────────────
+
+    fun togglePreviews(enabled: Boolean) {
+        viewModelScope.launch { settings.setScenePreviewsEnabled(enabled) }
+    }
+
+    fun toggleStudioMode(enabled: Boolean) {
+        viewModelScope.launch {
+            runCatching { obsState.setStudioModeEnabled(enabled) }
+                .onFailure { _errors.tryEmit("Couldn't toggle studio mode") }
+        }
+    }
+
+    /** TRANSITION: commits preview → program with the current transition. */
+    fun onTransitionClick() {
+        viewModelScope.launch {
+            runCatching { obsState.triggerStudioModeTransition() }
+                .onFailure { _errors.tryEmit("Transition failed") }
+        }
+    }
+
+    /** CUT: instant swap of preview to program. */
+    fun onCutClick() {
+        val preview = deckState.value.previewScene ?: return
+        viewModelScope.launch {
+            runCatching { obsState.setCurrentProgramScene(preview) }
+                .onFailure { _errors.tryEmit("Couldn't cut to $preview") }
+        }
+    }
+
+    fun selectTransition(transitionName: String) {
+        viewModelScope.launch {
+            runCatching { obsState.setCurrentSceneTransition(transitionName) }
+                .onFailure { _errors.tryEmit("Couldn't set transition") }
+        }
+    }
+
+    private var durationJob: Job? = null
+
+    /** Duration slider writes are debounced (trailing 200 ms). */
+    fun setTransitionDuration(durationMs: Int) {
+        durationJob?.cancel()
+        durationJob = viewModelScope.launch {
+            delay(DURATION_DEBOUNCE_MS)
+            runCatching { obsState.setCurrentSceneTransitionDuration(durationMs) }
+                .onFailure { _errors.tryEmit("Couldn't set transition duration") }
+        }
     }
 
     fun reorderDeck(orderedSceneNames: List<String>) {
@@ -200,5 +270,6 @@ class LiveViewModel @Inject constructor(
     private companion object {
         const val PENDING_SPINNER_DELAY_MS = 300L
         const val PENDING_TIMEOUT_MS = 5_000L
+        const val DURATION_DEBOUNCE_MS = 200L
     }
 }
