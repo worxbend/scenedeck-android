@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -34,7 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.ProfileInputValidator
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -111,17 +112,17 @@ private fun WelcomeStep(onSetup: () -> Unit, onSkip: () -> Unit) {
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Stream from your PC. Control it from your phone.",
+        text = stringResource(R.string.onboarding_tagline),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(48.dp))
     Button(onClick = onSetup) {
-        Text("Set up connection")
+        Text(stringResource(R.string.onboarding_setup))
     }
     Spacer(Modifier.height(8.dp))
     TextButton(onClick = onSkip) {
-        Text("Skip for now")
+        Text(stringResource(R.string.onboarding_skip))
     }
 }
 
@@ -146,14 +147,13 @@ private fun ConnectStep(
 
     Spacer(Modifier.height(48.dp))
     Text(
-        text = "Connect to OBS",
+        text = stringResource(R.string.connect_to_obs),
         style = MaterialTheme.typography.displaySmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Enable the WebSocket server in OBS (Tools → WebSocket Server Settings), " +
-            "then enter your PC's address.",
+        text = stringResource(R.string.connect_to_obs_hint),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -162,7 +162,7 @@ private fun ConnectStep(
     OutlinedTextField(
         value = name,
         onValueChange = { name = it },
-        label = { Text("Profile name") },
+        label = { Text(stringResource(R.string.profile_name)) },
         singleLine = true,
         enabled = !connecting,
         modifier = Modifier.fillMaxWidth(),
@@ -171,8 +171,8 @@ private fun ConnectStep(
     OutlinedTextField(
         value = host,
         onValueChange = { host = it },
-        label = { Text("Host") },
-        placeholder = { Text("192.168.1.20") },
+        label = { Text(stringResource(R.string.host_label)) },
+        placeholder = { Text(stringResource(R.string.host_placeholder)) },
         isError = attempted && ProfileInputValidator.validateHost(host) != null,
         supportingText = {
             if (attempted) ProfileInputValidator.validateHost(host)?.let { Text(it) }
@@ -185,7 +185,7 @@ private fun ConnectStep(
     OutlinedTextField(
         value = port,
         onValueChange = { port = it.filter(Char::isDigit) },
-        label = { Text("Port") },
+        label = { Text(stringResource(R.string.port_label)) },
         isError = attempted && ProfileInputValidator.validatePort(port) != null,
         supportingText = {
             if (attempted) ProfileInputValidator.validatePort(port)?.let { Text(it) }
@@ -199,7 +199,7 @@ private fun ConnectStep(
     OutlinedTextField(
         value = password,
         onValueChange = { password = it },
-        label = { Text("Password (optional)") },
+        label = { Text(stringResource(R.string.password_optional)) },
         singleLine = true,
         enabled = !connecting,
         visualTransformation = PasswordVisualTransformation(),
@@ -224,7 +224,7 @@ private fun ConnectStep(
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onBack, enabled = !connecting) {
-            Text("Back")
+            Text(stringResource(R.string.action_back))
         }
         Spacer(Modifier.weight(1f))
         Button(
@@ -254,7 +254,7 @@ private fun SuccessStep(state: OnboardingConnectState, onStart: () -> Unit) {
 
     Spacer(Modifier.height(96.dp))
     Text(
-        text = "You're connected",
+        text = stringResource(R.string.connected_title),
         style = MaterialTheme.typography.displaySmall,
         fontWeight = FontWeight.Bold,
     )
@@ -270,7 +270,7 @@ private fun SuccessStep(state: OnboardingConnectState, onStart: () -> Unit) {
     )
     Spacer(Modifier.height(48.dp))
     Button(onClick = onStart) {
-        Text("Start decking")
+        Text(stringResource(R.string.onboarding_done))
     }
 }
 

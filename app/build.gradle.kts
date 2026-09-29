@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -26,12 +27,29 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+
+// Make a plain `testDebugUnitTest` run verify Roborazzi goldens by default
+// (same wiring as :core:designsystem; recording tasks override the property).
+tasks.withType<Test>().configureEach {
+    systemProperty("roborazzi.test.verify", "true")
+    inputs.files(
+        fileTree(layout.projectDirectory.asFile) {
+            include("*.png")
+            exclude("build/**")
+        },
+    ).withPropertyName("roborazziGoldenImages")
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
 }
 
 dependencies {
@@ -88,6 +106,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.androidx.glance.appwidget.testing)
+    testImplementation(libs.androidx.glance.testing)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

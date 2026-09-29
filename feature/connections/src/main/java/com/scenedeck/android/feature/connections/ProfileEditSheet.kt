@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -100,7 +101,7 @@ private fun ProfileEditForm(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Profile name") },
+            label = { Text(stringResource(R.string.profile_name)) },
             isError = nameError != null,
             supportingText = { nameError?.let { Text(it) } },
             singleLine = true,
@@ -109,8 +110,8 @@ private fun ProfileEditForm(
         OutlinedTextField(
             value = host,
             onValueChange = { host = it },
-            label = { Text("Host") },
-            placeholder = { Text("192.168.1.20") },
+            label = { Text(stringResource(R.string.host_label)) },
+            placeholder = { Text(stringResource(R.string.host_placeholder)) },
             isError = hostError != null,
             supportingText = { hostError?.let { Text(it) } },
             singleLine = true,
@@ -119,7 +120,7 @@ private fun ProfileEditForm(
         OutlinedTextField(
             value = port,
             onValueChange = { port = it.filter(Char::isDigit) },
-            label = { Text("Port") },
+            label = { Text(stringResource(R.string.port_label)) },
             placeholder = { Text("4455") },
             isError = portError != null,
             supportingText = { portError?.let { Text(it) } },
@@ -133,10 +134,10 @@ private fun ProfileEditForm(
                 password = it
                 onResetTest()
             },
-            label = { Text("Password (optional)") },
+            label = { Text(stringResource(R.string.password_optional)) },
             supportingText = {
                 if (profileId != null && password.isBlank()) {
-                    Text("Leave blank to keep the saved password")
+                    Text(stringResource(R.string.password_keep_saved))
                 }
             },
             singleLine = true,
@@ -171,7 +172,7 @@ private fun ProfileEditForm(
                 },
                 enabled = testState !is TestConnectionState.Testing,
             ) {
-                Text("Test connection")
+                Text(stringResource(R.string.test_connection))
             }
             Spacer(Modifier.weight(1f))
             Button(
@@ -188,7 +189,7 @@ private fun ProfileEditForm(
                     }
                 },
             ) {
-                Text("Save")
+                Text(stringResource(R.string.action_save))
             }
         }
     }
@@ -199,7 +200,7 @@ private fun TestConnectionResult(state: TestConnectionState) {
     when (state) {
         TestConnectionState.Idle -> Unit
         TestConnectionState.Testing -> Text(
-            text = "Testing connection…",
+            text = stringResource(R.string.testing_connection),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.ConnectionProfile
 import com.scenedeck.android.core.model.ConnectionState
@@ -69,13 +70,13 @@ fun ConnectionsScreen(
     ) {
         Spacer(Modifier.height(32.dp))
         Text(
-            text = "Connections",
+            text = stringResource(R.string.connections_title),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Named OBS connection profiles with quick-switch and automatic reconnect.",
+            text = stringResource(R.string.connections_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -83,17 +84,17 @@ fun ConnectionsScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { editor = ProfileEditor.Add(prefill = null) }) {
-                Text("Add manually")
+                Text(stringResource(R.string.add_manually))
             }
             OutlinedButton(onClick = { scanning = true }) {
-                Text("Scan QR")
+                Text(stringResource(R.string.scan_qr))
             }
         }
         Spacer(Modifier.height(24.dp))
 
         if (profiles.isEmpty()) {
             Text(
-                text = "No profiles yet. Add your OBS host manually or scan an obsws:// QR code.",
+                text = stringResource(R.string.no_profiles),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -159,7 +160,7 @@ private fun ProfileCard(
                 }
                 if (isLastUsed) {
                     Text(
-                        text = "Last used",
+                        text = stringResource(R.string.last_used),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -174,7 +175,7 @@ private fun ProfileCard(
                     connectionState is ConnectionState.Identifying ||
                     connectionState is ConnectionState.Reconnecting
                 if (connectionState is ConnectionState.Ready) {
-                    OutlinedButton(onClick = onDisconnect) { Text("Disconnect") }
+                    OutlinedButton(onClick = onDisconnect) { Text(stringResource(R.string.action_disconnect)) }
                 } else {
                     Button(onClick = onConnect, enabled = !busy) {
                         if (busy) {
@@ -187,9 +188,9 @@ private fun ProfileCard(
                         Text(if (busy) "Connecting" else "Connect")
                     }
                 }
-                TextButton(onClick = onEdit) { Text("Edit") }
+                TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
                 TextButton(onClick = onDelete) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                 }
             }
         }

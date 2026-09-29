@@ -109,7 +109,7 @@ fun SceneCard(
     val shape = MaterialTheme.shapes.large
 
     val stateDescription = when {
-        active -> "active, current program scene"
+        active -> "on air, current program scene"
         preview -> "on preview, double-tap to transition"
         else -> "ready, double-tap to switch"
     }

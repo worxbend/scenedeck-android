@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.model.CurrentTransition
@@ -52,7 +53,7 @@ fun TransitionPickerSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(text = "Transition", style = MaterialTheme.typography.titleLarge)
+            Text(text = stringResource(R.string.transition_sheet_title), style = MaterialTheme.typography.titleLarge)
 
             LazyColumn(
                 modifier = Modifier.height(220.dp),
@@ -98,7 +99,7 @@ fun TransitionPickerSheet(
             if (current != null && !current.fixed) {
                 Column {
                     Text(
-                        text = "Duration: $durationMs ms",
+                        text = stringResource(R.string.transition_duration_ms, durationMs),
                         style = MaterialTheme.typography.labelLarge,
                         fontFamily = FontFamily.Monospace,
                     )

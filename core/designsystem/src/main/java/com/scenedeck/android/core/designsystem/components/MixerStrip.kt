@@ -32,8 +32,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -151,7 +154,11 @@ fun MixerStrip(
                     modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
-                        imageVector = SceneIcon.SETTINGS.imageVector,
+                        imageVector = if (locked) {
+                            SceneIcon.LOCK.imageVector
+                        } else {
+                            SceneIcon.LOCK_OPEN.imageVector
+                        },
                         contentDescription = if (locked) "Unlock $name controls" else "Lock $name controls",
                         tint = if (locked) colors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.alpha(if (locked) 1f else 0.5f),
@@ -218,7 +225,20 @@ private fun FaderTrack(
 
     Canvas(
         modifier = modifier
-            .semantics { this.contentDescription = contentDescription }
+            .semantics {
+                this.contentDescription = contentDescription
+                // Screen-reader adjustable: progress is exposed in dB (−60…0).
+                progressBarRangeInfo = ProgressBarRangeInfo(
+                    current = mulToDb(volumeMul),
+                    range = METER_DB_FLOOR..0f,
+                )
+                if (enabled) {
+                    setProgress("Set $contentDescription") { targetDb ->
+                        onCommit(dbToMul(targetDb.coerceIn(METER_DB_FLOOR, 0f)).toDouble())
+                        true
+                    }
+                }
+            }
             .alpha(if (enabled) 1f else 0.5f)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput

@@ -26,6 +26,7 @@ import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
@@ -65,7 +66,7 @@ fun TransportBar(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Button(onClick = onToggleStream, enabled = enabled) {
-            Text(if (streaming) "Stop Stream" else "Start Stream")
+            Text(stringResource(if (streaming) R.string.stop_stream else R.string.start_stream))
         }
         OutlinedButton(
             onClick = onToggleRecord,
@@ -82,7 +83,7 @@ fun TransportBar(
                 TallyDot(pulse = pulseTally)
                 Spacer(Modifier.width(8.dp))
             }
-            Text(if (recording) "Stop Record" else "Start Record")
+            Text(stringResource(if (recording) R.string.stop_record else R.string.start_record))
         }
         Spacer(Modifier.width(4.dp))
         Text(
@@ -95,11 +96,13 @@ fun TransportBar(
             selected = virtualCamActive,
             onClick = onToggleVirtualCam,
             enabled = enabled,
-            label = { Text("VCam") },
+            label = { Text(stringResource(R.string.vcam_chip)) },
             leadingIcon = {
                 Icon(
                     imageVector = SceneIcon.VIDEO.imageVector,
-                    contentDescription = if (virtualCamActive) "Stop virtual camera" else "Start virtual camera",
+                    contentDescription = stringResource(
+                        if (virtualCamActive) R.string.stop_vcam_cd else R.string.start_vcam_cd,
+                    ),
                     modifier = Modifier.size(16.dp),
                 )
             },
@@ -108,7 +111,7 @@ fun TransportBar(
             selected = replayBufferActive,
             onClick = onToggleReplayBuffer,
             enabled = enabled,
-            label = { Text("Replay") },
+            label = { Text(stringResource(R.string.replay_chip)) },
         )
         if (replayBufferActive) {
             IconButton(
@@ -118,7 +121,7 @@ fun TransportBar(
             ) {
                 Icon(
                     imageVector = SceneIcon.STAR.imageVector,
-                    contentDescription = "Save replay buffer",
+                    contentDescription = stringResource(R.string.save_replay_cd),
                     tint = SceneDeckTheme.colors.warning,
                     modifier = Modifier.size(18.dp),
                 )

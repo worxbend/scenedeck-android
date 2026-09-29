@@ -18,13 +18,14 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.data.OutputSafety
@@ -108,23 +109,23 @@ internal fun SettingsContent(
     ) {
         Spacer(Modifier.height(32.dp))
         Text(
-            text = "Settings",
+            text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Make the deck yours: theme family, appearance, motion and feedback.",
+            text = stringResource(R.string.settings_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(32.dp))
 
-        SectionLabel("Theme")
+        SectionLabel(stringResource(R.string.section_theme))
         ThemeSwitcher(current = currentTheme, onSelect = onThemeSelect)
         Spacer(Modifier.height(24.dp))
 
-        SectionLabel("Appearance")
+        SectionLabel(stringResource(R.string.section_appearance))
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             DarkMode.entries.forEachIndexed { index, mode ->
                 SegmentedButton(
@@ -134,9 +135,9 @@ internal fun SettingsContent(
                 ) {
                     Text(
                         when (mode) {
-                            DarkMode.SYSTEM -> "System"
-                            DarkMode.LIGHT -> "Light"
-                            DarkMode.DARK -> "Dark"
+                            DarkMode.SYSTEM -> stringResource(R.string.dark_mode_system)
+                            DarkMode.LIGHT -> stringResource(R.string.dark_mode_light)
+                            DarkMode.DARK -> stringResource(R.string.dark_mode_dark)
                         },
                     )
                 }
@@ -144,7 +145,7 @@ internal fun SettingsContent(
         }
         Spacer(Modifier.height(24.dp))
 
-        SectionLabel("Motion level")
+        SectionLabel(stringResource(R.string.section_motion))
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             MotionLevel.entries.forEachIndexed { index, level ->
                 SegmentedButton(
@@ -154,9 +155,9 @@ internal fun SettingsContent(
                 ) {
                     Text(
                         when (level) {
-                            MotionLevel.FULL -> "Full"
-                            MotionLevel.REDUCED -> "Reduced"
-                            MotionLevel.OFF -> "Off"
+                            MotionLevel.FULL -> stringResource(R.string.motion_full)
+                            MotionLevel.REDUCED -> stringResource(R.string.motion_reduced)
+                            MotionLevel.OFF -> stringResource(R.string.motion_off)
                         },
                     )
                 }
@@ -164,51 +165,51 @@ internal fun SettingsContent(
         }
         Spacer(Modifier.height(24.dp))
 
-        SectionLabel("Feedback")
+        SectionLabel(stringResource(R.string.section_feedback))
         ToggleRow(
-            title = "Dynamic color",
-            subtitle = "Material You colors from your wallpaper (Android 12+)",
+            title = stringResource(R.string.dynamic_color),
+            subtitle = stringResource(R.string.dynamic_color_desc),
             checked = dynamicColor,
             onCheckedChange = onDynamicColorChange,
         )
         ToggleRow(
-            title = "Haptics",
-            subtitle = "Tactile confirmation on deck presses and transport controls",
+            title = stringResource(R.string.haptics),
+            subtitle = stringResource(R.string.haptics_desc),
             checked = haptics,
             onCheckedChange = onHapticsChange,
         )
 
-        SectionLabel("Display")
+        SectionLabel(stringResource(R.string.section_display))
         ToggleRow(
-            title = "Keep screen on",
-            subtitle = "Prevent the display from sleeping while connected to OBS",
+            title = stringResource(R.string.keep_screen_on),
+            subtitle = stringResource(R.string.keep_screen_on_desc),
             checked = keepScreenOn,
             onCheckedChange = onKeepScreenOnChange,
         )
         Spacer(Modifier.height(24.dp))
 
-        SectionLabel("Output safety")
+        SectionLabel(stringResource(R.string.section_output_safety))
         ToggleRow(
-            title = "Confirm before starting stream",
-            subtitle = "Ask before going live",
+            title = stringResource(R.string.confirm_start_stream),
+            subtitle = stringResource(R.string.confirm_start_stream_desc),
             checked = outputSafety.confirmStartStream,
             onCheckedChange = onConfirmStartStreamChange,
         )
         ToggleRow(
-            title = "Confirm before stopping stream",
-            subtitle = "Ask before ending the live stream",
+            title = stringResource(R.string.confirm_stop_stream),
+            subtitle = stringResource(R.string.confirm_stop_stream_desc),
             checked = outputSafety.confirmStopStream,
             onCheckedChange = onConfirmStopStreamChange,
         )
         ToggleRow(
-            title = "Confirm before starting recording",
-            subtitle = "Ask before recording begins",
+            title = stringResource(R.string.confirm_start_record),
+            subtitle = stringResource(R.string.confirm_start_record_desc),
             checked = outputSafety.confirmStartRecord,
             onCheckedChange = onConfirmStartRecordChange,
         )
         ToggleRow(
-            title = "Confirm before stopping recording",
-            subtitle = "Ask before the recording is finalized",
+            title = stringResource(R.string.confirm_stop_record),
+            subtitle = stringResource(R.string.confirm_stop_record_desc),
             checked = outputSafety.confirmStopRecord,
             onCheckedChange = onConfirmStopRecordChange,
         )

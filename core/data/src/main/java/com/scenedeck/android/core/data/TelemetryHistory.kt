@@ -1,6 +1,4 @@
-package com.scenedeck.android.feature.stats
-
-import com.scenedeck.android.core.data.Telemetry
+package com.scenedeck.android.core.data
 
 /** One mapped 1 Hz telemetry sample kept in the rolling 2-minute window. */
 data class TelemetrySample(
@@ -48,9 +46,9 @@ fun Telemetry.toSample(previous: TelemetrySample?): TelemetrySample {
 }
 
 /**
- * Rolling 2-minute window of 1 Hz samples (docs/FEATURE_SPEC.md §5). Kept in the
- * ViewModel because `core/data`'s `StatsRepository` (M3) deliberately ships only the
- * latest snapshot; the window therefore covers the time this page is subscribed.
+ * Rolling 2-minute window of 1 Hz samples (docs/FEATURE_SPEC.md §5). Owned by
+ * [StatsRepository] so the window covers the entire connection session, not just
+ * the time a page is subscribed.
  */
 class TelemetryHistory(val capacity: Int = DEFAULT_CAPACITY) {
 

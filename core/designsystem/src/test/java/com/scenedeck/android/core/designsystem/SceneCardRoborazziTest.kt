@@ -109,4 +109,33 @@ class SceneCardRoborazziTest {
         }
         composeRule.onRoot().captureRoboImage("scene_card_active_obs_dark.png")
     }
+
+    @Test
+    fun sceneCardActiveNordDark() = captureActive(ThemeFamily.NORD, true, "scene_card_active_nord_dark.png")
+
+    @Test
+    fun sceneCardActiveHighContrastDark() =
+        captureActive(ThemeFamily.HIGH_CONTRAST, true, "scene_card_active_high_contrast_dark.png")
+
+    @Test
+    fun sceneCardActiveSceneDeckLight() =
+        captureActive(ThemeFamily.SCENEDECK, false, "scene_card_active_scenedeck_light.png")
+
+    private fun captureActive(family: ThemeFamily, darkTheme: Boolean, name: String) {
+        composeRule.setContent {
+            SceneDeckTheme(family = family, darkTheme = darkTheme) {
+                Surface {
+                    SceneCard(
+                        label = "Scene",
+                        icon = SceneDeckIcons.Scenes,
+                        active = true,
+                        modifier = Modifier
+                            .width(200.dp)
+                            .padding(16.dp),
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage(name)
+    }
 }

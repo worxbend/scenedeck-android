@@ -29,7 +29,29 @@ class InventoryScreenRoborazziTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun inventoryScreenDark() {
+    fun inventoryScreenDark() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "inventory_screen_dark.png")
+
+    @Test
+    fun inventoryScreenObsDark() =
+        capture(ThemeFamily.OBS, darkTheme = true, name = "inventory_screen_obs_dark.png")
+
+    @Test
+    fun inventoryScreenNordDark() =
+        capture(ThemeFamily.NORD, darkTheme = true, name = "inventory_screen_nord_dark.png")
+
+    @Test
+    fun inventoryScreenHighContrastDark() = capture(
+        ThemeFamily.HIGH_CONTRAST,
+        darkTheme = true,
+        name = "inventory_screen_high_contrast_dark.png",
+    )
+
+    @Test
+    fun inventoryScreenSceneDeckLight() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "inventory_screen_scenedeck_light.png")
+
+    private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
         val state = InventoryUiState(
             connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
             scenes = listOf(
@@ -53,7 +75,7 @@ class InventoryScreenRoborazziTest {
             unassignedCount = 1,
         )
         composeRule.setContent {
-            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+            SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
                     InventoryContent(
                         uiState = state,
@@ -70,6 +92,6 @@ class InventoryScreenRoborazziTest {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("inventory_screen_dark.png")
+        composeRule.onRoot().captureRoboImage(name)
     }
 }

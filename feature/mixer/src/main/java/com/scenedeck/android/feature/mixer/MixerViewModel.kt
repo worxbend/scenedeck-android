@@ -18,11 +18,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -100,6 +103,7 @@ class MixerViewModel @Inject constructor(
     private val selectedInputs = MutableStateFlow<List<DiscoveredInput>>(emptyList())
     private val pinnedInputs = MutableStateFlow<List<MixerInputState>?>(null)
     private val search = MutableStateFlow("")
+    private val selectedRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val batcher = FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS) { name, mul ->
         mixer.setInputVolume(name, mul)
@@ -147,9 +151,34 @@ class MixerViewModel @Inject constructor(
                         it.copy(volumeMul = event.volumeMul)
                     }
 
+                    // Frozen-scene refresh: lifecycle events re-run discovery for the
+                    // SELECTED scene (its members can change while it is off-program).
+                    is ObsEvent.SceneItemEnableStateChanged,
+                    is ObsEvent.SceneCreated, is ObsEvent.SceneRemoved,
+                    is ObsEvent.SceneListChanged,
+                    is ObsEvent.InputCreated, is ObsEvent.InputRemoved,
+                    is ObsEvent.InputNameChanged,
+                    -> selectedRefresh.tryEmit(Unit)
+
+                    is ObsEvent.SceneNameChanged -> {
+                        if (selectedScene.value == event.oldSceneName) {
+                            selectedScene.value = event.sceneName
+                            viewModelScope.launch { settings.setMixerSelectedScene(event.sceneName) }
+                        }
+                        selectedRefresh.tryEmit(Unit)
+                    }
+
                     else -> Unit
                 }
             }
+        }
+        viewModelScope.launch {
+            selectedRefresh
+                .debounce(REFRESH_DEBOUNCE_MS)
+                .collectLatest {
+                    val scene = selectedScene.value ?: return@collectLatest
+                    selectedInputs.value = mixer.discoverScene(scene)
+                }
         }
         viewModelScope.launch {
             val persisted = settings.settings.first()
@@ -266,5 +295,6 @@ class MixerViewModel @Inject constructor(
 
     private companion object {
         const val FADER_DEBOUNCE_MS = 120L
+        const val REFRESH_DEBOUNCE_MS = 300L
     }
 }

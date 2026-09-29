@@ -56,7 +56,7 @@ class SceneDeckWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun WidgetContent(snapshot: WidgetSnapshot) {
+internal fun WidgetContent(snapshot: WidgetSnapshot) {
     Scaffold(
         titleBar = {
             TitleBar(

@@ -35,7 +35,33 @@ class StatsScreenRoborazziTest {
     }
 
     @Test
-    fun statsScreenPopulatedDark() {
+    fun statsScreenPopulatedDark() =
+        capturePopulated(ThemeFamily.SCENEDECK, darkTheme = true, name = "stats_screen_populated_dark.png")
+
+    @Test
+    fun statsScreenPopulatedObsDark() =
+        capturePopulated(ThemeFamily.OBS, darkTheme = true, name = "stats_screen_populated_obs_dark.png")
+
+    @Test
+    fun statsScreenPopulatedNordDark() =
+        capturePopulated(ThemeFamily.NORD, darkTheme = true, name = "stats_screen_populated_nord_dark.png")
+
+    @Test
+    fun statsScreenPopulatedHighContrastDark() = capturePopulated(
+        ThemeFamily.HIGH_CONTRAST,
+        darkTheme = true,
+        name = "stats_screen_populated_high_contrast_dark.png",
+    )
+
+    @Test
+    fun statsScreenPopulatedSceneDeckLight() = capturePopulated(
+        ThemeFamily.SCENEDECK,
+        darkTheme = false,
+        name = "stats_screen_populated_scenedeck_light.png",
+    )
+
+    @Suppress("LongMethod") // rich fixture setup
+    private fun capturePopulated(family: ThemeFamily, darkTheme: Boolean, name: String) {
         val fps = (0 until 120).map { i -> 59f + sin(i / 9.0).toFloat() + if (i in 80..95) -8f else 0f }
         val render = (0 until 120).map { i -> 1.2f + sin(i / 7.0).toFloat() * 0.4f + if (i in 80..95) 4f else 0f }
         val drops = FrameDropSeriesHolder().apply {
@@ -62,7 +88,7 @@ class StatsScreenRoborazziTest {
             recordActive = true,
         )
         composeRule.setContent {
-            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+            SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
                     StatsContent(
                         uiState = state,
@@ -74,7 +100,7 @@ class StatsScreenRoborazziTest {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("stats_screen_populated_dark.png")
+        composeRule.onRoot().captureRoboImage(name)
     }
 
     @Test

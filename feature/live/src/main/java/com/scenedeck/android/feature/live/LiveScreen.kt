@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -44,7 +45,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
@@ -145,28 +146,28 @@ fun LiveScreen(
             title = {
                 Text(
                     when (pending) {
-                        TransportConfirmation.START_STREAM -> "Start stream?"
-                        TransportConfirmation.STOP_STREAM -> "Stop stream?"
-                        TransportConfirmation.START_RECORD -> "Start recording?"
-                        TransportConfirmation.STOP_RECORD -> "Stop recording?"
+                        TransportConfirmation.START_STREAM -> stringResource(R.string.confirm_start_stream_title)
+                        TransportConfirmation.STOP_STREAM -> stringResource(R.string.confirm_stop_stream_title)
+                        TransportConfirmation.START_RECORD -> stringResource(R.string.confirm_start_record_title)
+                        TransportConfirmation.STOP_RECORD -> stringResource(R.string.confirm_stop_record_title)
                     },
                 )
             },
             text = {
                 Text(
                     when (pending) {
-                        TransportConfirmation.START_STREAM -> "Go live with the current settings?"
-                        TransportConfirmation.STOP_STREAM -> "The stream is live. Stop it now?"
-                        TransportConfirmation.START_RECORD -> "Start recording the program output?"
-                        TransportConfirmation.STOP_RECORD -> "Recording is in progress. Stop it now?"
+                        TransportConfirmation.START_STREAM -> stringResource(R.string.confirm_start_stream_body)
+                        TransportConfirmation.STOP_STREAM -> stringResource(R.string.confirm_stop_stream_body)
+                        TransportConfirmation.START_RECORD -> stringResource(R.string.confirm_start_record_body)
+                        TransportConfirmation.STOP_RECORD -> stringResource(R.string.confirm_stop_record_body)
                     },
                 )
             },
             confirmButton = {
-                TextButton(onClick = viewModel::confirmPending) { Text("Confirm") }
+                TextButton(onClick = viewModel::confirmPending) { Text(stringResource(R.string.action_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissConfirmation) { Text("Cancel") }
+                TextButton(onClick = viewModel::dismissConfirmation) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -244,7 +245,7 @@ internal fun LiveDeckContent(
         Spacer(Modifier.height(32.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Live",
+                text = stringResource(R.string.live_title),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
@@ -252,13 +253,13 @@ internal fun LiveDeckContent(
             FilterChip(
                 selected = previewsEnabled,
                 onClick = { onPreviewsToggle(!previewsEnabled) },
-                label = { Text("Previews") },
+                label = { Text(stringResource(R.string.previews_toggle)) },
             )
             Spacer(Modifier.size(8.dp))
             FilterChip(
                 selected = deckState.studioMode,
                 onClick = { onStudioToggle(!deckState.studioMode) },
-                label = { Text("Studio") },
+                label = { Text(stringResource(R.string.studio_toggle)) },
             )
         }
         Spacer(Modifier.height(16.dp))

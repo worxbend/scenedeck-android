@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.mono
@@ -107,8 +109,19 @@ fun StatGauge(
     }
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val needleColor = MaterialTheme.colorScheme.onSurface
+    val zoneText = when (zone) {
+        GaugeZone.NORMAL -> "normal"
+        GaugeZone.WARNING -> "warning"
+        GaugeZone.CRITICAL -> "critical"
+    }
+    val readout = (valueText ?: "%.1f".format(value)) + if (unit.isNotEmpty()) " $unit" else ""
 
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = "$label: $readout, $zoneText"
+        },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(
             modifier = Modifier.aspectRatio(1f),
             contentAlignment = Alignment.Center,

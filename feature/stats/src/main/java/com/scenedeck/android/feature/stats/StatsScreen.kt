@@ -25,13 +25,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.GaugeDirection
@@ -109,7 +111,11 @@ internal fun StatsContent(
                     motionLevel = motionLevel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp),
+                        .height(140.dp)
+                        .semantics {
+                            contentDescription =
+                                "FPS trend chart, current %.1f fps".format(uiState.fps)
+                        },
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -119,7 +125,11 @@ internal fun StatsContent(
                     motionLevel = motionLevel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp),
+                        .height(140.dp)
+                        .semantics {
+                            contentDescription =
+                                "Render time trend chart, current %.1f ms".format(uiState.renderTimeMs)
+                        },
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -128,7 +138,12 @@ internal fun StatsContent(
                     frameDrops = frameDrops,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(72.dp),
+                        .height(72.dp)
+                        .semantics {
+                            contentDescription =
+                                "Skipped frames per sample, ${uiState.renderSkippedFrames} render and " +
+                                    "${uiState.outputSkippedFrames} output skipped in total"
+                        },
                 )
                 Spacer(Modifier.height(8.dp))
                 FrameDropLegend()
@@ -246,7 +261,7 @@ private fun TrendCard(title: String, content: @Composable () -> Unit) {
 private fun FrameDropBars(
     frameDrops: FrameDropSeriesHolder,
     modifier: Modifier = Modifier,
-    windowSize: Int = TelemetryHistory.DEFAULT_CAPACITY,
+    windowSize: Int = com.scenedeck.android.core.data.TelemetryHistory.DEFAULT_CAPACITY,
 ) {
     val colors = SceneDeckTheme.colors
     val renderColor = colors.warning

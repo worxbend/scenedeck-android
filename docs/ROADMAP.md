@@ -122,8 +122,8 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   `scenedeck://scene/{name}` deep link.
 - **Exit:** feature-complete gate; battery/background audit passed. ✅
 - Follow-ups for M8: stream/record actions in notification; widget refresh affordance;
-  Glance goldens; replay-unavailable snackbar copy; lock glyph icon; ring buffer into
-  StatsRepository.
+  ~~Glance goldens; replay-unavailable snackbar copy; lock glyph icon; ring buffer into
+  StatsRepository~~ (done in M8a; Glance pixel goldens skipped — no capture API).
 
 ## M8 — Polish & launch
 
@@ -132,6 +132,20 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 - Play Store listing: feature graphic, screenshots per theme, short video; closed
   beta → production.
 - Optional stretch: Wear OS tile (switch scene from watch).
+- **M8a done (2026-09-29):** telemetry ring buffer moved into `StatsRepository`
+  (connection-scoped, FEATURE_SPEC §5); replay-604 snackbar copy; lock/lock-open
+  glyphs added to the icon catalogue (mixer strip no longer reuses the settings
+  glyph); SELECTED-mode mixer re-discovers the frozen scene on lifecycle events
+  (debounced 300 ms, rename-aware). A11y: gauge/chart/graph text summaries,
+  screen-reader-adjustable faders (dB SetProgress), "on air" wording on program
+  cards, semantics tests. Golden matrix: Live/Mixer/Stats/Inventory/Settings/
+  SceneCard/MixerStrip × {SCENEDECK dark, OBS dark, NORD dark, HIGH_CONTRAST dark,
+  SCENEDECK light} + tablet-width deck. Glance pixel goldens skipped (no capture
+  API in glance-appwidget-testing 1.2.0/roborazzi 1.75.0) — widget covered by
+  glance-testing unit assertions. Baseline Profile deferred: androidx.baselineprofile
+  gradle-plugin coordinates unresolvable for AGP 9 toolchain at this date; revisit
+  post-launch. User-visible strings extracted to per-module `res/values/strings.xml`
+  (live/onboarding/connections/settings).
 
 ## Cross-cutting (every milestone)
 

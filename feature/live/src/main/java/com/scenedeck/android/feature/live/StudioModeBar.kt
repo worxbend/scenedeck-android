@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +69,7 @@ fun StudioModeBar(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "TRANSITION",
+                    text = stringResource(R.string.transition_button),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -86,7 +87,7 @@ fun StudioModeBar(
             onClick = onCutClick,
             modifier = Modifier.height(56.dp),
         ) {
-            Text("CUT")
+            Text(stringResource(R.string.cut_button))
         }
         TextButton(onClick = { pickerOpen = true }) {
             Text(text = "▾", color = colors.preview)

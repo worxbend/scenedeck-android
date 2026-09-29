@@ -8,9 +8,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
 /** Notification quick-action routing: receiver → service intent (M7). */
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class NotificationRoutingTest {
 
     private val app: Application = ApplicationProvider.getApplicationContext()

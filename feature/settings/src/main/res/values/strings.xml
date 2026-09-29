@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Make the deck yours: theme family, appearance, motion and feedback.</string>
+
+    <string name="section_theme">Theme</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="section_motion">Motion level</string>
+    <string name="section_feedback">Feedback</string>
+    <string name="section_display">Display</string>
+    <string name="section_output_safety">Output safety</string>
+
+    <string name="dark_mode_system">System</string>
+    <string name="dark_mode_light">Light</string>
+    <string name="dark_mode_dark">Dark</string>
+
+    <string name="motion_full">Full</string>
+    <string name="motion_reduced">Reduced</string>
+    <string name="motion_off">Off</string>
+
+    <string name="dynamic_color">Dynamic color</string>
+    <string name="dynamic_color_desc">Material You colors from your wallpaper (Android 12+)</string>
+    <string name="haptics">Haptics</string>
+    <string name="haptics_desc">Tactile confirmation on deck presses and transport controls</string>
+    <string name="keep_screen_on">Keep screen on</string>
+    <string name="keep_screen_on_desc">Prevent the display from sleeping while connected to OBS</string>
+
+    <string name="confirm_start_stream">Confirm before starting stream</string>
+    <string name="confirm_start_stream_desc">Ask before going live</string>
+    <string name="confirm_stop_stream">Confirm before stopping stream</string>
+    <string name="confirm_stop_stream_desc">Ask before ending the live stream</string>
+    <string name="confirm_start_record">Confirm before starting recording</string>
+    <string name="confirm_start_record_desc">Ask before recording begins</string>
+    <string name="confirm_stop_record">Confirm before stopping recording</string>
+    <string name="confirm_stop_record_desc">Ask before the recording is finalized</string>
+</resources>

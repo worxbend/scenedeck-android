@@ -1,7 +1,8 @@
-package com.scenedeck.android.feature.stats
+package com.scenedeck.android.core.data
 
-import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsStats
+import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.StreamStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -84,8 +85,8 @@ class TelemetryHistoryTest {
         stream: StreamStatus = streamStatus(),
         bitrateKbps: Int = 0,
     ) = Telemetry(
-        connection = com.scenedeck.android.core.model.ConnectionState.Ready(
-            com.scenedeck.android.core.model.ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
+        connection = ConnectionState.Ready(
+            ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
         ),
         stats = stats,
         stream = stream,

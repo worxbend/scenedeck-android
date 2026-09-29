@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -132,9 +133,9 @@ fun QuickEditSheet(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(text = "Show on deck", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = stringResource(R.string.show_on_deck), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = "Primary scenes appear on the Live page",
+                        text = stringResource(R.string.show_on_deck_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -142,7 +143,7 @@ fun QuickEditSheet(
                 Switch(checked = primary, onCheckedChange = { primary = it })
             }
 
-            Text(text = "Accent color", style = MaterialTheme.typography.labelLarge)
+            Text(text = stringResource(R.string.accent_color), style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AccentSwatch(
                     color = null,
@@ -158,7 +159,7 @@ fun QuickEditSheet(
                 }
             }
 
-            Text(text = "Icon", style = MaterialTheme.typography.labelLarge)
+            Text(text = stringResource(R.string.icon_label), style = MaterialTheme.typography.labelLarge)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(6),
                 modifier = Modifier.height(200.dp),
@@ -250,16 +251,16 @@ private fun SceneItemsSection(
     val loaded = items
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = "Sources", style = MaterialTheme.typography.labelLarge)
+        Text(text = stringResource(R.string.sources_section), style = MaterialTheme.typography.labelLarge)
         when {
             loaded == null -> Text(
-                text = "Loading…",
+                text = stringResource(R.string.loading),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             loaded.isEmpty() -> Text(
-                text = "No sources in this scene",
+                text = stringResource(R.string.no_sources),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -283,9 +284,9 @@ private fun SceneItemsSection(
                         Icon(
                             imageVector = if (item.enabled) EyeIcon else EyeOffIcon,
                             contentDescription = if (item.enabled) {
-                                "Hide ${item.sourceName}"
+                                stringResource(R.string.hide_source, item.sourceName)
                             } else {
-                                "Show ${item.sourceName}"
+                                stringResource(R.string.show_source, item.sourceName)
                             },
                             tint = if (item.enabled) {
                                 MaterialTheme.colorScheme.primary

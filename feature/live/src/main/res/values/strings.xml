@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_title">Live</string>
+    <string name="previews_toggle">Previews</string>
+    <string name="studio_toggle">Studio</string>
+
+    <string name="start_stream">Start Stream</string>
+    <string name="stop_stream">Stop Stream</string>
+    <string name="start_record">Start Record</string>
+    <string name="stop_record">Stop Record</string>
+    <string name="vcam_chip">VCam</string>
+    <string name="replay_chip">Replay</string>
+    <string name="start_vcam_cd">Start virtual camera</string>
+    <string name="stop_vcam_cd">Stop virtual camera</string>
+    <string name="save_replay_cd">Save replay buffer</string>
+
+    <string name="confirm_start_stream_title">Start stream?</string>
+    <string name="confirm_start_stream_body">Go live with the current settings?</string>
+    <string name="confirm_stop_stream_title">Stop stream?</string>
+    <string name="confirm_stop_stream_body">The stream is live. Stop it now?</string>
+    <string name="confirm_start_record_title">Start recording?</string>
+    <string name="confirm_start_record_body">Start recording the program output?</string>
+    <string name="confirm_stop_record_title">Stop recording?</string>
+    <string name="confirm_stop_record_body">Recording is in progress. Stop it now?</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="transition_button">TRANSITION</string>
+    <string name="cut_button">CUT</string>
+    <string name="tbar_cd">T-bar: drag down to arm the transition, release past 80% to fire</string>
+
+    <string name="mixer_section">Mixer</string>
+    <string name="open_mixer">Open mixer</string>
+    <string name="no_audio_sources">No audio sources in this scene</string>
+
+    <string name="show_on_deck">Show on deck</string>
+    <string name="show_on_deck_desc">Primary scenes appear on the Live page</string>
+    <string name="accent_color">Accent color</string>
+    <string name="icon_label">Icon</string>
+    <string name="sources_section">Sources</string>
+    <string name="loading">Loading…</string>
+    <string name="no_sources">No sources in this scene</string>
+
+    <string name="transition_sheet_title">Transition</string>
+    <string name="transition_duration_ms">Duration: %1$d ms</string>
+    <string name="hide_source">Hide %1$s</string>
+    <string name="show_source">Show %1$s</string>
+</resources>

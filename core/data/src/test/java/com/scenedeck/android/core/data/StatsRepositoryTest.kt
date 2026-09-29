@@ -100,4 +100,35 @@ class StatsRepositoryTest {
         assertEquals(true, repository.telemetry.value.record?.active)
         assertEquals("00:00:05.000", repository.telemetry.value.record?.timecode)
     }
+
+    @Test
+    fun ringBufferAccumulatesWhileReadyAndClearsOnDisconnect() = runTest {
+        val client = FakeObsClient(
+            statsResponse = ObsStats(
+                cpuUsage = 12.5,
+                memoryUsageMb = 512.0,
+                availableDiskSpaceMb = 1000.0,
+                activeFps = 59.94,
+                averageFrameRenderTimeMs = 1.2,
+                renderSkippedFrames = 2,
+                renderTotalFrames = 10000,
+                outputSkippedFrames = 7,
+                outputTotalFrames = 9000,
+            ),
+        )
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+
+        testScheduler.runCurrent()
+        assertEquals(1, repository.samples.value.size)
+        assertEquals(59.94f, repository.samples.value.last().fps, 1e-3f)
+
+        advanceTimeBy(1_100)
+        testScheduler.runCurrent()
+        assertEquals(2, repository.samples.value.size)
+
+        client.setDisconnected()
+        testScheduler.runCurrent()
+        assertTrue(repository.samples.value.isEmpty())
+    }
 }

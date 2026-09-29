@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,22 +81,22 @@ fun QrScannerScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = "Camera permission needed",
+                    text = stringResource(R.string.camera_permission_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "SceneDeck uses the camera only to scan obsws:// pairing QR codes.",
+                    text = stringResource(R.string.camera_permission_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                    Text("Grant permission")
+                    Text(stringResource(R.string.grant_permission))
                 }
                 Spacer(Modifier.height(8.dp))
-                TextButton(onClick = onClose) { Text("Back") }
+                TextButton(onClick = onClose) { Text(stringResource(R.string.action_back)) }
             }
         }
     }

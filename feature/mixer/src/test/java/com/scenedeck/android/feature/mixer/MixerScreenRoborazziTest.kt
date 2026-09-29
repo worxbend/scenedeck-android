@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Golden shot of the mixer page with grouped strips (dark). */
+/** Golden shots of the mixer page: SCENEDECK dark + the theme matrix variants. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
@@ -31,8 +31,7 @@ class MixerScreenRoborazziTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    @Test
-    fun mixerScreenDark() {
+    private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
         val state = MixerUiState(
             connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
             mode = MixerMode.ACTIVE,
@@ -57,7 +56,7 @@ class MixerScreenRoborazziTest {
             ),
         )
         composeRule.setContent {
-            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+            SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
                     MixerContent(
                         uiState = state,
@@ -76,6 +75,23 @@ class MixerScreenRoborazziTest {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("mixer_screen_dark.png")
+        composeRule.onRoot().captureRoboImage(name)
     }
+
+    @Test
+    fun mixerScreenDark() = capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "mixer_screen_dark.png")
+
+    @Test
+    fun mixerScreenObsDark() = capture(ThemeFamily.OBS, darkTheme = true, name = "mixer_screen_obs_dark.png")
+
+    @Test
+    fun mixerScreenNordDark() = capture(ThemeFamily.NORD, darkTheme = true, name = "mixer_screen_nord_dark.png")
+
+    @Test
+    fun mixerScreenHighContrastDark() =
+        capture(ThemeFamily.HIGH_CONTRAST, darkTheme = true, name = "mixer_screen_high_contrast_dark.png")
+
+    @Test
+    fun mixerScreenSceneDeckLight() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "mixer_screen_scenedeck_light.png")
 }

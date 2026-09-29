@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.data.MixerState
@@ -46,7 +47,7 @@ fun EmbeddedMixerRow(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                text = "Mixer",
+                text = stringResource(R.string.mixer_section),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -57,7 +58,7 @@ fun EmbeddedMixerRow(
         }
         if (mixerState.inputs.isEmpty()) {
             Text(
-                text = "No audio sources in this scene",
+                text = stringResource(R.string.no_audio_sources),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

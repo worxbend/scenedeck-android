@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.data.TelemetrySample
 import com.scenedeck.android.core.designsystem.components.TrendSamplesHolder
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
@@ -76,17 +77,15 @@ class FrameDropSeriesHolder {
 }
 
 /**
- * Stats page state (docs/FEATURE_SPEC.md §5): collects 1 Hz `StatsRepository`
- * snapshots into a 120-sample [TelemetryHistory] ring buffer while subscribed, feeds
- * the trend/drop draw-phase holders and exposes the counter-card state.
+ * Stats page state (docs/FEATURE_SPEC.md §5): renders the connection-scoped
+ * 120-sample ring buffer owned by [StatsRepository] (`samples`), feeds the
+ * trend/drop draw-phase holders and exposes the counter-card state.
  */
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val stats: StatsRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
-
-    private val history = TelemetryHistory()
 
     /** FPS trend window (read by TrendChart in draw phase). */
     val fpsTrend = TrendSamplesHolder()
@@ -108,16 +107,14 @@ class StatsViewModel @Inject constructor(
         viewModelScope.launch {
             stats.telemetry.collect { telemetry -> onTelemetry(telemetry) }
         }
+        viewModelScope.launch {
+            stats.samples.collect { samples -> onSamples(samples) }
+        }
     }
 
     private fun onTelemetry(telemetry: Telemetry) {
         val connection = telemetry.connection
         if (connection !is ConnectionState.Ready) {
-            history.clear()
-            fpsTrend.samples.value = emptyList()
-            renderTrend.samples.value = emptyList()
-            frameDrops.renderSkipped.value = emptyList()
-            frameDrops.outputSkipped.value = emptyList()
             _uiState.value = StatsUiState(connection = connection)
             return
         }
@@ -125,22 +122,35 @@ class StatsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(connection = connection)
             return
         }
-        history.add(telemetry.toSample(history.latest()))
-        val samples = history.toList()
+        _uiState.value = telemetry.toUiState(sampleCount = _uiState.value.sampleCount)
+    }
+
+    private fun onSamples(samples: List<TelemetrySample>) {
         fpsTrend.samples.value = samples.map { it.fps }
         renderTrend.samples.value = samples.map { it.renderTimeMs }
         frameDrops.renderSkipped.value = samples.map { it.renderSkippedDelta.toFloat() }
         frameDrops.outputSkipped.value = samples.map { it.outputSkippedDelta.toFloat() }
-        _uiState.value = telemetry.toUiState(samples.last(), history.size)
+        val latest = samples.lastOrNull()
+        _uiState.value = if (latest != null) {
+            _uiState.value.copy(
+                sampleCount = samples.size,
+                fps = latest.fps,
+                renderTimeMs = latest.renderTimeMs,
+                droppedPct = latest.droppedPct,
+                congestionPct = latest.congestionPct,
+            )
+        } else {
+            _uiState.value.copy(sampleCount = 0)
+        }
     }
 
-    private fun Telemetry.toUiState(latest: TelemetrySample, sampleCount: Int) = StatsUiState(
+    private fun Telemetry.toUiState(sampleCount: Int) = StatsUiState(
         connection = connection,
         sampleCount = sampleCount,
-        fps = latest.fps,
-        renderTimeMs = latest.renderTimeMs,
-        droppedPct = latest.droppedPct,
-        congestionPct = latest.congestionPct,
+        fps = _uiState.value.fps,
+        renderTimeMs = _uiState.value.renderTimeMs,
+        droppedPct = _uiState.value.droppedPct,
+        congestionPct = _uiState.value.congestionPct,
         cpuUsagePct = stats?.cpuUsage ?: 0.0,
         memoryUsageMb = stats?.memoryUsageMb ?: 0.0,
         bitrateKbps = bitrateKbps,

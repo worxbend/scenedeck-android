@@ -272,6 +272,18 @@ private val CastIcon = lucideIcon(
     "M2,20h0.01",
 )
 
+private val LockIcon = lucideIcon(
+    "Lock",
+    rect(3f, 11f, 18f, 11f, 2f),
+    "M7,11V7a5,5 0 0 1 10,0v4",
+)
+
+private val LockOpenIcon = lucideIcon(
+    "LockOpen",
+    rect(3f, 11f, 18f, 11f, 2f),
+    "M7,11V7a5,5 0 0 1 9.9,-1",
+)
+
 /**
  * User-assignable scene icon catalogue (parity with the desktop's curated glyphs,
  * docs/DESIGN_SYSTEM.md §6). Render with `Icon(SceneIcon.CAMERA.imageVector, …)`.
@@ -307,6 +319,8 @@ enum class SceneIcon {
     BELL,
     SPARKLES,
     CAST,
+    LOCK,
+    LOCK_OPEN,
 }
 
 /** The [ImageVector] for a catalogue entry (Lucide style: 24dp, 2dp rounded stroke). */
@@ -342,4 +356,6 @@ val SceneIcon.imageVector: ImageVector
         SceneIcon.BELL -> BellIcon
         SceneIcon.SPARKLES -> SparklesIcon
         SceneIcon.CAST -> CastIcon
+        SceneIcon.LOCK -> LockIcon
+        SceneIcon.LOCK_OPEN -> LockOpenIcon
     }

@@ -19,9 +19,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` while
- * connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the StatusStrip
- * and the TransportBar; the full stats page (ring buffer, charts) is M5.
+ * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` +
+ * virtualcam/replay status while connected (obs-websocket has no push stats;
+ * FEATURE_SPEC §5). Drives the StatusStrip, the TransportBar and the stats page;
+ * [StatsRepository.samples] keeps the rolling 2-minute window for charts.
  */
 data class Telemetry(
     val connection: ConnectionState = ConnectionState.Disconnected,
@@ -44,18 +45,32 @@ class StatsRepository @Inject constructor(
     private val _telemetry = MutableStateFlow(Telemetry())
     val telemetry: StateFlow<Telemetry> = _telemetry.asStateFlow()
 
+    /**
+     * Rolling 2-minute [TelemetrySample] window (FEATURE_SPEC §5). Connection-scoped:
+     * filled by the 1 Hz poll loop for the whole session, cleared on disconnect.
+     */
+    private val history = TelemetryHistory()
+    private val _samples = MutableStateFlow<List<TelemetrySample>>(emptyList())
+    val samples: StateFlow<List<TelemetrySample>> = _samples.asStateFlow()
+
     init {
         scope.launch {
             client.connectionState.collectLatest { state ->
                 when (state) {
                     is ConnectionState.Ready -> pollLoop(state)
-                    else -> _telemetry.value = Telemetry(connection = state)
+                    else -> {
+                        history.clear()
+                        _samples.value = emptyList()
+                        _telemetry.value = Telemetry(connection = state)
+                    }
                 }
             }
         }
     }
 
     private suspend fun pollLoop(connection: ConnectionState) {
+        history.clear()
+        _samples.value = emptyList()
         var lastBytes: Long? = null
         var lastSampleAtMs = 0L
         while (currentCoroutineContext().isActive) {
@@ -74,7 +89,7 @@ class StatsRepository @Inject constructor(
                 )
                 lastBytes = stream.bytes
                 lastSampleAtMs = nowMs
-                _telemetry.value = Telemetry(
+                val snapshot = Telemetry(
                     connection = connection,
                     stats = stats,
                     stream = stream,
@@ -83,6 +98,9 @@ class StatsRepository @Inject constructor(
                     virtualCamActive = virtualCam,
                     replayBufferActive = replayBuffer,
                 )
+                _telemetry.value = snapshot
+                history.add(snapshot.toSample(history.latest()))
+                _samples.value = history.toList()
             }
             delay(POLL_INTERVAL_MS)
         }

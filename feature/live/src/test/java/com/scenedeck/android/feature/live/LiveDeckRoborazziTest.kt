@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Golden shot of the Live deck with a streaming session in dark mode. */
+/** Golden shots of the Live deck: SCENEDECK dark + the theme matrix variants. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
@@ -31,9 +31,8 @@ class LiveDeckRoborazziTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    @Test
     @Suppress("LongMethod") // rich fixture setup
-    fun liveDeckDark() {
+    private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
         val deck = DeckState(
             connectionState = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
             currentProgramScene = "Scene",
@@ -61,7 +60,7 @@ class LiveDeckRoborazziTest {
         )
 
         composeRule.setContent {
-            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+            SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
                     LiveDeckContent(
                         deckState = deck,
@@ -114,6 +113,29 @@ class LiveDeckRoborazziTest {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("live_deck_dark.png")
+        composeRule.onRoot().captureRoboImage(name)
     }
+
+    @Test
+    fun liveDeckDark() = capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "live_deck_dark.png")
+
+    @Test
+    fun liveDeckObsDark() = capture(ThemeFamily.OBS, darkTheme = true, name = "live_deck_obs_dark.png")
+
+    @Test
+    fun liveDeckNordDark() = capture(ThemeFamily.NORD, darkTheme = true, name = "live_deck_nord_dark.png")
+
+    @Test
+    fun liveDeckHighContrastDark() =
+        capture(ThemeFamily.HIGH_CONTRAST, darkTheme = true, name = "live_deck_high_contrast_dark.png")
+
+    @Test
+    fun liveDeckSceneDeckLight() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "live_deck_scenedeck_light.png")
+
+    /** Tablet width: the adaptive grid should fit ≥4 columns. */
+    @Test
+    @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.PixelTablet)
+    fun liveDeckTabletDark() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "live_deck_tablet_dark.png")
 }

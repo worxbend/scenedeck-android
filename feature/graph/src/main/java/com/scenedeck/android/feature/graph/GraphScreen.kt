@@ -17,10 +17,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.EdgeVerdict
 import com.scenedeck.android.core.data.SceneGraph
@@ -121,7 +123,13 @@ internal fun GraphContent(
                     )
                 },
                 onNodeClick = onNodeClick,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription =
+                            "Scene dependency graph, ${graph.nodes.size} scenes, " +
+                                "${graph.edges.size} connections. Double-tap a node for details."
+                    },
             )
         }
     }
