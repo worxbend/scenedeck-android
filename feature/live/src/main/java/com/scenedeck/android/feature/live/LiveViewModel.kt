@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.ObsStateRepository
+import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MixerState
 import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.data.OutputSafetyGate
@@ -11,7 +13,9 @@ import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsRequestFailedException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,12 +44,20 @@ enum class TransportConfirmation {
 }
 
 @HiltViewModel
+@Suppress("TooManyFunctions") // deck + transport + embedded mixer surface
 class LiveViewModel @Inject constructor(
     private val obsState: ObsStateRepository,
     private val settings: SettingsRepository,
     private val client: ObsClient,
+    private val mixerRepository: MixerRepository,
     stats: StatsRepository,
 ) : ViewModel() {
+
+    /** Embedded mixer row state (follows the program scene). */
+    val mixerState: StateFlow<MixerState> = mixerRepository.mixerState
+
+    /** Live meter levels for the embedded row (read by VolumeMeter in draw phase). */
+    val mixerLevels = MeterLevelsStore()
 
     val deckState: StateFlow<DeckState> = obsState.deckState
     val telemetry: StateFlow<Telemetry> = stats.telemetry
@@ -66,6 +78,11 @@ class LiveViewModel @Inject constructor(
     val hapticsEnabled: StateFlow<Boolean> = settings.settings
         .map { it.haptics }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val motionLevel: StateFlow<MotionLevel> = settings.settings
+        .map { runCatching { MotionLevel.valueOf(it.motionLevel) }.getOrDefault(MotionLevel.FULL) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
+
 
     /** Scene whose switch is taking > ~300 ms (per-card pending spinner). */
     private val _pendingScene = MutableStateFlow<String?>(null)
@@ -110,6 +127,10 @@ class LiveViewModel @Inject constructor(
                 iconName = iconName,
             )
         }
+    }
+
+    fun toggleMixerMute(inputName: String, muted: Boolean) {
+        viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
     }
 
     fun reorderDeck(orderedSceneNames: List<String>) {
@@ -170,6 +191,10 @@ class LiveViewModel @Inject constructor(
     private fun Throwable.toTransportMessage(what: String): String = when (this) {
         is ObsRequestFailedException -> "OBS refused to control the $what: ${message ?: statusCode}"
         else -> "Couldn't control the $what: ${message ?: "connection error"}"
+    }
+
+    init {
+        viewModelScope.launch { client.volumeMeters.collect { mixerLevels.update(it) } }
     }
 
     private companion object {

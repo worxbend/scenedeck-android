@@ -26,6 +26,11 @@ data class UserSettings(
     val confirmStartRecord: Boolean = false,
     /** Output Safety: ask before stopping a recording. */
     val confirmStopRecord: Boolean = true,
+    val audioAllowList: Set<String> = emptySet(),
+    val lockedInputs: Set<String> = emptySet(),
+    val mixerMode: String = "ACTIVE",
+    val mixerSelectedScene: String? = null,
+    val mixerGrouping: String = "SCOPE",
 )
 
 @Singleton
@@ -64,6 +69,16 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setConfirmStopRecord(value: Boolean) = store.setConfirmStopRecord(value)
 
+    suspend fun setAudioAllowList(value: Set<String>) = store.setAudioAllowList(value)
+
+    suspend fun setLockedInputs(value: Set<String>) = store.setLockedInputs(value)
+
+    suspend fun setMixerMode(value: String) = store.setMixerMode(value)
+
+    suspend fun setMixerSelectedScene(value: String?) = store.setMixerSelectedScene(value)
+
+    suspend fun setMixerGrouping(value: String) = store.setMixerGrouping(value)
+
     private suspend fun persist(settings: UserSettings) {
         store.setThemeFamily(settings.themeFamily)
         store.setDarkMode(settings.darkMode.name)
@@ -77,6 +92,11 @@ class SettingsRepository @Inject constructor(
         store.setConfirmStopStream(settings.confirmStopStream)
         store.setConfirmStartRecord(settings.confirmStartRecord)
         store.setConfirmStopRecord(settings.confirmStopRecord)
+        store.setAudioAllowList(settings.audioAllowList)
+        store.setLockedInputs(settings.lockedInputs)
+        store.setMixerMode(settings.mixerMode)
+        store.setMixerSelectedScene(settings.mixerSelectedScene)
+        store.setMixerGrouping(settings.mixerGrouping)
     }
 
     private fun SettingsSnapshot.toUserSettings() = UserSettings(
@@ -92,6 +112,11 @@ class SettingsRepository @Inject constructor(
         confirmStopStream = confirmStopStream,
         confirmStartRecord = confirmStartRecord,
         confirmStopRecord = confirmStopRecord,
+        audioAllowList = audioAllowList,
+        lockedInputs = lockedInputs,
+        mixerMode = mixerMode,
+        mixerSelectedScene = mixerSelectedScene,
+        mixerGrouping = mixerGrouping,
     )
 
     private fun String.toDarkModeOrDefault(): DarkMode =

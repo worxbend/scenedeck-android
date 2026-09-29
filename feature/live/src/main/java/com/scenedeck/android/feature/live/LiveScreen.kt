@@ -44,8 +44,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.SceneCard
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
+import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
 import com.scenedeck.android.core.model.ConnectionState
@@ -68,12 +70,15 @@ fun LiveScreen(
     modifier: Modifier = Modifier,
     viewModel: LiveViewModel = hiltViewModel(),
     onNavigateToConnections: () -> Unit = {},
+    onNavigateToMixer: () -> Unit = {},
 ) {
     val deckState by viewModel.deckState.collectAsStateWithLifecycle()
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
     val pendingScene by viewModel.pendingScene.collectAsStateWithLifecycle()
     val confirmation by viewModel.confirmation.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val mixerState by viewModel.mixerState.collectAsStateWithLifecycle()
+    val motionLevel by viewModel.motionLevel.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -87,11 +92,16 @@ fun LiveScreen(
                 telemetry = telemetry,
                 pendingScene = pendingScene,
                 hapticsEnabled = hapticsEnabled,
+                mixerState = mixerState,
+                mixerLevels = viewModel.mixerLevels,
+                motionLevel = motionLevel,
                 onSceneTap = viewModel::onSceneTap,
                 onStreamClick = viewModel::onStreamClick,
                 onRecordClick = viewModel::onRecordClick,
                 onQuickEditSave = viewModel::saveSceneMeta,
                 onReorder = viewModel::reorderDeck,
+                onMixerMute = viewModel::toggleMixerMute,
+                onOpenMixer = onNavigateToMixer,
             )
 
             else -> DisconnectedPlaceholder(
@@ -145,11 +155,16 @@ internal fun LiveDeckContent(
     telemetry: Telemetry,
     pendingScene: String?,
     hapticsEnabled: Boolean,
+    mixerState: com.scenedeck.android.core.data.MixerState,
+    mixerLevels: com.scenedeck.android.core.designsystem.components.MeterLevelsStore,
+    motionLevel: MotionLevel,
     onSceneTap: (String) -> Unit,
     onStreamClick: () -> Unit,
     onRecordClick: () -> Unit,
     onQuickEditSave: (sceneName: String, primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
     onReorder: (List<String>) -> Unit,
+    onMixerMute: (String, Boolean) -> Unit,
+    onOpenMixer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -205,7 +220,15 @@ internal fun LiveDeckContent(
             onToggleStream = onStreamClick,
             onToggleRecord = onRecordClick,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
+        EmbeddedMixerRow(
+            mixerState = mixerState,
+            levelsStore = mixerLevels,
+            motionLevel = motionLevel,
+            onToggleMute = onMixerMute,
+            onOpenMixer = onOpenMixer,
+        )
+        Spacer(Modifier.height(12.dp))
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 160.dp),

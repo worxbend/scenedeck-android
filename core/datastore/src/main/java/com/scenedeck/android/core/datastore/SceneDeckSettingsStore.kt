@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -36,6 +37,15 @@ data class SettingsSnapshot(
     val confirmStopStream: Boolean = true,
     val confirmStartRecord: Boolean = false,
     val confirmStopRecord: Boolean = true,
+    /** Mixer: input names allowed to appear (empty = all). */
+    val audioAllowList: Set<String> = emptySet(),
+    /** Mixer: locally locked inputs (UI-only lock). */
+    val lockedInputs: Set<String> = emptySet(),
+    /** Mixer page mode: ACTIVE / SELECTED / PINNED. */
+    val mixerMode: String = "ACTIVE",
+    val mixerSelectedScene: String? = null,
+    /** Mixer grouping: SCOPE / SCENE_PATH / NONE. */
+    val mixerGrouping: String = "SCOPE",
 )
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
@@ -60,6 +70,11 @@ class SceneDeckSettingsStore private constructor(
                 confirmStopStream = prefs[KEY_CONFIRM_STOP_STREAM] ?: true,
                 confirmStartRecord = prefs[KEY_CONFIRM_START_RECORD] ?: false,
                 confirmStopRecord = prefs[KEY_CONFIRM_STOP_RECORD] ?: true,
+                audioAllowList = prefs[KEY_AUDIO_ALLOW_LIST] ?: emptySet(),
+                lockedInputs = prefs[KEY_LOCKED_INPUTS] ?: emptySet(),
+                mixerMode = prefs[KEY_MIXER_MODE] ?: "ACTIVE",
+                mixerSelectedScene = prefs[KEY_MIXER_SELECTED_SCENE],
+                mixerGrouping = prefs[KEY_MIXER_GROUPING] ?: "SCOPE",
             )
         }
         .distinctUntilChanged()
@@ -90,6 +105,18 @@ class SceneDeckSettingsStore private constructor(
 
     suspend fun setConfirmStopRecord(value: Boolean) = edit { it[KEY_CONFIRM_STOP_RECORD] = value }
 
+    suspend fun setAudioAllowList(value: Set<String>) = edit { it[KEY_AUDIO_ALLOW_LIST] = value }
+
+    suspend fun setLockedInputs(value: Set<String>) = edit { it[KEY_LOCKED_INPUTS] = value }
+
+    suspend fun setMixerMode(value: String) = edit { it[KEY_MIXER_MODE] = value }
+
+    suspend fun setMixerSelectedScene(value: String?) = edit { prefs ->
+        if (value == null) prefs.remove(KEY_MIXER_SELECTED_SCENE) else prefs[KEY_MIXER_SELECTED_SCENE] = value
+    }
+
+    suspend fun setMixerGrouping(value: String) = edit { it[KEY_MIXER_GROUPING] = value }
+
     private suspend fun edit(transform: (MutablePreferences) -> Unit) {
         dataStore.edit(transform)
     }
@@ -112,5 +139,10 @@ class SceneDeckSettingsStore private constructor(
         private val KEY_CONFIRM_STOP_STREAM = booleanPreferencesKey("confirmStopStream")
         private val KEY_CONFIRM_START_RECORD = booleanPreferencesKey("confirmStartRecord")
         private val KEY_CONFIRM_STOP_RECORD = booleanPreferencesKey("confirmStopRecord")
+        private val KEY_AUDIO_ALLOW_LIST = stringSetPreferencesKey("audioAllowList")
+        private val KEY_LOCKED_INPUTS = stringSetPreferencesKey("lockedInputs")
+        private val KEY_MIXER_MODE = stringPreferencesKey("mixerMode")
+        private val KEY_MIXER_SELECTED_SCENE = stringPreferencesKey("mixerSelectedScene")
+        private val KEY_MIXER_GROUPING = stringPreferencesKey("mixerGrouping")
     }
 }

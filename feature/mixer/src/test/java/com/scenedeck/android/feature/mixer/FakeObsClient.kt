@@ -1,4 +1,4 @@
-package com.scenedeck.android.core.data
+package com.scenedeck.android.feature.mixer
 
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
@@ -8,7 +8,6 @@ import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SpecialInputs
-import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
@@ -18,64 +17,49 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Scriptable [ObsClient] fake for repository tests. */
+/** Minimal rig-shaped fake for mixer tests (fixtures can't cross module boundaries). */
 @Suppress("TooManyFunctions")
-internal open class FakeObsClient(
+internal class FakeObsClient(
     var sceneListSnapshot: SceneListSnapshot = SceneListSnapshot(null, emptyList()),
-    var statsResponse: ObsStats = ObsStats(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0),
-    var streamStatusResponse: StreamStatus =
-        StreamStatus(false, false, "00:00:00.000", 0, 0, 0.0, 0, 0),
-    var recordStatusResponse: RecordStatus =
-        RecordStatus(false, false, "00:00:00.000", 0, 0),
 ) : ObsClient {
+
+    var specialInputs = SpecialInputs(desktop1 = "Desktop Audio", mic1 = "Mic/Aux")
+    var sceneItems: Map<String, List<SceneItemInfo>> = emptyMap()
+    var mutedInputs = mutableSetOf<String>()
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
-
-    private val _events = MutableSharedFlow<ObsEvent>(extraBufferCapacity = 16)
-    override val events: SharedFlow<ObsEvent> = _events
-
+    override val events: SharedFlow<ObsEvent> = MutableSharedFlow(extraBufferCapacity = 8)
     override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = MutableSharedFlow()
-
-    val sceneSwitchCalls = mutableListOf<String>()
 
     fun setReady() {
         _connectionState.value = ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test"))
     }
 
-    fun setDisconnected() {
-        _connectionState.value = ConnectionState.Disconnected
-    }
-
-    suspend fun emit(event: ObsEvent) = _events.emit(event)
-
     override suspend fun connect(host: String, port: Int, password: String?) = Unit
-
     override suspend fun disconnect() = Unit
-
     override suspend fun getSceneList(): SceneListSnapshot = sceneListSnapshot
+    override suspend fun getSpecialInputs(): SpecialInputs = specialInputs
+    override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> =
+        sceneItems[sceneName].orEmpty()
 
-    override suspend fun setCurrentProgramScene(sceneName: String) {
-        sceneSwitchCalls += sceneName
+    override suspend fun getInputMute(inputName: String): Boolean = inputName in mutedInputs
+    override suspend fun setInputMute(inputName: String, muted: Boolean) {
+        if (muted) mutedInputs += inputName else mutedInputs -= inputName
     }
 
-    override suspend fun getStats(): ObsStats = statsResponse
-
-    override suspend fun getStreamStatus(): StreamStatus = streamStatusResponse
-
-    override suspend fun getRecordStatus(): RecordStatus = recordStatusResponse
+    override suspend fun getInputVolume(inputName: String): Double = 1.0
+    override suspend fun setInputVolume(inputName: String, volumeMul: Double) = Unit
+    override suspend fun getStats(): ObsStats = error("not needed")
+    override suspend fun getStreamStatus(): StreamStatus = error("not needed")
+    override suspend fun getRecordStatus(): RecordStatus = error("not needed")
+    override suspend fun setCurrentProgramScene(sceneName: String) = Unit
 
     private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 
     override suspend fun getVersion() = unused()
     override suspend fun getCurrentProgramScene(): String = unused()
-    open override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> = unused()
-    open override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int): Boolean = unused()
-    open override suspend fun getSpecialInputs(): SpecialInputs = unused()
-    open override suspend fun getInputMute(inputName: String): Boolean = unused()
-    open override suspend fun setInputMute(inputName: String, muted: Boolean): Unit = unused()
-    open override suspend fun getInputVolume(inputName: String): Double = unused()
-    open override suspend fun setInputVolume(inputName: String, volumeMul: Double): Unit = unused()
+    override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int) = unused()
     override suspend fun startStream() = unused()
     override suspend fun stopStream() = unused()
     override suspend fun startRecord() = unused()

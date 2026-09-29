@@ -9,6 +9,7 @@ import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
 import com.scenedeck.android.core.model.ConnectionState
@@ -31,6 +32,7 @@ class LiveDeckRoborazziTest {
     val composeRule = createComposeRule()
 
     @Test
+    @Suppress("LongMethod") // rich fixture setup
     fun liveDeckDark() {
         val deck = DeckState(
             connectionState = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
@@ -64,11 +66,37 @@ class LiveDeckRoborazziTest {
                         telemetry = telemetry,
                         pendingScene = "Screen",
                         hapticsEnabled = false,
+                        mixerState = com.scenedeck.android.core.data.MixerState(
+                            connection = deck.connectionState,
+                            activeScene = "Scene",
+                            inputs = listOf(
+                                com.scenedeck.android.core.data.MixerInputState(
+                                    name = "Desktop Audio",
+                                    scope = com.scenedeck.android.core.model.MixerScope.GLOBAL,
+                                    scopePath = null,
+                                    volumeMul = 1.0,
+                                    muted = false,
+                                    locked = false,
+                                ),
+                                com.scenedeck.android.core.data.MixerInputState(
+                                    name = "Test Tone 440",
+                                    scope = com.scenedeck.android.core.model.MixerScope.SCENE,
+                                    scopePath = null,
+                                    volumeMul = 0.7,
+                                    muted = false,
+                                    locked = false,
+                                ),
+                            ),
+                        ),
+                        mixerLevels = com.scenedeck.android.core.designsystem.components.MeterLevelsStore(),
+                        motionLevel = MotionLevel.FULL,
                         onSceneTap = {},
                         onStreamClick = {},
                         onRecordClick = {},
                         onQuickEditSave = { _, _, _, _ -> },
                         onReorder = {},
+                        onMixerMute = { _, _ -> },
+                        onOpenMixer = {},
                     )
                 }
             }

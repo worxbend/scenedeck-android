@@ -1,4 +1,4 @@
-package com.scenedeck.android.feature.live
+package com.scenedeck.android.core.designsystem.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement

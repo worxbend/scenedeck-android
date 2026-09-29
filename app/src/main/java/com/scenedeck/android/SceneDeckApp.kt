@@ -193,9 +193,18 @@ private fun sceneDeckEntryProvider(
     selectTopLevel: (SceneDeckDestination) -> Unit,
 ) = entryProvider<NavKey> {
     entry<SceneDeckDestination.Live> {
-        LiveScreen(onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) })
+        LiveScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+            onNavigateToMixer = { selectTopLevel(SceneDeckDestination.Mixer) },
+        )
     }
-    entry<SceneDeckDestination.Mixer> { MixerScreen() }
+    entry<SceneDeckDestination.Mixer> {
+        MixerScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+            motionLevel = appState.motionLevel,
+            hapticsEnabled = appState.haptics,
+        )
+    }
     entry<SceneDeckDestination.Stats> { StatsScreen() }
     entry<SceneDeckDestination.Inventory> { InventoryScreen() }
     entry<SceneDeckDestination.Graph> { GraphScreen() }
