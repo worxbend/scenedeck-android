@@ -206,9 +206,22 @@ private fun sceneDeckEntryProvider(
         )
     }
     entry<SceneDeckDestination.Stats> { StatsScreen() }
-    entry<SceneDeckDestination.Inventory> { InventoryScreen() }
-    entry<SceneDeckDestination.Graph> { GraphScreen() }
-    entry<SceneDeckDestination.Doctor> { DoctorScreen() }
+    entry<SceneDeckDestination.Inventory> {
+        InventoryScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+        )
+    }
+    entry<SceneDeckDestination.Graph> {
+        GraphScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+        )
+    }
+    entry<SceneDeckDestination.Doctor> {
+        DoctorScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+            onNavigateToInventory = { selectTopLevel(SceneDeckDestination.Inventory) },
+        )
+    }
     entry<SceneDeckDestination.Settings> {
         SettingsScreen(
             currentTheme = appState.themeFamily,

@@ -114,6 +114,7 @@ javax-inject = "1"
 camerax = "1.6.2"           # QR pairing (M2)
 mlkit-barcode = "17.3.0"    # QR pairing (M2)
 reorderable = "3.1.0"         # deck drag-to-reorder (M3)
+kaml = "0.104.0"              # YAML registry export/import (M5)
 # coroutines-guava reuses the kotlinx-coroutines pin
 ui-text-google-fonts = "1.12.1"
 roborazzi = "1.75.0"
