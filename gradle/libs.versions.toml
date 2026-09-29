@@ -27,6 +27,7 @@ mockwebserver = "5.5.0"
 javax-inject = "1"
 camerax = "1.6.2"
 mlkit-barcode = "17.3.0"
+reorderable = "3.1.0"
 datastore-preferences = "1.2.1"
 androidx-test-core = "1.7.0"
 ui-text-google-fonts = "1.12.1" # BOM 2026.09.00-managed version; pinned explicitly for clarity
@@ -86,6 +87,7 @@ mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", versio
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 

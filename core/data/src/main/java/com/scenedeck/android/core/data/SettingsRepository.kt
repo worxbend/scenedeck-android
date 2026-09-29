@@ -18,6 +18,14 @@ data class UserSettings(
     val keepScreenOn: Boolean = false,
     val lastUsedProfileId: Long? = null,
     val onboardingCompleted: Boolean = false,
+    /** Output Safety: ask before starting the stream (FEATURE_SPEC §4). */
+    val confirmStartStream: Boolean = false,
+    /** Output Safety: ask before stopping the stream. */
+    val confirmStopStream: Boolean = true,
+    /** Output Safety: ask before starting a recording. */
+    val confirmStartRecord: Boolean = false,
+    /** Output Safety: ask before stopping a recording. */
+    val confirmStopRecord: Boolean = true,
 )
 
 @Singleton
@@ -48,6 +56,14 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setOnboardingCompleted(value: Boolean) = store.setOnboardingCompleted(value)
 
+    suspend fun setConfirmStartStream(value: Boolean) = store.setConfirmStartStream(value)
+
+    suspend fun setConfirmStopStream(value: Boolean) = store.setConfirmStopStream(value)
+
+    suspend fun setConfirmStartRecord(value: Boolean) = store.setConfirmStartRecord(value)
+
+    suspend fun setConfirmStopRecord(value: Boolean) = store.setConfirmStopRecord(value)
+
     private suspend fun persist(settings: UserSettings) {
         store.setThemeFamily(settings.themeFamily)
         store.setDarkMode(settings.darkMode.name)
@@ -57,6 +73,10 @@ class SettingsRepository @Inject constructor(
         store.setKeepScreenOn(settings.keepScreenOn)
         store.setLastUsedProfileId(settings.lastUsedProfileId)
         store.setOnboardingCompleted(settings.onboardingCompleted)
+        store.setConfirmStartStream(settings.confirmStartStream)
+        store.setConfirmStopStream(settings.confirmStopStream)
+        store.setConfirmStartRecord(settings.confirmStartRecord)
+        store.setConfirmStopRecord(settings.confirmStopRecord)
     }
 
     private fun SettingsSnapshot.toUserSettings() = UserSettings(
@@ -68,6 +88,10 @@ class SettingsRepository @Inject constructor(
         keepScreenOn = keepScreenOn,
         lastUsedProfileId = lastUsedProfileId,
         onboardingCompleted = onboardingCompleted,
+        confirmStartStream = confirmStartStream,
+        confirmStopStream = confirmStopStream,
+        confirmStartRecord = confirmStartRecord,
+        confirmStopRecord = confirmStopRecord,
     )
 
     private fun String.toDarkModeOrDefault(): DarkMode =

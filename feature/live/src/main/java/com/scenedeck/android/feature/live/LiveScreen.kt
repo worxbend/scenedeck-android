@@ -1,32 +1,188 @@
 package com.scenedeck.android.feature.live
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.data.SceneCardState
+import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.designsystem.components.SceneCard
+import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
+import com.scenedeck.android.core.designsystem.icons.SceneIcon
+import com.scenedeck.android.core.designsystem.icons.imageVector
+import com.scenedeck.android.core.model.ConnectionState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
+
+internal fun sceneIconFor(iconName: String?): ImageVector =
+    iconName
+        ?.let { runCatching { SceneIcon.valueOf(it) }.getOrNull() }
+        ?.imageVector
+        ?: SceneDeckIcons.Scenes
 
 /**
- * Live page (the deck) — hero screen. Grid of primary scene cards with tap-to-switch
- * and the stream/record transport always at hand (FEATURE_SPEC §2, milestone M3).
- *
- * [transport] is a slot so the app module can inject its TransportBar without this
- * module depending on :app.
+ * Live page — the hero deck (FEATURE_SPEC §2, milestone M3). Adaptive grid of primary
+ * scene cards (tap = program, long-press = quick edit, grip = drag reorder), wired
+ * TransportBar, Output Safety confirmations, designed offline states.
  */
 @Composable
-fun LiveScreen(modifier: Modifier = Modifier, transport: @Composable () -> Unit = {}) {
+fun LiveScreen(
+    modifier: Modifier = Modifier,
+    viewModel: LiveViewModel = hiltViewModel(),
+    onNavigateToConnections: () -> Unit = {},
+) {
+    val deckState by viewModel.deckState.collectAsStateWithLifecycle()
+    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
+    val pendingScene by viewModel.pendingScene.collectAsStateWithLifecycle()
+    val confirmation by viewModel.confirmation.collectAsStateWithLifecycle()
+    val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        when (val connection = deckState.connectionState) {
+            is ConnectionState.Ready -> LiveDeckContent(
+                deckState = deckState,
+                telemetry = telemetry,
+                pendingScene = pendingScene,
+                hapticsEnabled = hapticsEnabled,
+                onSceneTap = viewModel::onSceneTap,
+                onStreamClick = viewModel::onStreamClick,
+                onRecordClick = viewModel::onRecordClick,
+                onQuickEditSave = viewModel::saveSceneMeta,
+                onReorder = viewModel::reorderDeck,
+            )
+
+            else -> DisconnectedPlaceholder(
+                connectionState = connection,
+                onConnect = onNavigateToConnections,
+            )
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    confirmation?.let { pending ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConfirmation,
+            title = {
+                Text(
+                    when (pending) {
+                        TransportConfirmation.START_STREAM -> "Start stream?"
+                        TransportConfirmation.STOP_STREAM -> "Stop stream?"
+                        TransportConfirmation.START_RECORD -> "Start recording?"
+                        TransportConfirmation.STOP_RECORD -> "Stop recording?"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    when (pending) {
+                        TransportConfirmation.START_STREAM -> "Go live with the current settings?"
+                        TransportConfirmation.STOP_STREAM -> "The stream is live. Stop it now?"
+                        TransportConfirmation.START_RECORD -> "Start recording the program output?"
+                        TransportConfirmation.STOP_RECORD -> "Recording is in progress. Stop it now?"
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmPending) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissConfirmation) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+internal fun LiveDeckContent(
+    deckState: DeckState,
+    telemetry: Telemetry,
+    pendingScene: String?,
+    hapticsEnabled: Boolean,
+    onSceneTap: (String) -> Unit,
+    onStreamClick: () -> Unit,
+    onRecordClick: () -> Unit,
+    onQuickEditSave: (sceneName: String, primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
+    onReorder: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = LocalHapticFeedback.current
+    var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
+
+    // Local order while dragging; re-syncs from the deck when not dragging.
+    var orderedScenes by remember { mutableStateOf(deckState.scenes) }
+    val gridState = rememberLazyGridState()
+    val reorderableState = rememberReorderableLazyGridState(gridState) { from, to ->
+        orderedScenes = orderedScenes.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }
+    }
+    LaunchedEffect(deckState.scenes, reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging) orderedScenes = deckState.scenes
+    }
+    // Persist only after an actual drag ends (not on first composition).
+    var wasDragging by remember { mutableStateOf(false) }
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (wasDragging && !reorderableState.isAnyItemDragging) {
+            onReorder(orderedScenes.map { it.name })
+        }
+        wasDragging = reorderableState.isAnyItemDragging
+    }
+
+    val streaming = telemetry.stream?.active == true
+    val recording = telemetry.record?.active == true
+    val elapsed = when {
+        recording -> telemetry.record?.timecode
+        streaming -> telemetry.stream?.timecode
+        else -> null
+    }?.take(8) ?: "00:00:00"
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -39,45 +195,98 @@ fun LiveScreen(modifier: Modifier = Modifier, transport: @Composable () -> Unit 
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Your scene deck: tap a primary scene to put it on program, with " +
-                "stream and record controls always at hand.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Spacer(Modifier.height(16.dp))
+        TransportBar(
+            streaming = streaming,
+            recording = recording,
+            elapsedTime = elapsed,
+            enabled = true,
+            pulseTally = true,
+            onToggleStream = onStreamClick,
+            onToggleRecord = onRecordClick,
         )
-        Spacer(Modifier.height(24.dp))
-        transport()
-        Spacer(Modifier.height(24.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
+        Spacer(Modifier.height(16.dp))
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 160.dp),
+            state = gridState,
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(Modifier.padding(24.dp)) {
-                Text(
-                    text = "Coming in M3",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "The tactile scene grid — accent colors, glow-on-active " +
-                        "cards and drag-to-reorder — arrives with the Live Deck milestone.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            items(orderedScenes, key = { it.name }) { scene ->
+                ReorderableItem(reorderableState, key = scene.name) { isDragging ->
+                    Box(
+                        modifier = Modifier.graphicsLayer {
+                            val s = if (isDragging) 1.04f else 1f
+                            scaleX = s
+                            scaleY = s
+                            alpha = if (isDragging) 0.9f else 1f
+                        },
+                    ) {
+                        SceneCard(
+                            label = scene.name,
+                            icon = sceneIconFor(scene.iconName),
+                            active = scene.isActive,
+                            accentColor = scene.accentColorArgb?.let { Color(it) },
+                            pending = pendingScene == scene.name,
+                            onClick = {
+                                if (hapticsEnabled) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                }
+                                onSceneTap(scene.name)
+                            },
+                            onLongClick = { quickEdit = scene },
+                            modifier = Modifier.padding(6.dp),
+                        )
+                        DragGrip(
+                            sceneName = scene.name,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp)
+                                .draggableHandle(),
+                        )
+                    }
+                }
             }
         }
     }
+
+    quickEdit?.let { scene ->
+        QuickEditSheet(
+            scene = scene,
+            onDismiss = { quickEdit = null },
+            onSave = { primary, accentArgb, iconName ->
+                onQuickEditSave(scene.name, primary, accentArgb, iconName)
+                quickEdit = null
+            },
+        )
+    }
 }
 
-@PreviewLightDark
+/** Grip dots marking the drag area (kept off the card so taps/long-press stay free). */
 @Composable
-private fun LiveScreenPreview() {
-    SceneDeckTheme {
-        LiveScreen()
+private fun DragGrip(sceneName: String, tint: Color, modifier: Modifier = Modifier) {
+    Canvas(
+        modifier = modifier
+            .size(width = 12.dp, height = 18.dp)
+            .semantics { contentDescription = "Drag to reorder scene $sceneName" },
+    ) {
+        val radius = 1.6.dp.toPx()
+        val stepX = size.width - 2 * radius
+        val stepY = (size.height - 2 * radius) / 2
+        for (row in 0..2) {
+            for (col in 0..1) {
+                drawCircle(
+                    color = tint,
+                    radius = radius,
+                    center = Offset(
+                        x = radius + col * stepX,
+                        y = radius + row * stepY,
+                    ),
+                )
+            }
+        }
     }
 }

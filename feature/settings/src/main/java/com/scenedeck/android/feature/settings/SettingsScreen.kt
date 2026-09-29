@@ -18,12 +18,16 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.DarkMode
+import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
@@ -48,6 +52,51 @@ fun SettingsScreen(
     onHapticsChange: (Boolean) -> Unit,
     keepScreenOn: Boolean,
     onKeepScreenOnChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val outputSafety by viewModel.outputSafety.collectAsStateWithLifecycle()
+    SettingsContent(
+        currentTheme = currentTheme,
+        onThemeSelect = onThemeSelect,
+        darkMode = darkMode,
+        onDarkModeChange = onDarkModeChange,
+        motionLevel = motionLevel,
+        onMotionLevelChange = onMotionLevelChange,
+        dynamicColor = dynamicColor,
+        onDynamicColorChange = onDynamicColorChange,
+        haptics = haptics,
+        onHapticsChange = onHapticsChange,
+        keepScreenOn = keepScreenOn,
+        onKeepScreenOnChange = onKeepScreenOnChange,
+        outputSafety = outputSafety,
+        onConfirmStartStreamChange = viewModel::setConfirmStartStream,
+        onConfirmStopStreamChange = viewModel::setConfirmStopStream,
+        onConfirmStartRecordChange = viewModel::setConfirmStartRecord,
+        onConfirmStopRecordChange = viewModel::setConfirmStopRecord,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun SettingsContent(
+    currentTheme: ThemeFamily,
+    onThemeSelect: (ThemeFamily) -> Unit,
+    darkMode: DarkMode,
+    onDarkModeChange: (DarkMode) -> Unit,
+    motionLevel: MotionLevel,
+    onMotionLevelChange: (MotionLevel) -> Unit,
+    dynamicColor: Boolean,
+    onDynamicColorChange: (Boolean) -> Unit,
+    haptics: Boolean,
+    onHapticsChange: (Boolean) -> Unit,
+    keepScreenOn: Boolean,
+    onKeepScreenOnChange: (Boolean) -> Unit,
+    outputSafety: OutputSafety,
+    onConfirmStartStreamChange: (Boolean) -> Unit,
+    onConfirmStopStreamChange: (Boolean) -> Unit,
+    onConfirmStartRecordChange: (Boolean) -> Unit,
+    onConfirmStopRecordChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -136,6 +185,33 @@ fun SettingsScreen(
             checked = keepScreenOn,
             onCheckedChange = onKeepScreenOnChange,
         )
+        Spacer(Modifier.height(24.dp))
+
+        SectionLabel("Output safety")
+        ToggleRow(
+            title = "Confirm before starting stream",
+            subtitle = "Ask before going live",
+            checked = outputSafety.confirmStartStream,
+            onCheckedChange = onConfirmStartStreamChange,
+        )
+        ToggleRow(
+            title = "Confirm before stopping stream",
+            subtitle = "Ask before ending the live stream",
+            checked = outputSafety.confirmStopStream,
+            onCheckedChange = onConfirmStopStreamChange,
+        )
+        ToggleRow(
+            title = "Confirm before starting recording",
+            subtitle = "Ask before recording begins",
+            checked = outputSafety.confirmStartRecord,
+            onCheckedChange = onConfirmStartRecordChange,
+        )
+        ToggleRow(
+            title = "Confirm before stopping recording",
+            subtitle = "Ask before the recording is finalized",
+            checked = outputSafety.confirmStopRecord,
+            onCheckedChange = onConfirmStopRecordChange,
+        )
         Spacer(Modifier.height(32.dp))
     }
 }
@@ -175,7 +251,7 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onCheck
 @Composable
 private fun SettingsScreenPreview() {
     SceneDeckTheme {
-        SettingsScreen(
+        SettingsContent(
             currentTheme = ThemeFamily.SCENEDECK,
             onThemeSelect = {},
             darkMode = DarkMode.SYSTEM,
@@ -188,6 +264,11 @@ private fun SettingsScreenPreview() {
             onHapticsChange = {},
             keepScreenOn = false,
             onKeepScreenOnChange = {},
+            outputSafety = OutputSafety(),
+            onConfirmStartStreamChange = {},
+            onConfirmStopStreamChange = {},
+            onConfirmStartRecordChange = {},
+            onConfirmStopRecordChange = {},
         )
     }
 }

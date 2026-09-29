@@ -32,9 +32,14 @@ data class SettingsSnapshot(
     val keepScreenOn: Boolean = false,
     val lastUsedProfileId: Long? = null,
     val onboardingCompleted: Boolean = false,
+    val confirmStartStream: Boolean = false,
+    val confirmStopStream: Boolean = true,
+    val confirmStartRecord: Boolean = false,
+    val confirmStopRecord: Boolean = true,
 )
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
+@Suppress("TooManyFunctions") // one setter per persisted key is the intended API
 class SceneDeckSettingsStore private constructor(
     private val dataStore: DataStore<Preferences>,
 ) {
@@ -51,6 +56,10 @@ class SceneDeckSettingsStore private constructor(
                 keepScreenOn = prefs[KEY_KEEP_SCREEN_ON] ?: false,
                 lastUsedProfileId = prefs[KEY_LAST_USED_PROFILE_ID],
                 onboardingCompleted = prefs[KEY_ONBOARDING_COMPLETED] ?: false,
+                confirmStartStream = prefs[KEY_CONFIRM_START_STREAM] ?: false,
+                confirmStopStream = prefs[KEY_CONFIRM_STOP_STREAM] ?: true,
+                confirmStartRecord = prefs[KEY_CONFIRM_START_RECORD] ?: false,
+                confirmStopRecord = prefs[KEY_CONFIRM_STOP_RECORD] ?: true,
             )
         }
         .distinctUntilChanged()
@@ -73,6 +82,14 @@ class SceneDeckSettingsStore private constructor(
 
     suspend fun setOnboardingCompleted(value: Boolean) = edit { it[KEY_ONBOARDING_COMPLETED] = value }
 
+    suspend fun setConfirmStartStream(value: Boolean) = edit { it[KEY_CONFIRM_START_STREAM] = value }
+
+    suspend fun setConfirmStopStream(value: Boolean) = edit { it[KEY_CONFIRM_STOP_STREAM] = value }
+
+    suspend fun setConfirmStartRecord(value: Boolean) = edit { it[KEY_CONFIRM_START_RECORD] = value }
+
+    suspend fun setConfirmStopRecord(value: Boolean) = edit { it[KEY_CONFIRM_STOP_RECORD] = value }
+
     private suspend fun edit(transform: (MutablePreferences) -> Unit) {
         dataStore.edit(transform)
     }
@@ -91,5 +108,9 @@ class SceneDeckSettingsStore private constructor(
         private val KEY_KEEP_SCREEN_ON = booleanPreferencesKey("keepScreenOn")
         private val KEY_LAST_USED_PROFILE_ID = longPreferencesKey("lastUsedProfileId")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboardingCompleted")
+        private val KEY_CONFIRM_START_STREAM = booleanPreferencesKey("confirmStartStream")
+        private val KEY_CONFIRM_STOP_STREAM = booleanPreferencesKey("confirmStopStream")
+        private val KEY_CONFIRM_START_RECORD = booleanPreferencesKey("confirmStartRecord")
+        private val KEY_CONFIRM_STOP_RECORD = booleanPreferencesKey("confirmStopRecord")
     }
 }

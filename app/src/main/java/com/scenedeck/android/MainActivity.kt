@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
             val viewModel: AppViewModel = hiltViewModel()
             val appState = rememberSceneDeckAppState(settings = viewModel.settingsRepository)
             val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+            val stripState by viewModel.stripState.collectAsStateWithLifecycle()
             val onboardingCompleted by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
 
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
                 SceneDeckApp(
                     appState = appState,
                     connectionState = connectionState,
+                    stripState = stripState,
                     onboardingCompleted = onboardingCompleted,
                     skipToConnections = skipToConnections,
                     onOnboardingSkip = {

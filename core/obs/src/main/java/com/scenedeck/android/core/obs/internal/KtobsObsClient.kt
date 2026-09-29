@@ -1,5 +1,6 @@
 package com.scenedeck.android.core.obs.internal
 
+
 import com.rejeq.ktobs.AuthError
 import com.rejeq.ktobs.EventOpCode
 import com.rejeq.ktobs.ObsAuthException
@@ -209,6 +210,7 @@ internal class KtobsObsClient(
         _connectionState.value = ConnectionState.Disconnected
     }
 
+    @Suppress("ReturnCount") // terminal-state early exits keep the state machine readable
     private suspend fun sessionLoop(host: String, port: Int, password: String?) {
         var attempt = 0
         var connected = false
@@ -221,6 +223,14 @@ internal class KtobsObsClient(
                 }
                 // Normal return: disconnect() was requested.
                 break
+            } catch (e: TimeoutCancellationException) {
+                // A timeout is NOT a job cancellation: treat it as a regular failure
+                // (Unreachable on first attempt, backoff-retry afterwards).
+                if (!connected) {
+                    _connectionState.value = ConnectionState.Failed(e.toConnectionError())
+                    connectOutcome?.complete(Unit)
+                    return
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ObsAuthException) {
@@ -312,7 +322,9 @@ internal class KtobsObsClient(
             val s = withTimeout(connectTimeoutMs) { sessionDeferred.await() }
             session = s
             // Prove the request lane and collect session info in one round-trip.
-            val version = requestSemaphore.withPermit { s.getVersion().toDomain() }
+            val version = withTimeout(connectTimeoutMs) {
+                requestSemaphore.withPermit { s.getVersion().toDomain() }
+            }
             _connectionState.value = ConnectionState.Ready(version)
             onReady()
 

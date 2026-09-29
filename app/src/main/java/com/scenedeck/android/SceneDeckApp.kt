@@ -45,8 +45,7 @@ import com.scenedeck.android.navigation.icon
 import com.scenedeck.android.navigation.label
 import com.scenedeck.android.ui.components.KeepScreenOnEffect
 import com.scenedeck.android.ui.components.StatusStrip
-import com.scenedeck.android.ui.components.TransportBar
-import com.scenedeck.android.ui.components.mockStatusStripState
+import com.scenedeck.android.ui.components.StatusStripState
 
 /**
  * App shell. First run ([onboardingCompleted] false) shows the wizard full-screen;
@@ -57,6 +56,7 @@ import com.scenedeck.android.ui.components.mockStatusStripState
 fun SceneDeckApp(
     appState: SceneDeckAppState,
     connectionState: ConnectionState,
+    stripState: StatusStripState,
     onboardingCompleted: Boolean?,
     skipToConnections: Boolean,
     onOnboardingSkip: () -> Unit,
@@ -75,6 +75,7 @@ fun SceneDeckApp(
         true -> SceneDeckShell(
             appState = appState,
             connectionState = connectionState,
+            stripState = stripState,
             startWithConnections = skipToConnections,
             modifier = modifier,
         )
@@ -86,6 +87,7 @@ fun SceneDeckApp(
 private fun SceneDeckShell(
     appState: SceneDeckAppState,
     connectionState: ConnectionState,
+    stripState: StatusStripState,
     startWithConnections: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -110,7 +112,7 @@ private fun SceneDeckShell(
             backStack = backStack,
             modifier = displayModifier,
             onBack = { backStack.removeLastOrNull() },
-            entryProvider = sceneDeckEntryProvider(appState, backStack),
+            entryProvider = sceneDeckEntryProvider(appState, backStack, ::selectTopLevel),
         )
     }
 
@@ -147,9 +149,8 @@ private fun SceneDeckShell(
                         .weight(1f)
                         .fillMaxWidth(),
                 )
-                // TODO(M3): feed the numeric fields from StatsRepository.
                 StatusStrip(
-                    state = mockStatusStripState.copy(connection = connectionState),
+                    state = stripState,
                     onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
                     animateConnection = appState.motionLevel != MotionLevel.OFF,
                 )
@@ -189,9 +190,10 @@ private fun SceneDeckShell(
 private fun sceneDeckEntryProvider(
     appState: SceneDeckAppState,
     backStack: NavBackStack<NavKey>,
+    selectTopLevel: (SceneDeckDestination) -> Unit,
 ) = entryProvider<NavKey> {
     entry<SceneDeckDestination.Live> {
-        LiveScreen(transport = { TransportBar(enabled = false) })
+        LiveScreen(onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) })
     }
     entry<SceneDeckDestination.Mixer> { MixerScreen() }
     entry<SceneDeckDestination.Stats> { StatsScreen() }
