@@ -21,18 +21,20 @@ data class SceneRegistryEntry(
     val sortOrder: Int = 0,
 )
 
-internal fun SceneRegistryEntity.toDomain() = SceneRegistryEntry(
-    sceneName = sceneName,
-    role = runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.PRIMARY),
-    accentColorArgb = accentColorArgb,
-    iconName = iconName,
-    sortOrder = sortOrder,
-)
+internal fun SceneRegistryEntity.toDomain() =
+    SceneRegistryEntry(
+        sceneName = sceneName,
+        role = runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.PRIMARY),
+        accentColorArgb = accentColorArgb,
+        iconName = iconName,
+        sortOrder = sortOrder,
+    )
 
-internal fun SceneRegistryEntry.toEntity() = SceneRegistryEntity(
-    sceneName = sceneName,
-    role = role.name,
-    accentColorArgb = accentColorArgb,
-    iconName = iconName,
-    sortOrder = sortOrder,
-)
+internal fun SceneRegistryEntry.toEntity() =
+    SceneRegistryEntity(
+        sceneName = sceneName,
+        role = role.name,
+        accentColorArgb = accentColorArgb,
+        iconName = iconName,
+        sortOrder = sortOrder,
+    )

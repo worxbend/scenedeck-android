@@ -4,8 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * A named OBS connection target. Passwords are NEVER stored here — they live in
- * Keystore-backed encrypted storage (:core:data SecretsStore).
+ * A named OBS connection target. Passwords are NEVER stored here — they live in Keystore-backed
+ * encrypted storage (:core:data SecretsStore).
  */
 @Entity(tableName = "connection_profiles")
 data class ConnectionProfileEntity(

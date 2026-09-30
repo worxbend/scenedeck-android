@@ -29,8 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class SceneCardRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun sceneCardReadyDark() {
@@ -41,9 +40,7 @@ class SceneCardRoborazziTest {
                         label = "Cam 1",
                         icon = SceneIcon.CAMERA.imageVector,
                         active = false,
-                        modifier = Modifier
-                            .width(200.dp)
-                            .padding(16.dp),
+                        modifier = Modifier.width(200.dp).padding(16.dp),
                     )
                 }
             }
@@ -60,9 +57,7 @@ class SceneCardRoborazziTest {
                         label = "Scene",
                         icon = SceneDeckIcons.Scenes,
                         active = true,
-                        modifier = Modifier
-                            .width(200.dp)
-                            .padding(16.dp),
+                        modifier = Modifier.width(200.dp).padding(16.dp),
                     )
                 }
             }
@@ -81,9 +76,7 @@ class SceneCardRoborazziTest {
                         active = false,
                         accentColor = Color(0xFF7E57C2),
                         pending = true,
-                        modifier = Modifier
-                            .width(200.dp)
-                            .padding(16.dp),
+                        modifier = Modifier.width(200.dp).padding(16.dp),
                     )
                 }
             }
@@ -100,9 +93,7 @@ class SceneCardRoborazziTest {
                         label = "Starting Soon",
                         icon = SceneIcon.STAR.imageVector,
                         active = true,
-                        modifier = Modifier
-                            .width(200.dp)
-                            .padding(16.dp),
+                        modifier = Modifier.width(200.dp).padding(16.dp),
                     )
                 }
             }
@@ -111,7 +102,8 @@ class SceneCardRoborazziTest {
     }
 
     @Test
-    fun sceneCardActiveNordDark() = captureActive(ThemeFamily.NORD, true, "scene_card_active_nord_dark.png")
+    fun sceneCardActiveNordDark() =
+        captureActive(ThemeFamily.NORD, true, "scene_card_active_nord_dark.png")
 
     @Test
     fun sceneCardActiveHighContrastDark() =
@@ -129,9 +121,7 @@ class SceneCardRoborazziTest {
                         label = "Scene",
                         icon = SceneDeckIcons.Scenes,
                         active = true,
-                        modifier = Modifier
-                            .width(200.dp)
-                            .padding(16.dp),
+                        modifier = Modifier.width(200.dp).padding(16.dp),
                     )
                 }
             }

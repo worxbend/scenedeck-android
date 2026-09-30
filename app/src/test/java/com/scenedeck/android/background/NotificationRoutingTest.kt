@@ -27,10 +27,11 @@ class NotificationRoutingTest {
 
     @Test
     fun `notification disconnect action starts the service with ACTION_DISCONNECT`() {
-        NotificationActionReceiver().onReceive(
-            app,
-            Intent(NotificationActionReceiver.ACTION_DISCONNECT),
-        )
+        NotificationActionReceiver()
+            .onReceive(
+                app,
+                Intent(NotificationActionReceiver.ACTION_DISCONNECT),
+            )
 
         val started = shadowOf(app).nextStartedService
         assertEquals(ObsSessionService::class.java.name, started.component?.className)

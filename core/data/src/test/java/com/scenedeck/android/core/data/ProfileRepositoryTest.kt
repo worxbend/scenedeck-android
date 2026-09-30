@@ -21,10 +21,12 @@ class ProfileRepositoryTest {
 
     @Before
     fun setUp() {
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
-            SceneDeckDatabase::class.java,
-        ).build()
+        database =
+            Room.inMemoryDatabaseBuilder(
+                    ApplicationProvider.getApplicationContext(),
+                    SceneDeckDatabase::class.java,
+                )
+                .build()
         repository = ProfileRepository(database.connectionProfileDao())
     }
 

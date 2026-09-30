@@ -5,7 +5,6 @@ import com.scenedeck.android.core.datastore.SettingsSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /** Typed user settings (FEATURE_SPEC §9), persisted via :core:datastore. */
@@ -37,14 +36,11 @@ data class UserSettings(
 
 @Singleton
 @Suppress("TooManyFunctions") // one setter per persisted setting is the intended API
-class SettingsRepository @Inject constructor(
-    private val store: SceneDeckSettingsStore,
-) {
+class SettingsRepository @Inject constructor(private val store: SceneDeckSettingsStore) {
     val settings: Flow<UserSettings> = store.snapshot.map { it.toUserSettings() }
 
     suspend fun update(transform: (UserSettings) -> UserSettings) {
-        val current = store.snapshot.first().toUserSettings()
-        persist(transform(current))
+        store.update { transform(it.toUserSettings()).toSnapshot() }
     }
 
     suspend fun setThemeFamily(value: String) = store.setThemeFamily(value)
@@ -83,48 +79,55 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setScenePreviewsEnabled(value: Boolean) = store.setScenePreviewsEnabled(value)
 
-    private suspend fun persist(settings: UserSettings) {
-        store.setThemeFamily(settings.themeFamily)
-        store.setDarkMode(settings.darkMode.name)
-        store.setDynamicColor(settings.dynamicColor)
-        store.setMotionLevel(settings.motionLevel)
-        store.setHaptics(settings.haptics)
-        store.setKeepScreenOn(settings.keepScreenOn)
-        store.setLastUsedProfileId(settings.lastUsedProfileId)
-        store.setOnboardingCompleted(settings.onboardingCompleted)
-        store.setConfirmStartStream(settings.confirmStartStream)
-        store.setConfirmStopStream(settings.confirmStopStream)
-        store.setConfirmStartRecord(settings.confirmStartRecord)
-        store.setConfirmStopRecord(settings.confirmStopRecord)
-        store.setAudioAllowList(settings.audioAllowList)
-        store.setLockedInputs(settings.lockedInputs)
-        store.setMixerMode(settings.mixerMode)
-        store.setMixerSelectedScene(settings.mixerSelectedScene)
-        store.setMixerGrouping(settings.mixerGrouping)
-        store.setScenePreviewsEnabled(settings.scenePreviewsEnabled)
+    suspend fun setInputLocked(inputName: String, locked: Boolean) =
+        store.setInputLocked(inputName, locked)
+
+    private fun UserSettings.toSnapshot() =
+        SettingsSnapshot(
+            themeFamily = themeFamily,
+            darkMode = darkMode.name,
+            dynamicColor = dynamicColor,
+            motionLevel = motionLevel,
+            haptics = haptics,
+            keepScreenOn = keepScreenOn,
+            lastUsedProfileId = lastUsedProfileId,
+            onboardingCompleted = onboardingCompleted,
+            confirmStartStream = confirmStartStream,
+            confirmStopStream = confirmStopStream,
+            confirmStartRecord = confirmStartRecord,
+            confirmStopRecord = confirmStopRecord,
+            audioAllowList = audioAllowList,
+            lockedInputs = lockedInputs,
+            mixerMode = mixerMode,
+            mixerSelectedScene = mixerSelectedScene,
+            mixerGrouping = mixerGrouping,
+            scenePreviewsEnabled = scenePreviewsEnabled,
+        )
+
+    private fun SettingsSnapshot.toUserSettings() =
+        UserSettings(
+            themeFamily = themeFamily,
+            darkMode = darkMode.toDarkModeOrDefault(),
+            dynamicColor = dynamicColor,
+            motionLevel = motionLevel,
+            haptics = haptics,
+            keepScreenOn = keepScreenOn,
+            lastUsedProfileId = lastUsedProfileId,
+            onboardingCompleted = onboardingCompleted,
+            confirmStartStream = confirmStartStream,
+            confirmStopStream = confirmStopStream,
+            confirmStartRecord = confirmStartRecord,
+            confirmStopRecord = confirmStopRecord,
+            audioAllowList = audioAllowList,
+            lockedInputs = lockedInputs,
+            mixerMode = mixerMode,
+            mixerSelectedScene = mixerSelectedScene,
+            mixerGrouping = mixerGrouping,
+            scenePreviewsEnabled = scenePreviewsEnabled,
+        )
+
+    private fun String.toDarkModeOrDefault(): DarkMode = runCatching {
+        DarkMode.valueOf(this)
     }
-
-    private fun SettingsSnapshot.toUserSettings() = UserSettings(
-        themeFamily = themeFamily,
-        darkMode = darkMode.toDarkModeOrDefault(),
-        dynamicColor = dynamicColor,
-        motionLevel = motionLevel,
-        haptics = haptics,
-        keepScreenOn = keepScreenOn,
-        lastUsedProfileId = lastUsedProfileId,
-        onboardingCompleted = onboardingCompleted,
-        confirmStartStream = confirmStartStream,
-        confirmStopStream = confirmStopStream,
-        confirmStartRecord = confirmStartRecord,
-        confirmStopRecord = confirmStopRecord,
-        audioAllowList = audioAllowList,
-        lockedInputs = lockedInputs,
-        mixerMode = mixerMode,
-        mixerSelectedScene = mixerSelectedScene,
-        mixerGrouping = mixerGrouping,
-        scenePreviewsEnabled = scenePreviewsEnabled,
-    )
-
-    private fun String.toDarkModeOrDefault(): DarkMode =
-        runCatching { DarkMode.valueOf(this) }.getOrDefault(DarkMode.SYSTEM)
+        .getOrDefault(DarkMode.SYSTEM)
 }

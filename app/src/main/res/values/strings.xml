@@ -2,4 +2,13 @@
 <resources>
     <string name="app_name">SceneDeck</string>
     <string name="widget_deck_description">SceneDeck mini-deck</string>
+    <string name="studio_tools">Your studio</string>
+    <string name="session_behavior">Session behavior</string>
+    <string name="session_behavior_description">Background connection and screen preferences</string>
+    <string name="inventory_description">Organize scene roles, icons and colors</string>
+    <string name="graph_description">Explore nested scene dependencies</string>
+    <string name="doctor_description">Check your setup before going live</string>
+    <string name="connections_description">Pair with OBS and manage studio profiles</string>
+    <string name="settings_description">Appearance, feedback and output safety</string>
+    <string name="help_description">Connection guide and getting started</string>
 </resources>

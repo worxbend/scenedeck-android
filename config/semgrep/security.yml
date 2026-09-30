@@ -1,0 +1,42 @@
+rules:
+  - id: insecure-tls-trust
+    languages: [kotlin]
+    severity: ERROR
+    message: Never disable TLS certificate or hostname verification.
+    pattern-either:
+      - pattern: override fun checkServerTrusted(...) {}
+      - pattern: $CLIENT.hostnameVerifier { $HOST, $SESSION -> true }
+  - id: plaintext-password-saved-state
+    languages: [generic]
+    severity: ERROR
+    message: Password drafts must not be serialized into Android saved state.
+    pattern-regex: '(?i)var\s+password\s+by\s+rememberSaveable'
+  - id: secret-logging
+    languages: [generic]
+    severity: ERROR
+    message: Never log credentials.
+    pattern-regex: '(?i)(Log\.[vdiew]|println)\([^\n]*(password|secret|authentication)'
+  - id: global-coroutine-scope
+    languages: [kotlin]
+    severity: ERROR
+    message: Use an owned coroutine scope so work is cancellable.
+    pattern: GlobalScope.$METHOD(...)
+  - id: unsafe-webview-javascript
+    languages: [kotlin]
+    severity: ERROR
+    message: Review JavaScript-enabled WebViews before adding them.
+    pattern: $SETTINGS.javaScriptEnabled = true
+  - id: weak-cryptographic-cipher
+    languages: [generic]
+    severity: ERROR
+    message: Secrets require authenticated encryption; avoid DES, RC4 and ECB.
+    pattern-regex: 'Cipher\.getInstance\("[^"]*(ECB|DES|RC4)'
+  - id: obs-collection-mutation
+    languages: [kotlin]
+    severity: ERROR
+    message: The application must not mutate the OBS scene collection.
+    pattern-either:
+      - pattern: $CLIENT.request(CreateScene(...))
+      - pattern: $CLIENT.request(RemoveScene(...))
+      - pattern: $CLIENT.request(CreateInput(...))
+      - pattern: $CLIENT.request(RemoveInput(...))

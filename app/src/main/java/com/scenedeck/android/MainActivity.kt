@@ -31,7 +31,8 @@ class MainActivity : ComponentActivity() {
             val appState = rememberSceneDeckAppState(settings = appViewModel.settingsRepository)
             val connectionState by appViewModel.connectionState.collectAsStateWithLifecycle()
             val stripState by appViewModel.stripState.collectAsStateWithLifecycle()
-            val onboardingCompleted by appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
+            val onboardingCompleted by
+                appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
 
             SceneDeckTheme(

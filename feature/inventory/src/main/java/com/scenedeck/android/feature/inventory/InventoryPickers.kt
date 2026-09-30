@@ -35,10 +35,7 @@ import com.scenedeck.android.core.designsystem.icons.imageVector
 @Composable
 internal fun AccentPickerContent(current: Long?, onPick: (Long?) -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(text = "Accent color", style = MaterialTheme.typography.titleLarge)
@@ -47,32 +44,34 @@ internal fun AccentPickerContent(current: Long?, onPick: (Long?) -> Unit) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .border(
-                        2.dp,
-                        if (current == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                        CircleShape,
-                    )
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    .clickable { onPick(null) },
+                modifier =
+                    Modifier.size(36.dp)
+                        .clip(CircleShape)
+                        .border(
+                            2.dp,
+                            if (current == null) MaterialTheme.colorScheme.primary
+                            else Color.Transparent,
+                            CircleShape,
+                        )
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .clickable { onPick(null) },
             ) {
                 Text(text = "–", style = MaterialTheme.typography.labelMedium)
             }
             SceneAccentPalette.forEach { color ->
                 val argb = argbToLong(color)
                 androidx.compose.foundation.layout.Spacer(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .border(
-                            2.dp,
-                            if (current == argb) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            CircleShape,
-                        )
-                        .clickable { onPick(argb) },
+                    modifier =
+                        Modifier.size(36.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                2.dp,
+                                if (current == argb) MaterialTheme.colorScheme.primary
+                                else Color.Transparent,
+                                CircleShape,
+                            )
+                            .clickable { onPick(argb) }
                 )
             }
         }
@@ -83,10 +82,7 @@ internal fun AccentPickerContent(current: Long?, onPick: (Long?) -> Unit) {
 @Composable
 internal fun IconPickerContent(current: String?, onPick: (String?) -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(text = "Scene icon", style = MaterialTheme.typography.titleLarge)
@@ -100,26 +96,27 @@ internal fun IconPickerContent(current: String?, onPick: (String?) -> Unit) {
                 val selected = current == icon.name || (current == null && icon == SceneIcon.SCENES)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
-                        .background(
-                            if (selected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                Color.Transparent
-                            },
-                        )
-                        .clickable { onPick(icon.name) }
-                        .padding(6.dp),
+                    modifier =
+                        Modifier.clip(MaterialTheme.shapes.medium)
+                            .background(
+                                if (selected) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    Color.Transparent
+                                }
+                            )
+                            .clickable { onPick(icon.name) }
+                            .padding(6.dp),
                 ) {
                     Icon(
                         imageVector = icon.imageVector,
                         contentDescription = icon.name,
-                        tint = if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        tint =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -132,9 +129,10 @@ internal fun IconPickerContent(current: String?, onPick: (String?) -> Unit) {
 @Composable
 internal fun DragGripDots(sceneName: String, modifier: Modifier = Modifier) {
     Canvas(
-        modifier = modifier
-            .size(width = 12.dp, height = 18.dp)
-            .semantics { contentDescription = "Drag to reorder $sceneName" },
+        modifier =
+            modifier.size(width = 12.dp, height = 18.dp).semantics {
+                contentDescription = "Drag to reorder $sceneName"
+            }
     ) {
         val radius = 1.6.dp.toPx()
         val stepX = size.width - 2 * radius

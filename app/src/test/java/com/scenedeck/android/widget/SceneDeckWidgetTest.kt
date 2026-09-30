@@ -12,10 +12,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Widget content assertions via glance-appwidget-testing. Pixel goldens are skipped:
- * neither glance-appwidget-testing 1.2.0 nor roborazzi 1.75.0 ship a Glance bitmap
- * capture path (verified 2026-09-29), so widget visuals are covered by M8b's emulator
- * screenshots instead.
+ * Widget content assertions via glance-appwidget-testing. Pixel goldens are skipped: neither
+ * glance-appwidget-testing 1.2.0 nor roborazzi 1.75.0 ship a Glance bitmap capture path (verified
+ * 2026-09-29), so widget visuals are covered by M8b's emulator screenshots instead.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -42,7 +41,7 @@ class SceneDeckWidgetTest {
                         sceneNames = listOf("Cam 1", "Screen", "Quiet B", "Scene"),
                         programScene = "Cam 1",
                         connectionLabel = "Live",
-                    ),
+                    )
                 )
             }
         }

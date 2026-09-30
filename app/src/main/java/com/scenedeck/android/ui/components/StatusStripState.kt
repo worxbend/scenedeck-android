@@ -12,11 +12,11 @@ data class StatusStripState(
 )
 
 // TODO(M3): replace the numeric fields with the live StatsRepository feed.
-val mockStatusStripState = StatusStripState(
-    connection = ConnectionState.Disconnected,
-    fps = 60.0,
-    droppedFrames = 3,
-    cpuPercent = 11.8,
-    bitrateKbps = 6000,
-)
-
+val mockStatusStripState =
+    StatusStripState(
+        connection = ConnectionState.Disconnected,
+        fps = 60.0,
+        droppedFrames = 3,
+        cpuPercent = 11.8,
+        bitrateKbps = 6000,
+    )

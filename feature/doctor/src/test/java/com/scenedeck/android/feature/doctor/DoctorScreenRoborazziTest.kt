@@ -25,40 +25,41 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class DoctorScreenRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun doctorReportDark() {
-        val state = DoctorUiState(
-            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
-            running = false,
-            ranOnce = true,
-            issues = listOf(
-                DoctorIssue(
-                    severity = DoctorSeverity.ERROR,
-                    checkId = "cycle",
-                    title = "Circular scene reference",
-                    detail = "These scenes reference each other in a loop: A → B.",
-                ),
-                DoctorIssue(
-                    severity = DoctorSeverity.WARNING,
-                    checkId = "stale-entry",
-                    title = "Stale registry entry",
-                    detail = "“Ghost” has curation metadata but no matching OBS scene.",
-                    sceneName = "Ghost",
-                    fix = DoctorFix.RemoveStaleEntry("Ghost"),
-                ),
-                DoctorIssue(
-                    severity = DoctorSeverity.INFO,
-                    checkId = "unassigned-role",
-                    title = "No role assigned",
-                    detail = "“Quiet A” has no registry entry and is treated as Primary.",
-                    sceneName = "Quiet A",
-                    fix = DoctorFix.AssignRole("Quiet A"),
-                ),
-            ),
-        )
+        val state =
+            DoctorUiState(
+                connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
+                running = false,
+                ranOnce = true,
+                issues =
+                    listOf(
+                        DoctorIssue(
+                            severity = DoctorSeverity.ERROR,
+                            checkId = "cycle",
+                            title = "Circular scene reference",
+                            detail = "These scenes reference each other in a loop: A → B.",
+                        ),
+                        DoctorIssue(
+                            severity = DoctorSeverity.WARNING,
+                            checkId = "stale-entry",
+                            title = "Stale registry entry",
+                            detail = "“Ghost” has curation metadata but no matching OBS scene.",
+                            sceneName = "Ghost",
+                            fix = DoctorFix.RemoveStaleEntry("Ghost"),
+                        ),
+                        DoctorIssue(
+                            severity = DoctorSeverity.INFO,
+                            checkId = "unassigned-role",
+                            title = "No role assigned",
+                            detail = "“Quiet A” has no registry entry and is treated as Primary.",
+                            sceneName = "Quiet A",
+                            fix = DoctorFix.AssignRole("Quiet A"),
+                        ),
+                    ),
+            )
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
                 Surface {

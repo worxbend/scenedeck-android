@@ -16,17 +16,16 @@ private val Context.backgroundDataStore by preferencesDataStore(name = "scenedec
 /** App-level background behavior flags (separate from :core user settings). */
 data class BackgroundSettings(
     /** Keep the OBS session alive via a foreground service when the app is backgrounded. */
-    val keepAliveEnabled: Boolean = false,
+    val keepAliveEnabled: Boolean = false
 )
 
-class BackgroundSettingsStore private constructor(
-    private val dataStore: DataStore<Preferences>,
-) {
+class BackgroundSettingsStore private constructor(private val dataStore: DataStore<Preferences>) {
     constructor(context: Context) : this(context.backgroundDataStore)
 
-    val settings: Flow<BackgroundSettings> = dataStore.data.map { prefs ->
-        BackgroundSettings(keepAliveEnabled = prefs[KEY_KEEP_ALIVE] ?: false)
-    }
+    val settings: Flow<BackgroundSettings> =
+        dataStore.data.map { prefs ->
+            BackgroundSettings(keepAliveEnabled = prefs[KEY_KEEP_ALIVE] ?: false)
+        }
 
     suspend fun setKeepAliveEnabled(value: Boolean) {
         dataStore.edit { it[KEY_KEEP_ALIVE] = value }

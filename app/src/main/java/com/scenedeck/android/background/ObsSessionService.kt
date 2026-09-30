@@ -1,13 +1,16 @@
 package com.scenedeck.android.background
 
-import android.app.ForegroundServiceStartNotAllowedException
+import android.Manifest
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.ProfileRepository
@@ -25,14 +28,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Keep-alive foreground service (type `dataSync`): holds the OBS session while the
- * app is backgrounded. START_STICKY — after process death the system restarts it and
- * it reconnects to the last-used profile (ObsClient's backoff loop takes it from
- * there). Stopping (toggle off, notification Disconnect, or a Disconnected state
- * after a Ready session) always disconnects the session.
+ * Keep-alive foreground service (type `dataSync`): holds the OBS session while the app is
+ * backgrounded. START_STICKY — after process death the system restarts it and it reconnects to the
+ * last-used profile (ObsClient's backoff loop takes it from there). Stopping (toggle off,
+ * notification Disconnect, or a Disconnected state after a Ready session) always disconnects the
+ * session.
  *
- * Note: Android 15 caps `dataSync` at 6 h per 24 h window; [onTimeout] shuts down
- * gracefully (disconnect + remove notification).
+ * Note: Android 15 caps `dataSync` at 6 h per 24 h window; [onTimeout] shuts down gracefully
+ * (disconnect + remove notification).
  */
 @AndroidEntryPoint
 class ObsSessionService : Service() {
@@ -43,7 +46,7 @@ class ObsSessionService : Service() {
     @Inject lateinit var profiles: ProfileRepository
 
     private val logic = SessionServiceLogic()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val stopping = AtomicBoolean(false)
 
     override fun onCreate() {
@@ -51,11 +54,15 @@ class ObsSessionService : Service() {
         SessionNotification.ensureChannel(this)
         scope.launch {
             combine(
-                sessionHolder.connectionState,
-                deck.deckState,
-            ) { connection, deckState -> connection to deckState.currentProgramScene }
+                    sessionHolder.connectionState,
+                    deck.deckState,
+                ) { connection, deckState ->
+                    connection to deckState.currentProgramScene
+                }
                 .collect { (connection, program) ->
-                    if (logic.onConnectionState(connection) == SessionServiceLogic.Effect.SHUTDOWN) {
+                    if (
+                        logic.onConnectionState(connection) == SessionServiceLogic.Effect.SHUTDOWN
+                    ) {
                         shutdown()
                     } else {
                         updateNotification(connection, program)
@@ -72,9 +79,12 @@ class ObsSessionService : Service() {
             }
 
             SessionServiceLogic.Effect.GO_FOREGROUND -> {
-                goForeground()
-                connectLastUsed()
-                START_STICKY
+                if (goForeground()) {
+                    connectLastUsed()
+                    START_STICKY
+                } else {
+                    START_NOT_STICKY
+                }
             }
 
             SessionServiceLogic.Effect.NONE -> START_STICKY
@@ -82,8 +92,13 @@ class ObsSessionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    /** dataSync 6-hour budget exhausted (API 35+): disconnect and remove ourselves. */
+    /** Short-service timeout callback (API 34+). */
     override fun onTimeout(startId: Int) {
+        shutdown()
+    }
+
+    /** dataSync 6-hour budget exhausted (API 35+): disconnect and remove ourselves. */
+    override fun onTimeout(startId: Int, fgsType: Int) {
         shutdown()
     }
 
@@ -95,46 +110,66 @@ class ObsSessionService : Service() {
     }
 
     @Suppress("SwallowedException") // best-effort: failure means "not foreground", we stopSelf
-    private fun goForeground() {
-        val notification = SessionNotification.build(
-            this,
-            sessionHolder.connectionState.value,
-            deck.deckState.value.currentProgramScene,
-        )
-        try {
+    private fun goForeground(): Boolean {
+        val notification =
+            SessionNotification.build(
+                this,
+                sessionHolder.connectionState.value,
+                deck.deckState.value.currentProgramScene,
+            )
+        return try {
             ServiceCompat.startForeground(
                 this,
                 SessionNotification.NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                } else {
+                    0
+                },
             )
-        } catch (e: ForegroundServiceStartNotAllowedException) {
+            true
+        } catch (e: IllegalStateException) {
             // Background-start restriction hit (shouldn't happen: starts are UI-driven).
             stopSelf()
+            false
         } catch (e: SecurityException) {
             stopSelf()
+            false
         }
     }
 
     private fun connectLastUsed() {
         scope.launch {
-            val connectable = when (sessionHolder.connectionState.value) {
-                is ConnectionState.Disconnected, is ConnectionState.Failed -> true
-                else -> false
-            }
+            val connectable =
+                when (sessionHolder.connectionState.value) {
+                    is ConnectionState.Disconnected,
+                    is ConnectionState.Failed -> true
+                    else -> false
+                }
             if (!connectable) return@launch
-            val profileId = settings.settings.first().lastUsedProfileId
-                ?: profiles.lastUsed()?.id
-                ?: return@launch
+            val profileId =
+                settings.settings.first().lastUsedProfileId
+                    ?: profiles.lastUsed()?.id
+                    ?: return@launch
             sessionHolder.connect(profileId)
         }
     }
 
     private fun updateNotification(state: ConnectionState, program: String?) {
         if (stopping.get()) return
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+        )
+            return
         runCatching {
             NotificationManagerCompat.from(this)
-                .notify(SessionNotification.NOTIFICATION_ID, SessionNotification.build(this, state, program))
+                .notify(
+                    SessionNotification.NOTIFICATION_ID,
+                    SessionNotification.build(this, state, program),
+                )
         }
     }
 

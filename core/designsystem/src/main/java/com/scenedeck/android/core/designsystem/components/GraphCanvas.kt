@@ -1,11 +1,11 @@
 package com.scenedeck.android.core.designsystem.components
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -41,9 +41,8 @@ data class GraphEdgeSpec(
 data class GraphLayoutNode(val name: String, val layer: Int, val row: Int)
 
 /**
- * Hand-rolled longest-path layering (no deps): relaxes layer[child] = parent+1
- * up to |V| passes, so cycle edges simply stop relaxing. Rows sort by name for
- * determinism (Roborazzi-stable).
+ * Hand-rolled longest-path layering (no deps): relaxes layer[child] = parent+1 up to |V| passes, so
+ * cycle edges simply stop relaxing. Rows sort by name for determinism (Roborazzi-stable).
  */
 fun layeredGraphLayout(
     nodeNames: List<String>,
@@ -77,8 +76,8 @@ private val LAYER_GAP = 90.dp
 private val ROW_GAP = 24.dp
 
 /**
- * Scene dependency DAG visual (docs/DESIGN_SYSTEM.md §7 / FEATURE_SPEC §7):
- * curved edges on a Canvas behind role-colored node cards. Tap a node for details.
+ * Scene dependency DAG visual (docs/DESIGN_SYSTEM.md §7 / FEATURE_SPEC §7): curved edges on a
+ * Canvas behind role-colored node cards. Tap a node for details.
  */
 @Composable
 fun GraphCanvas(
@@ -87,74 +86,48 @@ fun GraphCanvas(
     onNodeClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val layout = layeredGraphLayout(
-        nodeNames = nodes.map { it.name },
-        edges = edges.map { it.from to it.to },
-    )
+    val layout =
+        layeredGraphLayout(
+            nodeNames = nodes.map { it.name },
+            edges = edges.map { it.from to it.to },
+        )
     val maxLayer = layout.values.maxOfOrNull { it.layer } ?: 0
     val maxRow = layout.values.maxOfOrNull { it.row } ?: 0
-    val contentWidth = (maxLayer + 1) * (NODE_WIDTH + LAYER_GAP).value +
-        LAYER_GAP.value
+    val contentWidth = (maxLayer + 1) * (NODE_WIDTH + LAYER_GAP).value + LAYER_GAP.value
     val contentHeight = (maxRow + 1) * (NODE_HEIGHT + ROW_GAP).value + ROW_GAP.value
 
     Box(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .horizontalScroll(rememberScrollState())
-            .size(
-                width = max(contentWidth, 320f).dp,
-                height = max(contentHeight, 240f).dp,
-            ),
+        modifier =
+            modifier
+                .verticalScroll(rememberScrollState())
+                .horizontalScroll(rememberScrollState())
+                .size(
+                    width = max(contentWidth, 320f).dp,
+                    height = max(contentHeight, 240f).dp,
+                )
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            fun centerPx(name: String): Offset {
-                val pos = layout[name] ?: return Offset.Zero
-                return Offset(
-                    x = pos.layer * (NODE_WIDTH + LAYER_GAP).toPx() + NODE_WIDTH.toPx() / 2,
-                    y = pos.row * (NODE_HEIGHT + ROW_GAP).toPx() + NODE_HEIGHT.toPx() / 2,
-                )
-            }
-            edges.forEach { edge ->
-                val from = centerPx(edge.from)
-                val to = centerPx(edge.to)
-                if (from == Offset.Zero || to == Offset.Zero) return@forEach
-                val start = Offset(from.x + NODE_WIDTH.toPx() / 2, from.y)
-                val end = Offset(to.x - NODE_WIDTH.toPx() / 2, to.y)
-                val control = (end.x - start.x) / 2
-                val path = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(start.x, start.y)
-                    cubicTo(
-                        start.x + control, start.y,
-                        end.x - control, end.y,
-                        end.x, end.y,
-                    )
-                }
-                drawPath(
-                    path,
-                    color = edge.color,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
-                )
-                // Arrowhead dot at the target.
-                drawCircle(color = edge.color, radius = 3.dp.toPx(), center = end)
-            }
-        }
+        GraphEdges(edges, layout)
         nodes.forEach { node ->
             val pos = layout[node.name] ?: return@forEach
             Surface(
                 onClick = { onNodeClick(node.name) },
-                modifier = Modifier
-                    .offset(
-                        x = (pos.layer * (NODE_WIDTH + LAYER_GAP).value).dp,
-                        y = (pos.row * (NODE_HEIGHT + ROW_GAP).value).dp,
-                    )
-                    .size(width = NODE_WIDTH, height = NODE_HEIGHT),
+                modifier =
+                    Modifier.offset(
+                            x = (pos.layer * (NODE_WIDTH + LAYER_GAP).value).dp,
+                            y = (pos.row * (NODE_HEIGHT + ROW_GAP).value).dp,
+                        )
+                        .size(width = NODE_WIDTH, height = NODE_HEIGHT),
                 shape = MaterialTheme.shapes.medium,
                 color = node.color,
-                border = if (node.inCycle) {
-                    androidx.compose.foundation.BorderStroke(2.dp, SceneDeckTheme.colors.recording)
-                } else {
-                    null
-                },
+                border =
+                    if (node.inCycle) {
+                        androidx.compose.foundation.BorderStroke(
+                            2.dp,
+                            SceneDeckTheme.colors.recording,
+                        )
+                    } else {
+                        null
+                    },
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -170,6 +143,46 @@ fun GraphCanvas(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GraphEdges(edges: List<GraphEdgeSpec>, layout: Map<String, GraphLayoutNode>) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        fun centerPx(name: String): Offset {
+            val pos = layout[name] ?: return Offset.Zero
+            return Offset(
+                x = pos.layer * (NODE_WIDTH + LAYER_GAP).toPx() + NODE_WIDTH.toPx() / 2,
+                y = pos.row * (NODE_HEIGHT + ROW_GAP).toPx() + NODE_HEIGHT.toPx() / 2,
+            )
+        }
+        edges.forEach { edge ->
+            val from = centerPx(edge.from)
+            val to = centerPx(edge.to)
+            if (from == Offset.Zero || to == Offset.Zero) return@forEach
+            val start = Offset(from.x + NODE_WIDTH.toPx() / 2, from.y)
+            val end = Offset(to.x - NODE_WIDTH.toPx() / 2, to.y)
+            val control = (end.x - start.x) / 2
+            val path =
+                androidx.compose.ui.graphics.Path().apply {
+                    moveTo(start.x, start.y)
+                    cubicTo(
+                        start.x + control,
+                        start.y,
+                        end.x - control,
+                        end.y,
+                        end.x,
+                        end.y,
+                    )
+                }
+            drawPath(
+                path,
+                color = edge.color,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+            )
+            // Arrowhead dot at the target.
+            drawCircle(color = edge.color, radius = 3.dp.toPx(), center = end)
         }
     }
 }

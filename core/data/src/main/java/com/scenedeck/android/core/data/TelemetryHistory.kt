@@ -18,8 +18,8 @@ data class TelemetrySample(
 )
 
 /**
- * Maps one [Telemetry] snapshot into a [TelemetrySample]; per-sample skipped/missed
- * frame counts come from consecutive counter deltas (first sample = 0 deltas).
+ * Maps one [Telemetry] snapshot into a [TelemetrySample]; per-sample skipped/missed frame counts
+ * come from consecutive counter deltas (first sample = 0 deltas).
  */
 fun Telemetry.toSample(previous: TelemetrySample?): TelemetrySample {
     val currentStats = stats
@@ -29,32 +29,37 @@ fun Telemetry.toSample(previous: TelemetrySample?): TelemetrySample {
     return TelemetrySample(
         fps = currentStats?.activeFps?.toFloat() ?: 0f,
         renderTimeMs = currentStats?.averageFrameRenderTimeMs?.toFloat() ?: 0f,
-        droppedPct = if (streamTotal > 0) {
-            (stream?.skippedFrames ?: 0) * 100f / streamTotal
-        } else {
-            0f
-        },
+        droppedPct =
+            if (streamTotal > 0) {
+                (stream?.skippedFrames ?: 0) * 100f / streamTotal
+            } else {
+                0f
+            },
         congestionPct = ((stream?.congestion ?: 0.0) * 100).toFloat(),
         bitrateKbps = bitrateKbps,
-        renderSkippedDelta = (renderTotal - (previous?.renderSkippedTotal ?: renderTotal))
-            .coerceAtLeast(0),
-        outputSkippedDelta = (outputTotal - (previous?.outputSkippedTotal ?: outputTotal))
-            .coerceAtLeast(0),
+        renderSkippedDelta =
+            (renderTotal - (previous?.renderSkippedTotal ?: renderTotal)).coerceAtLeast(0),
+        outputSkippedDelta =
+            (outputTotal - (previous?.outputSkippedTotal ?: outputTotal)).coerceAtLeast(0),
         renderSkippedTotal = renderTotal,
         outputSkippedTotal = outputTotal,
     )
 }
 
 /**
- * Rolling 2-minute window of 1 Hz samples (docs/FEATURE_SPEC.md §5). Owned by
- * [StatsRepository] so the window covers the entire connection session, not just
- * the time a page is subscribed.
+ * Rolling 2-minute window of 1 Hz samples (docs/FEATURE_SPEC.md §5). Owned by [StatsRepository] so
+ * the window covers the entire connection session, not just the time a page is subscribed.
  */
 class TelemetryHistory(val capacity: Int = DEFAULT_CAPACITY) {
 
+    init {
+        require(capacity > 0) { "Telemetry history capacity must be positive" }
+    }
+
     private val deque = ArrayDeque<TelemetrySample>(capacity)
 
-    val size: Int get() = deque.size
+    val size: Int
+        get() = deque.size
 
     fun add(sample: TelemetrySample) {
         while (deque.size >= capacity) deque.removeFirst()

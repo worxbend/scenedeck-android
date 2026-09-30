@@ -12,10 +12,13 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.designsystem.components.MeterLevelsHolder
 import com.scenedeck.android.core.designsystem.components.MixerStrip
+import com.scenedeck.android.core.designsystem.components.dbToMul
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
+import com.scenedeck.android.core.model.ChannelLevels
 import com.scenedeck.android.core.model.MixerScope
+import com.scenedeck.android.core.model.VolumeMeterReading
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,8 +32,24 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class MixerStripRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
+
+    private fun liveMeter(): MeterLevelsHolder {
+        val holder = MeterLevelsHolder()
+        holder.reading.value =
+            VolumeMeterReading(
+                inputName = "Test Tone 440",
+                channels =
+                    listOf(-9f, -12f).map { db ->
+                        ChannelLevels(
+                            magnitudeMul = dbToMul(db),
+                            peakMul = dbToMul(db + 2f),
+                            inputPeakMul = dbToMul(db + 2f),
+                        )
+                    },
+            )
+        return holder
+    }
 
     private fun capture(
         family: ThemeFamily,
@@ -48,17 +67,14 @@ class MixerStripRoborazziTest {
                         volumeMul = 0.7,
                         muted = muted,
                         locked = locked,
-                        meterHolder = MeterLevelsHolder(),
+                        meterHolder = liveMeter(),
                         motionLevel = MotionLevel.OFF,
                         hapticsEnabled = false,
                         onVolumePreview = {},
                         onVolumeCommit = {},
                         onToggleMute = {},
                         onToggleLock = {},
-                        modifier = Modifier
-                            .width(200.dp)
-                            .height(420.dp)
-                            .padding(8.dp),
+                        modifier = Modifier.width(200.dp).height(420.dp).padding(8.dp),
                     )
                 }
             }
@@ -67,25 +83,26 @@ class MixerStripRoborazziTest {
     }
 
     @Test
-    fun stripSceneDeckDark() = capture(ThemeFamily.SCENEDECK, true, "mixer_strip_scenedeck_dark.png")
+    fun stripSceneDeckDark() =
+        capture(ThemeFamily.SCENEDECK, true, "mixer_strip_scenedeck_dark.png")
 
     @Test
     fun stripLockedShowsLockGlyph() =
         capture(ThemeFamily.SCENEDECK, true, "mixer_strip_locked_dark.png", locked = true)
 
     @Test
-    fun stripMutedDark() = capture(ThemeFamily.SCENEDECK, true, "mixer_strip_muted_dark.png", muted = true)
+    fun stripMutedDark() =
+        capture(ThemeFamily.SCENEDECK, true, "mixer_strip_muted_dark.png", muted = true)
 
-    @Test
-    fun stripObsDark() = capture(ThemeFamily.OBS, true, "mixer_strip_obs_dark.png")
+    @Test fun stripObsDark() = capture(ThemeFamily.OBS, true, "mixer_strip_obs_dark.png")
 
-    @Test
-    fun stripNordDark() = capture(ThemeFamily.NORD, true, "mixer_strip_nord_dark.png")
+    @Test fun stripNordDark() = capture(ThemeFamily.NORD, true, "mixer_strip_nord_dark.png")
 
     @Test
     fun stripHighContrastDark() =
         capture(ThemeFamily.HIGH_CONTRAST, true, "mixer_strip_high_contrast_dark.png")
 
     @Test
-    fun stripSceneDeckLight() = capture(ThemeFamily.SCENEDECK, false, "mixer_strip_scenedeck_light.png")
+    fun stripSceneDeckLight() =
+        capture(ThemeFamily.SCENEDECK, false, "mixer_strip_scenedeck_light.png")
 }

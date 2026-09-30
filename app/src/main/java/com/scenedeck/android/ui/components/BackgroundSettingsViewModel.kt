@@ -12,12 +12,16 @@ import kotlinx.coroutines.launch
 
 /** App-level background behavior (keep-alive foreground service). */
 @HiltViewModel
-class BackgroundSettingsViewModel @Inject constructor(
-    private val keepAliveController: KeepAliveController,
-) : ViewModel() {
+class BackgroundSettingsViewModel
+@Inject
+constructor(private val keepAliveController: KeepAliveController) : ViewModel() {
 
-    val keepAlive: StateFlow<Boolean> = keepAliveController.keepAliveEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val keepAlive: StateFlow<Boolean> =
+        keepAliveController.keepAliveEnabled.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            false,
+        )
 
     fun setKeepAlive(enabled: Boolean) {
         viewModelScope.launch { keepAliveController.setEnabled(enabled) }

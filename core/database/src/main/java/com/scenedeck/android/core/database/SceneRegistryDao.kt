@@ -14,11 +14,9 @@ interface SceneRegistryDao {
     @Query("SELECT * FROM scene_registry WHERE sceneName = :sceneName")
     suspend fun byName(sceneName: String): SceneRegistryEntity?
 
-    @Upsert
-    suspend fun upsert(entity: SceneRegistryEntity)
+    @Upsert suspend fun upsert(entity: SceneRegistryEntity)
 
-    @Upsert
-    suspend fun upsertAll(entities: List<SceneRegistryEntity>)
+    @Upsert suspend fun upsertAll(entities: List<SceneRegistryEntity>)
 
     /** Deletes entries whose scene no longer exists in OBS. */
     @Query("DELETE FROM scene_registry WHERE sceneName NOT IN (:validSceneNames)")

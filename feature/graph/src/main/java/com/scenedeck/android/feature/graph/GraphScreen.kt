@@ -17,10 +17,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +30,8 @@ import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholde
 import com.scenedeck.android.core.designsystem.components.GraphCanvas
 import com.scenedeck.android.core.designsystem.components.GraphEdgeSpec
 import com.scenedeck.android.core.designsystem.components.GraphNodeSpec
+import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 
@@ -45,20 +46,22 @@ fun GraphScreen(
     val selectedNode by viewModel.selectedNode.collectAsStateWithLifecycle()
 
     when (val connection = uiState.connection) {
-        is ConnectionState.Ready -> GraphContent(
-            graph = uiState.graph,
-            selectedNode = selectedNode,
-            onNodeClick = viewModel::selectNode,
-            onDismissDetail = { viewModel.selectNode(null) },
-            parentsOf = viewModel::parentsOf,
-            childrenOf = viewModel::childrenOf,
-            modifier = modifier,
-        )
+        is ConnectionState.Ready ->
+            GraphContent(
+                graph = uiState.graph,
+                selectedNode = selectedNode,
+                onNodeClick = viewModel::selectNode,
+                onDismissDetail = { viewModel.selectNode(null) },
+                parentsOf = viewModel::parentsOf,
+                childrenOf = viewModel::childrenOf,
+                modifier = modifier,
+            )
 
-        else -> DisconnectedPlaceholder(
-            connectionState = connection,
-            onConnect = onNavigateToConnections,
-        )
+        else ->
+            DisconnectedPlaceholder(
+                connectionState = connection,
+                onConnect = onNavigateToConnections,
+            )
     }
 }
 
@@ -73,24 +76,9 @@ internal fun GraphContent(
     childrenOf: (String) -> List<String>,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-    ) {
-        Spacer(Modifier.height(32.dp))
-        Text(
-            text = "Scene graph",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Scene-source dependencies colored by role rules. Tap a node for details.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Column(modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
+        Spacer(Modifier.height(16.dp))
+        StudioPageHeader("Scene graph", "Explore scene-source dependencies", SceneDeckIcons.Graph)
         Spacer(Modifier.height(16.dp))
 
         if (graph == null || graph.nodes.isEmpty()) {
@@ -103,29 +91,31 @@ internal fun GraphContent(
             val colors = SceneDeckTheme.colors
             val outline = MaterialTheme.colorScheme.outlineVariant
             GraphCanvas(
-                nodes = graph.nodes.map { node ->
-                    GraphNodeSpec(
-                        name = node.name,
-                        color = roleColor(node.role, colors),
-                        isStale = node.isStale,
-                        inCycle = node.name in graph.cycleMembers,
-                    )
-                },
-                edges = graph.edges.map { edge ->
-                    GraphEdgeSpec(
-                        from = edge.from,
-                        to = edge.to,
-                        color = when (edge.verdict) {
-                            EdgeVerdict.OK -> outline
-                            EdgeVerdict.SUSPICIOUS -> colors.warning
-                            EdgeVerdict.FORBIDDEN -> colors.recording
-                        },
-                    )
-                },
+                nodes =
+                    graph.nodes.map { node ->
+                        GraphNodeSpec(
+                            name = node.name,
+                            color = roleColor(node.role, colors),
+                            isStale = node.isStale,
+                            inCycle = node.name in graph.cycleMembers,
+                        )
+                    },
+                edges =
+                    graph.edges.map { edge ->
+                        GraphEdgeSpec(
+                            from = edge.from,
+                            to = edge.to,
+                            color =
+                                when (edge.verdict) {
+                                    EdgeVerdict.OK -> outline
+                                    EdgeVerdict.SUSPICIOUS -> colors.warning
+                                    EdgeVerdict.FORBIDDEN -> colors.recording
+                                },
+                        )
+                    },
                 onNodeClick = onNodeClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
+                modifier =
+                    Modifier.fillMaxWidth().semantics {
                         contentDescription =
                             "Scene dependency graph, ${graph.nodes.size} scenes, " +
                                 "${graph.edges.size} connections. Double-tap a node for details."
@@ -138,25 +128,26 @@ internal fun GraphContent(
         ModalBottomSheet(onDismissRequest = onDismissDetail) {
             val node = graph?.nodes?.firstOrNull { it.name == selectedNode }
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
+                modifier =
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(text = selectedNode, style = MaterialTheme.typography.titleLarge)
                 Text(
-                    text = "Role: ${node?.role ?: SceneRole.PRIMARY}" +
-                        if (node?.isStale == true) " · stale" else "",
+                    text =
+                        "Role: ${node?.role ?: SceneRole.PRIMARY}" +
+                            if (node?.isStale == true) " · stale" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "Depends on: ${childrenOf(selectedNode).ifEmpty { listOf("—") }.joinToString()}",
+                    text =
+                        "Depends on: ${childrenOf(selectedNode).ifEmpty { listOf("—") }.joinToString()}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    text = "Referenced by: ${parentsOf(selectedNode).ifEmpty { listOf("—") }.joinToString()}",
+                    text =
+                        "Referenced by: ${parentsOf(selectedNode).ifEmpty { listOf("—") }.joinToString()}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Row {
@@ -168,7 +159,10 @@ internal fun GraphContent(
     }
 }
 
-private fun roleColor(role: SceneRole, colors: com.scenedeck.android.core.designsystem.theme.SceneDeckColors): Color =
+private fun roleColor(
+    role: SceneRole,
+    colors: com.scenedeck.android.core.designsystem.theme.SceneDeckColors,
+): Color =
     when (role) {
         SceneRole.PRIMARY -> colors.program
         SceneRole.SECONDARY -> colors.ready
@@ -177,3 +171,20 @@ private fun roleColor(role: SceneRole, colors: com.scenedeck.android.core.design
         SceneRole.DEBUG -> colors.warning
         SceneRole.ARCHIVE -> colors.idle.copy(alpha = 0.5f)
     }
+
+@androidx.compose.ui.tooling.preview.PreviewLightDark
+@Composable
+private fun GraphEmptyPreview() {
+    SceneDeckTheme {
+        androidx.compose.material3.Surface {
+            GraphContent(
+                graph = null,
+                selectedNode = null,
+                onNodeClick = {},
+                onDismissDetail = {},
+                parentsOf = { emptyList() },
+                childrenOf = { emptyList() },
+            )
+        }
+    }
+}

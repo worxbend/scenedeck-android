@@ -11,10 +11,9 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
 /**
- * Widget scene tap → SetCurrentProgramScene. Extracts the scene name and delegates
- * to [SceneSwitcher], which connects to the last-used profile first when the
- * session is down — this also covers the cold-process case (the system starts the
- * app process to deliver this callback).
+ * Widget scene tap → SetCurrentProgramScene. Extracts the scene name and delegates to
+ * [SceneSwitcher], which connects to the last-used profile first when the session is down — this
+ * also covers the cold-process case (the system starts the app process to deliver this callback).
  */
 class SetSceneAction : ActionCallback {
 
@@ -24,9 +23,9 @@ class SetSceneAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val sceneName = parameters[SceneDeckWidgetKeys.sceneNameParam] ?: return
-        val switcher = EntryPointAccessors
-            .fromApplication(context, WidgetEntryPoint::class.java)
-            .sceneSwitcher()
+        val switcher =
+            EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
+                .sceneSwitcher()
         switcher.switchTo(sceneName)
         // Recompose immediately; the DeckState push follows via the updater.
         SceneDeckWidget().update(context, glanceId)

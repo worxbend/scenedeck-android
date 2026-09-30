@@ -1,23 +1,24 @@
 package com.scenedeck.android.feature.live
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DeckState
-import com.scenedeck.android.core.data.ObsStateRepository
-import android.graphics.Bitmap
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.MixerState
-import com.scenedeck.android.core.data.ScreenshotRepository
+import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.data.OutputSafetyGate
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.ScreenshotRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
-import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsRequestFailedException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,8 +47,10 @@ enum class TransportConfirmation {
 }
 
 @HiltViewModel
-@Suppress("TooManyFunctions") // deck + transport + embedded mixer surface
-class LiveViewModel @Inject constructor(
+@Suppress("TooManyFunctions") // deck + transport + legacy mixer callbacks
+class LiveViewModel
+@Inject
+constructor(
     private val obsState: ObsStateRepository,
     private val settings: SettingsRepository,
     private val client: ObsClient,
@@ -68,32 +71,38 @@ class LiveViewModel @Inject constructor(
     val deckState: StateFlow<DeckState> = obsState.deckState
     val telemetry: StateFlow<Telemetry> = stats.telemetry
 
-    val outputSafety: StateFlow<OutputSafety> = settings.settings
-        .map {
-            OutputSafety(
-                confirmStartStream = it.confirmStartStream,
-                confirmStopStream = it.confirmStopStream,
-                confirmStartRecord = it.confirmStartRecord,
-                confirmStopRecord = it.confirmStopRecord,
-            )
-        }
-        // Eagerly: this value gates transport actions via .value — the UI never
-        // subscribes to it, so WhileSubscribed would keep it at the default forever.
-        .stateIn(viewModelScope, SharingStarted.Eagerly, OutputSafety())
+    val outputSafety: StateFlow<OutputSafety> =
+        settings.settings
+            .map {
+                OutputSafety(
+                    confirmStartStream = it.confirmStartStream,
+                    confirmStopStream = it.confirmStopStream,
+                    confirmStartRecord = it.confirmStartRecord,
+                    confirmStopRecord = it.confirmStopRecord,
+                )
+            }
+            // Eagerly: this value gates transport actions via .value — the UI never
+            // subscribes to it, so WhileSubscribed would keep it at the default forever.
+            .stateIn(viewModelScope, SharingStarted.Eagerly, OutputSafety())
 
-    val hapticsEnabled: StateFlow<Boolean> = settings.settings
-        .map { it.haptics }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val hapticsEnabled: StateFlow<Boolean> =
+        settings.settings
+            .map { it.haptics }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     /** "Scene previews" setting (default ON): gate for the screenshot pipeline. */
-    val previewsEnabled: StateFlow<Boolean> = settings.settings
-        .map { it.scenePreviewsEnabled }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val previewsEnabled: StateFlow<Boolean> =
+        settings.settings
+            .map { it.scenePreviewsEnabled }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    val motionLevel: StateFlow<MotionLevel> = settings.settings
-        .map { runCatching { MotionLevel.valueOf(it.motionLevel) }.getOrDefault(MotionLevel.FULL) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
-
+    val motionLevel: StateFlow<MotionLevel> =
+        settings.settings
+            .map {
+                coroutineResult { MotionLevel.valueOf(it.motionLevel) }
+                    .getOrDefault(MotionLevel.FULL)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
 
     /** Scene whose switch is taking > ~300 ms (per-card pending spinner). */
     private val _pendingScene = MutableStateFlow<String?>(null)
@@ -116,7 +125,7 @@ class LiveViewModel @Inject constructor(
         if (deckState.value.studioMode) {
             if (deckState.value.previewScene == sceneName) return
             viewModelScope.launch {
-                runCatching { obsState.setCurrentPreviewScene(sceneName) }
+                coroutineResult { obsState.setCurrentPreviewScene(sceneName) }
                     .onFailure { _errors.tryEmit("Couldn't preview $sceneName") }
             }
             return
@@ -128,18 +137,26 @@ class LiveViewModel @Inject constructor(
                 delay(PENDING_SPINNER_DELAY_MS)
                 _pendingScene.value = sceneName
             }
-            runCatching { obsState.setCurrentProgramScene(sceneName) }
-                .onFailure { _errors.tryEmit("Couldn't switch to $sceneName") }
-            // LAN is fast: wait for the change event, then hide the spinner.
-            withTimeoutOrNull(PENDING_TIMEOUT_MS) {
-                deckState.first { it.currentProgramScene == sceneName }
+            try {
+                coroutineResult { obsState.setCurrentProgramScene(sceneName) }
+                    .onFailure { _errors.tryEmit("Couldn't switch to $sceneName") }
+                // LAN is fast: wait for the change event, then hide the spinner.
+                withTimeoutOrNull(PENDING_TIMEOUT_MS) {
+                    deckState.first { it.currentProgramScene == sceneName }
+                }
+            } finally {
+                showSpinner.cancel()
+                if (_pendingScene.value == sceneName) _pendingScene.value = null
             }
-            showSpinner.cancel()
-            _pendingScene.value = null
         }
     }
 
-    fun saveSceneMeta(sceneName: String, primary: Boolean, accentColorArgb: Long?, iconName: String?) {
+    fun saveSceneMeta(
+        sceneName: String,
+        primary: Boolean,
+        accentColorArgb: Long?,
+        iconName: String?,
+    ) {
         viewModelScope.launch {
             obsState.updateSceneMeta(
                 sceneName = sceneName,
@@ -158,37 +175,45 @@ class LiveViewModel @Inject constructor(
     private val _sceneItemsVersion = MutableStateFlow(0)
     val sceneItemsVersion: StateFlow<Int> = _sceneItemsVersion.asStateFlow()
 
-    suspend fun loadSceneItems(sceneName: String): List<com.scenedeck.android.core.model.SceneItemInfo> =
-        runCatching { obsState.getSceneItemList(sceneName) }.getOrDefault(emptyList())
+    suspend fun loadSceneItems(
+        sceneName: String
+    ): List<com.scenedeck.android.core.model.SceneItemInfo> = coroutineResult {
+        obsState.getSceneItemList(sceneName)
+    }
+        .getOrDefault(emptyList())
 
     fun toggleSceneItem(sceneName: String, itemId: Int, enabled: Boolean) {
         viewModelScope.launch {
-            runCatching { obsState.setSceneItemEnabled(sceneName, itemId, enabled) }
+            coroutineResult { obsState.setSceneItemEnabled(sceneName, itemId, enabled) }
                 .onFailure { _errors.tryEmit("Couldn't toggle scene source") }
         }
     }
 
     fun toggleVirtualCam() {
         viewModelScope.launch {
-            runCatching { obsState.toggleVirtualCam() }
+            coroutineResult { obsState.toggleVirtualCam() }
                 .onFailure { _errors.tryEmit("Couldn't toggle virtual cam") }
         }
     }
 
     fun toggleReplayBuffer() {
         viewModelScope.launch {
-            runCatching { obsState.toggleReplayBuffer() }
-                .onFailure { _errors.tryEmit(replayErrorMessage(it, "Couldn't toggle replay buffer")) }
+            coroutineResult { obsState.toggleReplayBuffer() }
+                .onFailure {
+                    _errors.tryEmit(replayErrorMessage(it, "Couldn't toggle replay buffer"))
+                }
         }
     }
 
     fun saveReplayBuffer() {
         viewModelScope.launch {
-            runCatching {
+            coroutineResult {
                 obsState.saveReplayBuffer()
                 obsState.getLastReplayBufferReplay()
             }
-                .onSuccess { path -> _errors.tryEmit("Replay saved: ${path.substringAfterLast('/')}") }
+                .onSuccess { path ->
+                    _errors.tryEmit("Replay saved: ${path.substringAfterLast('/')}")
+                }
                 .onFailure { _errors.tryEmit(replayErrorMessage(it, "Couldn't save replay")) }
         }
     }
@@ -205,6 +230,15 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
     }
 
+    /** Embedded-mixer fader: local preview while dragging, OBS write on commit. */
+    fun previewMixerVolume(inputName: String, volumeMul: Double) {
+        mixerRepository.previewInputVolume(inputName, volumeMul)
+    }
+
+    fun commitMixerVolume(inputName: String, volumeMul: Double) {
+        viewModelScope.launch { mixerRepository.setInputVolume(inputName, volumeMul) }
+    }
+
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
 
     fun togglePreviews(enabled: Boolean) {
@@ -213,7 +247,7 @@ class LiveViewModel @Inject constructor(
 
     fun toggleStudioMode(enabled: Boolean) {
         viewModelScope.launch {
-            runCatching { obsState.setStudioModeEnabled(enabled) }
+            coroutineResult { obsState.setStudioModeEnabled(enabled) }
                 .onFailure { _errors.tryEmit("Couldn't toggle studio mode") }
         }
     }
@@ -221,7 +255,7 @@ class LiveViewModel @Inject constructor(
     /** TRANSITION: commits preview → program with the current transition. */
     fun onTransitionClick() {
         viewModelScope.launch {
-            runCatching { obsState.triggerStudioModeTransition() }
+            coroutineResult { obsState.triggerStudioModeTransition() }
                 .onFailure { _errors.tryEmit("Transition failed") }
         }
     }
@@ -230,14 +264,14 @@ class LiveViewModel @Inject constructor(
     fun onCutClick() {
         val preview = deckState.value.previewScene ?: return
         viewModelScope.launch {
-            runCatching { obsState.setCurrentProgramScene(preview) }
+            coroutineResult { obsState.setCurrentProgramScene(preview) }
                 .onFailure { _errors.tryEmit("Couldn't cut to $preview") }
         }
     }
 
     fun selectTransition(transitionName: String) {
         viewModelScope.launch {
-            runCatching { obsState.setCurrentSceneTransition(transitionName) }
+            coroutineResult { obsState.setCurrentSceneTransition(transitionName) }
                 .onFailure { _errors.tryEmit("Couldn't set transition") }
         }
     }
@@ -249,7 +283,7 @@ class LiveViewModel @Inject constructor(
         durationJob?.cancel()
         durationJob = viewModelScope.launch {
             delay(DURATION_DEBOUNCE_MS)
-            runCatching { obsState.setCurrentSceneTransitionDuration(durationMs) }
+            coroutineResult { obsState.setCurrentSceneTransitionDuration(durationMs) }
                 .onFailure { _errors.tryEmit("Couldn't set transition duration") }
         }
     }
@@ -266,7 +300,8 @@ class LiveViewModel @Inject constructor(
             OutputAction.PERFORM -> toggleStream(active)
             OutputAction.REQUIRE_CONFIRMATION ->
                 _confirmation.value =
-                    if (active) TransportConfirmation.STOP_STREAM else TransportConfirmation.START_STREAM
+                    if (active) TransportConfirmation.STOP_STREAM
+                    else TransportConfirmation.START_STREAM
         }
     }
 
@@ -276,7 +311,8 @@ class LiveViewModel @Inject constructor(
             OutputAction.PERFORM -> toggleRecord(active)
             OutputAction.REQUIRE_CONFIRMATION ->
                 _confirmation.value =
-                    if (active) TransportConfirmation.STOP_RECORD else TransportConfirmation.START_RECORD
+                    if (active) TransportConfirmation.STOP_RECORD
+                    else TransportConfirmation.START_RECORD
         }
     }
 
@@ -297,28 +333,31 @@ class LiveViewModel @Inject constructor(
 
     private fun toggleStream(active: Boolean) {
         viewModelScope.launch {
-            runCatching { if (active) client.stopStream() else client.startStream() }
+            coroutineResult { if (active) client.stopStream() else client.startStream() }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("stream")) }
         }
     }
 
     private fun toggleRecord(active: Boolean) {
         viewModelScope.launch {
-            runCatching { if (active) client.stopRecord() else client.startRecord() }
+            coroutineResult { if (active) client.stopRecord() else client.startRecord() }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("recording")) }
         }
     }
 
-    private fun Throwable.toTransportMessage(what: String): String = when (this) {
-        is ObsRequestFailedException -> "OBS refused to control the $what: ${message ?: statusCode}"
-        else -> "Couldn't control the $what: ${message ?: "connection error"}"
-    }
+    private fun Throwable.toTransportMessage(what: String): String =
+        when (this) {
+            is ObsRequestFailedException ->
+                "OBS refused to control the $what: ${message ?: statusCode}"
+            else -> "Couldn't control the $what: ${message ?: "connection error"}"
+        }
 
     init {
-        viewModelScope.launch { client.volumeMeters.collect { mixerLevels.update(it) } }
         viewModelScope.launch {
             client.events.collect { event ->
-                if (event is com.scenedeck.android.core.model.ObsEvent.SceneItemEnableStateChanged) {
+                if (
+                    event is com.scenedeck.android.core.model.ObsEvent.SceneItemEnableStateChanged
+                ) {
                     _sceneItemsVersion.value += 1
                 }
             }

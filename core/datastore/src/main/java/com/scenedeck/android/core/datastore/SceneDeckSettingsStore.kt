@@ -3,10 +3,10 @@ package com.scenedeck.android.core.datastore
 import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -21,8 +21,8 @@ import kotlinx.coroutines.flow.map
 private val Context.settingsDataStore by preferencesDataStore(name = "scenedeck_settings")
 
 /**
- * Persisted user settings snapshot. Enum-like values are stored as names
- * (themeFamily/motionLevel map to :core:designsystem enums in :app).
+ * Persisted user settings snapshot. Enum-like values are stored as names (themeFamily/motionLevel
+ * map to :core:designsystem enums in :app).
  */
 data class SettingsSnapshot(
     val themeFamily: String = "SCENEDECK",
@@ -52,35 +52,68 @@ data class SettingsSnapshot(
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
 @Suppress("TooManyFunctions") // one setter per persisted key is the intended API
-class SceneDeckSettingsStore private constructor(
-    private val dataStore: DataStore<Preferences>,
-) {
+class SceneDeckSettingsStore private constructor(private val dataStore: DataStore<Preferences>) {
     constructor(context: Context) : this(context.settingsDataStore)
 
-    val snapshot: Flow<SettingsSnapshot> = dataStore.data
-        .map { prefs ->
-            SettingsSnapshot(
-                themeFamily = prefs[KEY_THEME_FAMILY] ?: "SCENEDECK",
-                darkMode = prefs[KEY_DARK_MODE] ?: "SYSTEM",
-                dynamicColor = prefs[KEY_DYNAMIC_COLOR] ?: false,
-                motionLevel = prefs[KEY_MOTION_LEVEL] ?: "FULL",
-                haptics = prefs[KEY_HAPTICS] ?: true,
-                keepScreenOn = prefs[KEY_KEEP_SCREEN_ON] ?: false,
-                lastUsedProfileId = prefs[KEY_LAST_USED_PROFILE_ID],
-                onboardingCompleted = prefs[KEY_ONBOARDING_COMPLETED] ?: false,
-                confirmStartStream = prefs[KEY_CONFIRM_START_STREAM] ?: false,
-                confirmStopStream = prefs[KEY_CONFIRM_STOP_STREAM] ?: true,
-                confirmStartRecord = prefs[KEY_CONFIRM_START_RECORD] ?: false,
-                confirmStopRecord = prefs[KEY_CONFIRM_STOP_RECORD] ?: true,
-                audioAllowList = prefs[KEY_AUDIO_ALLOW_LIST] ?: emptySet(),
-                lockedInputs = prefs[KEY_LOCKED_INPUTS] ?: emptySet(),
-                mixerMode = prefs[KEY_MIXER_MODE] ?: "ACTIVE",
-                mixerSelectedScene = prefs[KEY_MIXER_SELECTED_SCENE],
-                mixerGrouping = prefs[KEY_MIXER_GROUPING] ?: "SCOPE",
-                scenePreviewsEnabled = prefs[KEY_SCENE_PREVIEWS_ENABLED] ?: true,
-            )
-        }
-        .distinctUntilChanged()
+    val snapshot: Flow<SettingsSnapshot> =
+        dataStore.data.map { it.toSnapshot() }.distinctUntilChanged()
+
+    /** Applies read/modify/write as one DataStore transaction, preserving concurrent edits. */
+    suspend fun update(transform: (SettingsSnapshot) -> SettingsSnapshot) = edit { prefs ->
+        val updated = transform(prefs.toSnapshot())
+        prefs[KEY_THEME_FAMILY] = updated.themeFamily
+        prefs[KEY_DARK_MODE] = updated.darkMode
+        prefs[KEY_DYNAMIC_COLOR] = updated.dynamicColor
+        prefs[KEY_MOTION_LEVEL] = updated.motionLevel
+        prefs[KEY_HAPTICS] = updated.haptics
+        prefs[KEY_KEEP_SCREEN_ON] = updated.keepScreenOn
+        prefs[KEY_ONBOARDING_COMPLETED] = updated.onboardingCompleted
+        prefs[KEY_CONFIRM_START_STREAM] = updated.confirmStartStream
+        prefs[KEY_CONFIRM_STOP_STREAM] = updated.confirmStopStream
+        prefs[KEY_CONFIRM_START_RECORD] = updated.confirmStartRecord
+        prefs[KEY_CONFIRM_STOP_RECORD] = updated.confirmStopRecord
+        prefs[KEY_AUDIO_ALLOW_LIST] = updated.audioAllowList
+        prefs[KEY_LOCKED_INPUTS] = updated.lockedInputs
+        prefs[KEY_MIXER_MODE] = updated.mixerMode
+        prefs[KEY_MIXER_GROUPING] = updated.mixerGrouping
+        prefs[KEY_SCENE_PREVIEWS_ENABLED] = updated.scenePreviewsEnabled
+        val profileId = updated.lastUsedProfileId
+        if (profileId == null) prefs.remove(KEY_LAST_USED_PROFILE_ID)
+        else prefs[KEY_LAST_USED_PROFILE_ID] = profileId
+        val scene = updated.mixerSelectedScene
+        if (scene == null) prefs.remove(KEY_MIXER_SELECTED_SCENE)
+        else prefs[KEY_MIXER_SELECTED_SCENE] = scene
+    }
+
+    suspend fun setInputLocked(inputName: String, locked: Boolean) = edit { prefs ->
+        val current = prefs[KEY_LOCKED_INPUTS].orEmpty()
+        prefs[KEY_LOCKED_INPUTS] = if (locked) current + inputName else current - inputName
+    }
+
+    private fun Preferences.toSnapshot(): SettingsSnapshot =
+        SettingsSnapshot(
+            themeFamily = valueOrDefault(KEY_THEME_FAMILY, "SCENEDECK"),
+            darkMode = valueOrDefault(KEY_DARK_MODE, "SYSTEM"),
+            dynamicColor = valueOrDefault(KEY_DYNAMIC_COLOR, false),
+            motionLevel = valueOrDefault(KEY_MOTION_LEVEL, "FULL"),
+            haptics = valueOrDefault(KEY_HAPTICS, true),
+            keepScreenOn = valueOrDefault(KEY_KEEP_SCREEN_ON, false),
+            lastUsedProfileId = this[KEY_LAST_USED_PROFILE_ID],
+            onboardingCompleted = valueOrDefault(KEY_ONBOARDING_COMPLETED, false),
+            confirmStartStream = valueOrDefault(KEY_CONFIRM_START_STREAM, false),
+            confirmStopStream = valueOrDefault(KEY_CONFIRM_STOP_STREAM, true),
+            confirmStartRecord = valueOrDefault(KEY_CONFIRM_START_RECORD, false),
+            confirmStopRecord = valueOrDefault(KEY_CONFIRM_STOP_RECORD, true),
+            audioAllowList = valueOrDefault(KEY_AUDIO_ALLOW_LIST, emptySet()),
+            lockedInputs = valueOrDefault(KEY_LOCKED_INPUTS, emptySet()),
+            mixerMode = valueOrDefault(KEY_MIXER_MODE, "ACTIVE"),
+            mixerSelectedScene = this[KEY_MIXER_SELECTED_SCENE],
+            mixerGrouping = valueOrDefault(KEY_MIXER_GROUPING, "SCOPE"),
+            scenePreviewsEnabled = valueOrDefault(KEY_SCENE_PREVIEWS_ENABLED, true),
+        )
+
+    private fun <T> Preferences.valueOrDefault(key: Preferences.Key<T>, default: T): T =
+        this[key] ?: default
 
     suspend fun setThemeFamily(value: String) = edit { it[KEY_THEME_FAMILY] = value }
 
@@ -95,16 +128,23 @@ class SceneDeckSettingsStore private constructor(
     suspend fun setKeepScreenOn(value: Boolean) = edit { it[KEY_KEEP_SCREEN_ON] = value }
 
     suspend fun setLastUsedProfileId(value: Long?) = edit { prefs ->
-        if (value == null) prefs.remove(KEY_LAST_USED_PROFILE_ID) else prefs[KEY_LAST_USED_PROFILE_ID] = value
+        if (value == null) prefs.remove(KEY_LAST_USED_PROFILE_ID)
+        else prefs[KEY_LAST_USED_PROFILE_ID] = value
     }
 
-    suspend fun setOnboardingCompleted(value: Boolean) = edit { it[KEY_ONBOARDING_COMPLETED] = value }
+    suspend fun setOnboardingCompleted(value: Boolean) = edit {
+        it[KEY_ONBOARDING_COMPLETED] = value
+    }
 
-    suspend fun setConfirmStartStream(value: Boolean) = edit { it[KEY_CONFIRM_START_STREAM] = value }
+    suspend fun setConfirmStartStream(value: Boolean) = edit {
+        it[KEY_CONFIRM_START_STREAM] = value
+    }
 
     suspend fun setConfirmStopStream(value: Boolean) = edit { it[KEY_CONFIRM_STOP_STREAM] = value }
 
-    suspend fun setConfirmStartRecord(value: Boolean) = edit { it[KEY_CONFIRM_START_RECORD] = value }
+    suspend fun setConfirmStartRecord(value: Boolean) = edit {
+        it[KEY_CONFIRM_START_RECORD] = value
+    }
 
     suspend fun setConfirmStopRecord(value: Boolean) = edit { it[KEY_CONFIRM_STOP_RECORD] = value }
 
@@ -115,12 +155,15 @@ class SceneDeckSettingsStore private constructor(
     suspend fun setMixerMode(value: String) = edit { it[KEY_MIXER_MODE] = value }
 
     suspend fun setMixerSelectedScene(value: String?) = edit { prefs ->
-        if (value == null) prefs.remove(KEY_MIXER_SELECTED_SCENE) else prefs[KEY_MIXER_SELECTED_SCENE] = value
+        if (value == null) prefs.remove(KEY_MIXER_SELECTED_SCENE)
+        else prefs[KEY_MIXER_SELECTED_SCENE] = value
     }
 
     suspend fun setMixerGrouping(value: String) = edit { it[KEY_MIXER_GROUPING] = value }
 
-    suspend fun setScenePreviewsEnabled(value: Boolean) = edit { it[KEY_SCENE_PREVIEWS_ENABLED] = value }
+    suspend fun setScenePreviewsEnabled(value: Boolean) = edit {
+        it[KEY_SCENE_PREVIEWS_ENABLED] = value
+    }
 
     private suspend fun edit(transform: (MutablePreferences) -> Unit) {
         dataStore.edit(transform)

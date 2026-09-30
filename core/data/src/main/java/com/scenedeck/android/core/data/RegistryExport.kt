@@ -24,21 +24,23 @@ data class RegistryExportEntry(
     val sortOrder: Int = 0,
 )
 
-internal fun SceneRegistryEntry.toExport() = RegistryExportEntry(
-    sceneName = sceneName,
-    role = role.name,
-    accentColorArgb = accentColorArgb,
-    iconName = iconName,
-    sortOrder = sortOrder,
-)
+internal fun SceneRegistryEntry.toExport() =
+    RegistryExportEntry(
+        sceneName = sceneName,
+        role = role.name,
+        accentColorArgb = accentColorArgb,
+        iconName = iconName,
+        sortOrder = sortOrder,
+    )
 
-internal fun RegistryExportEntry.toDomain() = SceneRegistryEntry(
-    sceneName = sceneName,
-    role = runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.SECONDARY),
-    accentColorArgb = accentColorArgb,
-    iconName = iconName,
-    sortOrder = sortOrder,
-)
+internal fun RegistryExportEntry.toDomain() =
+    SceneRegistryEntry(
+        sceneName = sceneName,
+        role = runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.SECONDARY),
+        accentColorArgb = accentColorArgb,
+        iconName = iconName,
+        sortOrder = sortOrder,
+    )
 
 /** YAML (kaml) codec for the registry export. JSON fallback is one flag away. */
 object RegistryExportCodec {
@@ -55,7 +57,8 @@ object RegistryExportCodec {
     fun decode(payload: String): List<SceneRegistryEntry> {
         val parsed = runCatching {
             yaml.decodeFromString(RegistryExport.serializer(), payload)
-        }.getOrElse { throw RegistryImportException("Not a valid registry file: ${it.message}") }
+        }
+            .getOrElse { throw RegistryImportException("Not a valid registry file: ${it.message}") }
         if (parsed.format != RegistryExport.FORMAT_ID) {
             throw RegistryImportException("Not a SceneDeck registry file (format=${parsed.format})")
         }

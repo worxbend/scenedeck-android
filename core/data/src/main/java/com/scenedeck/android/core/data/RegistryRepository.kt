@@ -10,9 +10,7 @@ import kotlinx.coroutines.flow.map
 
 /** Local scene registry (curation metadata) backed by Room (FEATURE_SPEC §6). */
 @Singleton
-class RegistryRepository @Inject constructor(
-    private val dao: SceneRegistryDao,
-) {
+class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) {
     val entries: Flow<List<SceneRegistryEntry>> =
         dao.observeAll().map { list -> list.map { it.toDomain() } }
 
@@ -33,7 +31,7 @@ class RegistryRepository @Inject constructor(
                 accentColorArgb = accentColorArgb,
                 iconName = iconName,
                 sortOrder = existing?.sortOrder ?: Int.MAX_VALUE,
-            ),
+            )
         )
     }
 
@@ -67,15 +65,17 @@ class RegistryRepository @Inject constructor(
     /** Bulk-assigns a role to scenes that have NO entry yet (fast curation). */
     suspend fun assignRoleToUnassigned(obsSceneNames: List<String>, role: SceneRole) {
         val existing = dao.observeAll().first().map { it.sceneName }.toSet()
-        obsSceneNames.filter { it !in existing }.forEach { name ->
-            update(name, role, accentColorArgb = null, iconName = null)
-        }
+        obsSceneNames
+            .filter { it !in existing }
+            .forEach { name ->
+                update(name, role, accentColorArgb = null, iconName = null)
+            }
     }
 
     /**
-     * Merge-import: entries matched by sceneName are updated field-by-field;
-     * new names are inserted keeping their imported order when free.
-     * Returns (inserted, updated) counts for the confirmation summary.
+     * Merge-import: entries matched by sceneName are updated field-by-field; new names are inserted
+     * keeping their imported order when free. Returns (inserted, updated) counts for the
+     * confirmation summary.
      */
     suspend fun importMerge(imported: List<SceneRegistryEntry>): Pair<Int, Int> {
         var inserted = 0
@@ -90,7 +90,7 @@ class RegistryRepository @Inject constructor(
                     accentColorArgb = entry.accentColorArgb ?: existing?.accentColorArgb,
                     iconName = entry.iconName ?: existing?.iconName,
                     sortOrder = existing?.sortOrder ?: entry.sortOrder,
-                ),
+                )
             )
         }
         return inserted to updated

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -68,8 +69,8 @@ data class StatsUiState(
 )
 
 /**
- * Per-sample skipped/missed frame series for the bar visualization. Read in the
- * Canvas DRAW PHASE only (same contract as `MeterLevelsHolder`).
+ * Per-sample skipped/missed frame series for the bar visualization. Read in the Canvas DRAW PHASE
+ * only (same contract as `MeterLevelsHolder`).
  */
 class FrameDropSeriesHolder {
     val renderSkipped: MutableState<List<Float>> = mutableStateOf(emptyList())
@@ -77,12 +78,14 @@ class FrameDropSeriesHolder {
 }
 
 /**
- * Stats page state (docs/FEATURE_SPEC.md §5): renders the connection-scoped
- * 120-sample ring buffer owned by [StatsRepository] (`samples`), feeds the
- * trend/drop draw-phase holders and exposes the counter-card state.
+ * Stats page state (docs/FEATURE_SPEC.md §5): renders the connection-scoped 120-sample ring buffer
+ * owned by [StatsRepository] (`samples`), feeds the trend/drop draw-phase holders and exposes the
+ * counter-card state.
  */
 @HiltViewModel
-class StatsViewModel @Inject constructor(
+class StatsViewModel
+@Inject
+constructor(
     private val stats: StatsRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
@@ -99,69 +102,63 @@ class StatsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
 
-    val motionLevel: StateFlow<MotionLevel> = settings.settings
-        .map { runCatching { MotionLevel.valueOf(it.motionLevel) }.getOrDefault(MotionLevel.FULL) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
+    val motionLevel: StateFlow<MotionLevel> =
+        settings.settings
+            .map {
+                runCatching { MotionLevel.valueOf(it.motionLevel) }.getOrDefault(MotionLevel.FULL)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MotionLevel.FULL)
 
     init {
         viewModelScope.launch {
-            stats.telemetry.collect { telemetry -> onTelemetry(telemetry) }
-        }
-        viewModelScope.launch {
-            stats.samples.collect { samples -> onSamples(samples) }
+            combine(stats.telemetry, stats.samples) { telemetry, samples -> telemetry to samples }
+                .collect { (telemetry, samples) ->
+                    val connectedSamples =
+                        if (telemetry.connection is ConnectionState.Ready) {
+                            samples
+                        } else {
+                            emptyList()
+                        }
+                    updateHolders(connectedSamples)
+                    _uiState.value =
+                        if (telemetry.connection is ConnectionState.Ready) {
+                            telemetry.toUiState(
+                                connectedSamples.size,
+                                connectedSamples.lastOrNull(),
+                            )
+                        } else {
+                            StatsUiState(connection = telemetry.connection)
+                        }
+                }
         }
     }
 
-    private fun onTelemetry(telemetry: Telemetry) {
-        val connection = telemetry.connection
-        if (connection !is ConnectionState.Ready) {
-            _uiState.value = StatsUiState(connection = connection)
-            return
-        }
-        if (telemetry.stats == null) {
-            _uiState.value = _uiState.value.copy(connection = connection)
-            return
-        }
-        _uiState.value = telemetry.toUiState(sampleCount = _uiState.value.sampleCount)
-    }
-
-    private fun onSamples(samples: List<TelemetrySample>) {
+    private fun updateHolders(samples: List<TelemetrySample>) {
         fpsTrend.samples.value = samples.map { it.fps }
         renderTrend.samples.value = samples.map { it.renderTimeMs }
         frameDrops.renderSkipped.value = samples.map { it.renderSkippedDelta.toFloat() }
         frameDrops.outputSkipped.value = samples.map { it.outputSkippedDelta.toFloat() }
-        val latest = samples.lastOrNull()
-        _uiState.value = if (latest != null) {
-            _uiState.value.copy(
-                sampleCount = samples.size,
-                fps = latest.fps,
-                renderTimeMs = latest.renderTimeMs,
-                droppedPct = latest.droppedPct,
-                congestionPct = latest.congestionPct,
-            )
-        } else {
-            _uiState.value.copy(sampleCount = 0)
-        }
     }
 
-    private fun Telemetry.toUiState(sampleCount: Int) = StatsUiState(
-        connection = connection,
-        sampleCount = sampleCount,
-        fps = _uiState.value.fps,
-        renderTimeMs = _uiState.value.renderTimeMs,
-        droppedPct = _uiState.value.droppedPct,
-        congestionPct = _uiState.value.congestionPct,
-        cpuUsagePct = stats?.cpuUsage ?: 0.0,
-        memoryUsageMb = stats?.memoryUsageMb ?: 0.0,
-        bitrateKbps = bitrateKbps,
-        renderTotalFrames = stats?.renderTotalFrames ?: 0,
-        renderSkippedFrames = stats?.renderSkippedFrames ?: 0,
-        outputTotalFrames = stats?.outputTotalFrames ?: 0,
-        outputSkippedFrames = stats?.outputSkippedFrames ?: 0,
-        streamBytes = stream?.bytes ?: 0L,
-        recordBytes = record?.bytes ?: 0L,
-        streamActive = stream?.active == true,
-        recordActive = record?.active == true,
-        recordPaused = record?.paused == true,
-    )
+    private fun Telemetry.toUiState(sampleCount: Int, latest: TelemetrySample?) =
+        StatsUiState(
+            connection = connection,
+            sampleCount = sampleCount,
+            fps = latest?.fps ?: 0f,
+            renderTimeMs = latest?.renderTimeMs ?: 0f,
+            droppedPct = latest?.droppedPct ?: 0f,
+            congestionPct = latest?.congestionPct ?: 0f,
+            cpuUsagePct = stats?.cpuUsage ?: 0.0,
+            memoryUsageMb = stats?.memoryUsageMb ?: 0.0,
+            bitrateKbps = bitrateKbps,
+            renderTotalFrames = stats?.renderTotalFrames ?: 0,
+            renderSkippedFrames = stats?.renderSkippedFrames ?: 0,
+            outputTotalFrames = stats?.outputTotalFrames ?: 0,
+            outputSkippedFrames = stats?.outputSkippedFrames ?: 0,
+            streamBytes = stream?.bytes ?: 0L,
+            recordBytes = record?.bytes ?: 0L,
+            streamActive = stream?.active == true,
+            recordActive = record?.active == true,
+            recordPaused = record?.paused == true,
+        )
 }

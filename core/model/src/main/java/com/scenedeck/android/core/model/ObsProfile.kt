@@ -3,8 +3,8 @@ package com.scenedeck.android.core.model
 import androidx.compose.runtime.Immutable
 
 /**
- * A named OBS connection target. The password is NOT stored here — it lives in
- * Keystore-backed encrypted storage (:core:data SecretsStore, see docs/ARCHITECTURE.md).
+ * A named OBS connection target. The password is NOT stored here — it lives in Keystore-backed
+ * encrypted storage (:core:data SecretsStore, see docs/ARCHITECTURE.md).
  */
 @Immutable
 data class ObsProfile(

@@ -34,16 +34,19 @@ class ObsStateRepositoryTest {
     @Before
     fun setUp() {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        client = FakeObsClient(
-            sceneListSnapshot = SceneListSnapshot(
-                currentProgramScene = "Scene",
-                scenes = listOf(
-                    SceneSummary("Scene", 0),
-                    SceneSummary("Cam 1", 1),
-                    SceneSummary("Screen", 2),
-                ),
-            ),
-        )
+        client =
+            FakeObsClient(
+                sceneListSnapshot =
+                    SceneListSnapshot(
+                        currentProgramScene = "Scene",
+                        scenes =
+                            listOf(
+                                SceneSummary("Scene", 0),
+                                SceneSummary("Cam 1", 1),
+                                SceneSummary("Screen", 2),
+                            ),
+                    )
+            )
         registryDao = FakeRegistryDao()
         repository = ObsStateRepository(client, RegistryRepository(registryDao), scope)
     }
@@ -73,7 +76,7 @@ class ObsStateRepositoryTest {
                 accentColorArgb = 0xFF7E57C2,
                 iconName = "CAMERA",
                 sortOrder = 0,
-            ),
+            )
         )
         registryDao.upsert(SceneRegistryEntity(sceneName = "Screen", role = "SECONDARY"))
 
@@ -85,6 +88,8 @@ class ObsStateRepositoryTest {
         assertEquals(0xFF7E57C2, cam.accentColorArgb)
         assertEquals("CAMERA", cam.iconName)
         assertFalse(deck.scenes.any { it.name == "Screen" })
+        assertEquals(listOf("Cam 1", "Screen", "Scene"), deck.allScenes.map { it.name })
+        assertEquals(SceneRole.SECONDARY, deck.allScenes.first { it.name == "Screen" }.role)
     }
 
     @Test
@@ -112,8 +117,8 @@ class ObsStateRepositoryTest {
 
         client.emit(
             ObsEvent.SceneListChanged(
-                scenes = listOf(SceneSummary("Scene", 0), SceneSummary("Cam 1", 1)),
-            ),
+                scenes = listOf(SceneSummary("Scene", 0), SceneSummary("Cam 1", 1))
+            )
         )
 
         val deck = awaitDeck { it.scenes.size == 2 }
@@ -139,7 +144,10 @@ class ObsStateRepositoryTest {
         client.setDisconnected()
 
         val deck = awaitDeck { it.scenes.isEmpty() }
-        assertEquals(com.scenedeck.android.core.model.ConnectionState.Disconnected, deck.connectionState)
+        assertEquals(
+            com.scenedeck.android.core.model.ConnectionState.Disconnected,
+            deck.connectionState,
+        )
     }
 
     private suspend fun awaitDeck(condition: (DeckState) -> Boolean): DeckState =
@@ -149,12 +157,12 @@ class ObsStateRepositoryTest {
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
-        override fun observeAll(): Flow<List<SceneRegistryEntity>> =
-            entities.map { map ->
-                map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName }))
-            }
+        override fun observeAll(): Flow<List<SceneRegistryEntity>> = entities.map { map ->
+            map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName }))
+        }
 
-        override suspend fun byName(sceneName: String): SceneRegistryEntity? = entities.value[sceneName]
+        override suspend fun byName(sceneName: String): SceneRegistryEntity? =
+            entities.value[sceneName]
 
         override suspend fun upsert(entity: SceneRegistryEntity) {
             entities.update { it + (entity.sceneName to entity) }

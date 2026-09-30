@@ -13,4 +13,10 @@
     <string name="action_back">Back</string>
     <string name="connected_title">You\'re connected</string>
     <string name="onboarding_done">Start decking</string>
+    <string name="welcome_scenes">Your show, at your fingertips</string>
+    <string name="welcome_scenes_desc">Switch scenes with a single tap.</string>
+    <string name="welcome_audio">Stay in the mix</string>
+    <string name="welcome_audio_desc">Adjust levels and mute sources instantly.</string>
+    <string name="welcome_stats">Keep an eye on every frame</string>
+    <string name="welcome_stats_desc">Monitor stream health while you create.</string>
 </resources>

@@ -10,9 +10,10 @@ import org.junit.Test
 
 class SessionServiceLogicTest {
 
-    private val ready = ConnectionState.Ready(
-        ObsVersionInfo(obsVersion = "31.0.0", obsWebSocketVersion = "5.5.2", rpcVersion = 1),
-    )
+    private val ready =
+        ConnectionState.Ready(
+            ObsVersionInfo(obsVersion = "31.0.0", obsWebSocketVersion = "5.5.2", rpcVersion = 1)
+        )
 
     @Test
     fun `start action goes foreground`() {

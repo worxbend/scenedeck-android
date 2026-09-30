@@ -161,3 +161,29 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 | Meter event volume (50 ms) jank | `DROP_OLDEST` flow buffer, Canvas draw-only updates, macrobenchmark gate in M4 |
 | M3 Expressive API instability (1.5 alpha) | isolate behind `:core:designsystem`; stable M3 fallbacks for critical components |
 | Background WS killed by OEM battery | foreground service (M7) + graceful reconnect everywhere |
+
+## UX refresh — 2026-09-30
+
+- Scenes / Mixer / Stats tabs with setup and diagnostics under More.
+- All-scenes switching by default with optional curated Deck filter.
+- Compact transport and contextual menus for advanced output controls.
+- Dedicated mixer with readable source context; phone-friendly health dashboard.
+- Compact tool headers and focused appearance selection.
+- Review polling lifecycle, live mixer state, navigation and disconnected actions.
+- Validate debug build, unit tests and refreshed dark/light screenshot previews.
+
+- Follow-up polish: scene search, aligned channel strips, compact gauge panels,
+  threshold boundary regression coverage, scrollable offline screens and discoverable session settings.
+
+- Reference-inspired refresh: charcoal/azure default palette and restrained scene
+  card grid, with dark/light rendering and emulator launch verification.
+
+- Studio stylebook refresh: shared tonal headers, colorful icon wells, filled selectors, rail-free scene tiles and grouped connection inputs; render dark/light/OBS references and validate on emulator.
+
+## Hardening and public repository — 2026-09-30
+
+- Fix cancellation, stale discovery, atomic preferences, Doctor false positives,
+  telemetry state races, service API compatibility and credential saved-state leaks.
+- Gate formatting, cognitive/cyclomatic complexity, Android Lint, unit/preview tests,
+  security patterns and secret scanning; add CodeQL and dependency update automation.
+- Refresh active stream transport, publish output previews and an animated README tour.

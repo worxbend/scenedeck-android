@@ -2,17 +2,21 @@ package com.scenedeck.android.feature.doctor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DoctorChecks
 import com.scenedeck.android.core.data.DoctorIssue
 import com.scenedeck.android.core.data.DoctorSeverity
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneGraphBuilder
-import com.scenedeck.android.core.data.probeBrokenAudioInputs
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.probeBrokenAudioInputs
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,17 +29,25 @@ data class DoctorUiState(
     val issues: List<DoctorIssue> = emptyList(),
     val ranOnce: Boolean = false,
 ) {
-    val errorCount: Int get() = issues.count { it.severity == DoctorSeverity.ERROR }
-    val warningCount: Int get() = issues.count { it.severity == DoctorSeverity.WARNING }
-    val infoCount: Int get() = issues.count { it.severity == DoctorSeverity.INFO }
+    val errorCount: Int
+        get() = issues.count { it.severity == DoctorSeverity.ERROR }
+
+    val warningCount: Int
+        get() = issues.count { it.severity == DoctorSeverity.WARNING }
+
+    val infoCount: Int
+        get() = issues.count { it.severity == DoctorSeverity.INFO }
 }
 
 @HiltViewModel
-class DoctorViewModel @Inject constructor(
+class DoctorViewModel
+@Inject
+constructor(
     private val registry: RegistryRepository,
     private val client: ObsClient,
 ) : ViewModel() {
 
+    private var checkJob: Job? = null
     private val graphBuilder = SceneGraphBuilder(client)
 
     private val _uiState = MutableStateFlow(DoctorUiState())
@@ -45,8 +57,9 @@ class DoctorViewModel @Inject constructor(
         viewModelScope.launch {
             client.connectionState.collectLatest { state ->
                 if (state is ConnectionState.Ready) {
-                    runChecks(state)
+                    startChecks(state)
                 } else {
+                    checkJob?.cancel()
                     _uiState.value = DoctorUiState(connection = state)
                 }
             }
@@ -56,7 +69,7 @@ class DoctorViewModel @Inject constructor(
     fun refresh() {
         val state = client.connectionState.value
         if (state is ConnectionState.Ready) {
-            viewModelScope.launch { runChecks(state) }
+            startChecks(state)
         }
     }
 
@@ -67,16 +80,26 @@ class DoctorViewModel @Inject constructor(
         }
     }
 
+    private fun startChecks(connection: ConnectionState) {
+        checkJob?.cancel()
+        checkJob = viewModelScope.launch {
+            coroutineResult { runChecks(connection) }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(running = false)
+                }
+        }
+    }
+
     private suspend fun runChecks(connection: ConnectionState) {
         _uiState.value = _uiState.value.copy(connection = connection, running = true)
-        val obsScenes = runCatching { client.getSceneList().scenes.map { it.name } }
-            .getOrDefault(emptyList())
+        val obsScenes = client.getSceneList().scenes.map { it.name }
         val entries = registry.snapshot()
         val graph = graphBuilder.build(entries)
-        val primaryScenes = entries
-            .filter { it.role == SceneRole.PRIMARY }
-            .map { it.sceneName }
-            .ifEmpty { obsScenes } // default rule: everything is PRIMARY
+        val primaryScenes =
+            entries
+                .filter { it.role == SceneRole.PRIMARY }
+                .map { it.sceneName }
+                .ifEmpty { obsScenes } // default rule: everything is PRIMARY
         val brokenAudio = probeBrokenAudioInputs(client, primaryScenes)
 
         val issues = buildList {
@@ -86,19 +109,22 @@ class DoctorViewModel @Inject constructor(
             addAll(DoctorChecks.primaryWithBrokenAudio(entries, brokenAudio))
             addAll(DoctorChecks.unassignedRoles(obsScenes, entries))
             addAll(DoctorChecks.unreferencedModules(obsScenes, entries, graph))
-        }.sortedWith(
-            compareBy(
-                { it.severity.ordinal },
-                { it.title },
-                { it.sceneName ?: "" },
-            ),
-        )
+        }
+            .sortedWith(
+                compareBy(
+                    { it.severity.ordinal },
+                    { it.title },
+                    { it.sceneName ?: "" },
+                )
+            )
 
-        _uiState.value = DoctorUiState(
-            connection = connection,
-            running = false,
-            issues = issues,
-            ranOnce = true,
-        )
+        currentCoroutineContext().ensureActive()
+        _uiState.value =
+            DoctorUiState(
+                connection = connection,
+                running = false,
+                issues = issues,
+                ranOnce = true,
+            )
     }
 }

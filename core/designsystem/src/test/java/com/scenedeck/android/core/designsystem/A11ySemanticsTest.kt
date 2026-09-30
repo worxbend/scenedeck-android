@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.scenedeck.android.core.designsystem.components.GaugeDirection
 import com.scenedeck.android.core.designsystem.components.MeterLevelsHolder
 import com.scenedeck.android.core.designsystem.components.MixerStrip
@@ -18,7 +19,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 
 /** Accessibility semantics contracts (docs/DESIGN_SYSTEM.md §10). */
 private fun hasSetProgress() =
@@ -28,8 +28,7 @@ private fun hasSetProgress() =
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class A11ySemanticsTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun gaugeExposesLabelValueAndZone() {
@@ -46,9 +45,7 @@ class A11ySemanticsTest {
                 )
             }
         }
-        composeRule
-            .onNodeWithContentDescription("Dropped frames: 7.0 %, critical")
-            .assertExists()
+        composeRule.onNodeWithContentDescription("Dropped frames: 7.0 %, critical").assertExists()
     }
 
     @Test

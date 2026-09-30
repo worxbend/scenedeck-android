@@ -9,17 +9,18 @@ import org.junit.Test
 
 class TelemetryHistoryTest {
 
-    private fun sample(fps: Float = 60f) = TelemetrySample(
-        fps = fps,
-        renderTimeMs = 1f,
-        droppedPct = 0f,
-        congestionPct = 0f,
-        bitrateKbps = 0,
-        renderSkippedDelta = 0,
-        outputSkippedDelta = 0,
-        renderSkippedTotal = 0,
-        outputSkippedTotal = 0,
-    )
+    private fun sample(fps: Float = 60f) =
+        TelemetrySample(
+            fps = fps,
+            renderTimeMs = 1f,
+            droppedPct = 0f,
+            congestionPct = 0f,
+            bitrateKbps = 0,
+            renderSkippedDelta = 0,
+            outputSkippedDelta = 0,
+            renderSkippedTotal = 0,
+            outputSkippedTotal = 0,
+        )
 
     @Test
     fun capsAtCapacityAndEvictsOldest() {
@@ -52,19 +53,23 @@ class TelemetryHistoryTest {
 
     @Test
     fun telemetryMappingDerivesPercentagesAndDeltas() {
-        val first = telemetry(
-            stats = obsStats(renderSkipped = 2, outputSkipped = 7),
-            stream = streamStatus(skipped = 5, total = 500, congestion = 0.25),
-        ).toSample(previous = null)
+        val first =
+            telemetry(
+                    stats = obsStats(renderSkipped = 2, outputSkipped = 7),
+                    stream = streamStatus(skipped = 5, total = 500, congestion = 0.25),
+                )
+                .toSample(previous = null)
         assertEquals(1f, first.droppedPct, 1e-4f) // 5/500 × 100
         assertEquals(25f, first.congestionPct, 1e-4f)
         assertEquals(0, first.renderSkippedDelta) // first sample: no baseline
         assertEquals(0, first.outputSkippedDelta)
 
-        val second = telemetry(
-            stats = obsStats(renderSkipped = 5, outputSkipped = 9),
-            stream = streamStatus(skipped = 15, total = 1000, congestion = 0.0),
-        ).toSample(previous = first)
+        val second =
+            telemetry(
+                    stats = obsStats(renderSkipped = 5, outputSkipped = 9),
+                    stream = streamStatus(skipped = 15, total = 1000, congestion = 0.0),
+                )
+                .toSample(previous = first)
         assertEquals(1.5f, second.droppedPct, 1e-4f) // 15/1000 × 100
         assertEquals(3, second.renderSkippedDelta)
         assertEquals(2, second.outputSkippedDelta)
@@ -72,10 +77,12 @@ class TelemetryHistoryTest {
 
     @Test
     fun counterResetNeverYieldsNegativeDeltas() {
-        val first = telemetry(stats = obsStats(renderSkipped = 10, outputSkipped = 10))
-            .toSample(previous = null)
-        val second = telemetry(stats = obsStats(renderSkipped = 3, outputSkipped = 1))
-            .toSample(previous = first) // OBS restarted → counters reset
+        val first =
+            telemetry(stats = obsStats(renderSkipped = 10, outputSkipped = 10))
+                .toSample(previous = null)
+        val second =
+            telemetry(stats = obsStats(renderSkipped = 3, outputSkipped = 1))
+                .toSample(previous = first) // OBS restarted → counters reset
         assertEquals(0, second.renderSkippedDelta)
         assertEquals(0, second.outputSkippedDelta)
     }
@@ -84,27 +91,27 @@ class TelemetryHistoryTest {
         stats: ObsStats = obsStats(),
         stream: StreamStatus = streamStatus(),
         bitrateKbps: Int = 0,
-    ) = Telemetry(
-        connection = ConnectionState.Ready(
-            ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
-        ),
-        stats = stats,
-        stream = stream,
-        record = null,
-        bitrateKbps = bitrateKbps,
-    )
+    ) =
+        Telemetry(
+            connection = ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test")),
+            stats = stats,
+            stream = stream,
+            record = null,
+            bitrateKbps = bitrateKbps,
+        )
 
-    private fun obsStats(renderSkipped: Int = 0, outputSkipped: Int = 0) = ObsStats(
-        cpuUsage = 10.0,
-        memoryUsageMb = 256.0,
-        availableDiskSpaceMb = 1_000.0,
-        activeFps = 60.0,
-        averageFrameRenderTimeMs = 1.0,
-        renderSkippedFrames = renderSkipped,
-        renderTotalFrames = 10_000,
-        outputSkippedFrames = outputSkipped,
-        outputTotalFrames = 9_000,
-    )
+    private fun obsStats(renderSkipped: Int = 0, outputSkipped: Int = 0) =
+        ObsStats(
+            cpuUsage = 10.0,
+            memoryUsageMb = 256.0,
+            availableDiskSpaceMb = 1_000.0,
+            activeFps = 60.0,
+            averageFrameRenderTimeMs = 1.0,
+            renderSkippedFrames = renderSkipped,
+            renderTotalFrames = 10_000,
+            outputSkippedFrames = outputSkipped,
+            outputTotalFrames = 9_000,
+        )
 
     private fun streamStatus(skipped: Int = 0, total: Int = 0, congestion: Double = 0.0) =
         StreamStatus(

@@ -6,9 +6,8 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * AES/GCM/NoPadding blob cipher. Kept AndroidKeyStore-free on purpose so the crypto
- * round-trip is unit-testable on the JVM with any [SecretKey]; production keys come
- * from [KeystoreSecretsStore].
+ * AES/GCM/NoPadding blob cipher. Kept AndroidKeyStore-free on purpose so the crypto round-trip is
+ * unit-testable on the JVM with any [SecretKey]; production keys come from [KeystoreSecretsStore].
  */
 internal class AesGcmCipher(private val key: SecretKey) {
 
@@ -31,7 +30,10 @@ internal class AesGcmCipher(private val key: SecretKey) {
             key,
             GCMParameterSpec(GCM_TAG_LENGTH_BITS, bytes, 0, GCM_IV_LENGTH),
         )
-        return String(cipher.doFinal(bytes, GCM_IV_LENGTH, bytes.size - GCM_IV_LENGTH), Charsets.UTF_8)
+        return String(
+            cipher.doFinal(bytes, GCM_IV_LENGTH, bytes.size - GCM_IV_LENGTH),
+            Charsets.UTF_8,
+        )
     }
 
     private companion object {

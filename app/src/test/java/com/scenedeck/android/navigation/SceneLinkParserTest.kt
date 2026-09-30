@@ -18,7 +18,10 @@ class SceneLinkParserTest {
 
     @Test
     fun `decodes special characters`() {
-        assertEquals("BRB / intermission", SceneLinkParser.sceneName("scenedeck://scene/BRB%20%2F%20intermission"))
+        assertEquals(
+            "BRB / intermission",
+            SceneLinkParser.sceneName("scenedeck://scene/BRB%20%2F%20intermission"),
+        )
     }
 
     @Test
@@ -46,5 +49,12 @@ class SceneLinkParserTest {
     @Test
     fun `rejects garbage`() {
         assertNull(SceneLinkParser.sceneName("not a uri at all :://"))
+    }
+
+    @Test
+    fun `rejects ambiguous authority and null scene characters`() {
+        assertNull(SceneLinkParser.sceneName("scenedeck://user@scene/Main"))
+        assertNull(SceneLinkParser.sceneName("scenedeck://scene:4455/Main"))
+        assertNull(SceneLinkParser.sceneName("scenedeck://scene/Main%00"))
     }
 }

@@ -7,7 +7,6 @@ import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
-import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +23,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Snapshot of one mixer input: static metadata + current control values. */
 data class MixerInputState(
@@ -49,46 +51,58 @@ data class MixerState(
 )
 
 /**
- * Owns audio discovery + live meter levels + mixer controls (docs/ARCHITECTURE.md
- * rule 2; discovery algorithm in [AudioDiscovery]).
+ * Owns audio discovery + live meter levels + mixer controls (docs/ARCHITECTURE.md rule 2; discovery
+ * algorithm in [AudioDiscovery]).
  */
 @Singleton
 @Suppress("TooManyFunctions") // cohesive OBS-audio surface; splitting would scatter one concern
-class MixerRepository @Inject constructor(
+class MixerRepository
+@Inject
+constructor(
     private val client: ObsClient,
     private val settings: SettingsRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val discovery = AudioDiscovery(client)
+    private val discoveryMutex = Mutex()
 
     private val discovered = MutableStateFlow<List<DiscoveredInput>>(emptyList())
     private val activeScene = MutableStateFlow<String?>(null)
 
     /** All OBS scene names (for the mixer scene picker), refreshed on discovery. */
-    val sceneNames = MutableStateFlow<List<String>>(emptyList())
+    private val _sceneNames = MutableStateFlow<List<String>>(emptyList())
+    val sceneNames: StateFlow<List<String>> = _sceneNames.asStateFlow()
 
-    val mixerState: StateFlow<MixerState> = combine(
-        client.connectionState,
-        activeScene,
-        discovered,
-        settings.settings,
-    ) { connection, scene, inputs, userSettings ->
-        MixerState(
-            connection = connection,
-            activeScene = scene,
-            inputs = inputs.map { input ->
-                MixerInputState(
-                    name = input.name,
-                    scope = input.scope,
-                    scopePath = input.scopePath,
-                    volumeMul = input.volumeMul,
-                    muted = input.muted,
-                    locked = input.name in userSettings.lockedInputs,
-                    inputKind = input.inputKind,
+    val mixerState: StateFlow<MixerState> =
+        combine(
+                client.connectionState,
+                activeScene,
+                discovered,
+                settings.settings,
+            ) { connection, scene, inputs, userSettings ->
+                MixerState(
+                    connection = connection,
+                    activeScene = scene,
+                    inputs =
+                        inputs.map { input ->
+                            MixerInputState(
+                                name = input.name,
+                                scope = input.scope,
+                                scopePath = input.scopePath,
+                                volumeMul = input.volumeMul,
+                                muted = input.muted,
+                                locked = input.name in userSettings.lockedInputs,
+                                inputKind = input.inputKind,
+                            )
+                        },
                 )
-            },
-        )
-    }.stateIn(scope, SharingStarted.WhileSubscribed(5_000), MixerState())
+            }
+            .stateIn(scope, SharingStarted.WhileSubscribed(5_000), MixerState())
+
+    private val _mediaStatus = MutableStateFlow<Map<String, MediaStatus>>(emptyMap())
+
+    /** Playback status per media-kind input, polled at ~2 s while mixer is visible. */
+    val mediaStatus: StateFlow<Map<String, MediaStatus>> = _mediaStatus.asStateFlow()
 
     init {
         scope.launch {
@@ -98,6 +112,7 @@ class MixerRepository @Inject constructor(
                     ConnectionState.Disconnected -> {
                         discovered.value = emptyList()
                         activeScene.value = null
+                        _sceneNames.value = emptyList()
                     }
 
                     else -> Unit
@@ -110,19 +125,23 @@ class MixerRepository @Inject constructor(
                     is ObsEvent.CurrentProgramSceneChanged -> refreshDiscovery()
 
                     is ObsEvent.SceneItemEnableStateChanged,
-                    is ObsEvent.SceneCreated, is ObsEvent.SceneRemoved,
-                    is ObsEvent.SceneNameChanged, is ObsEvent.SceneListChanged,
-                    is ObsEvent.InputCreated, is ObsEvent.InputRemoved,
-                    is ObsEvent.InputNameChanged,
-                    -> refreshDiscovery()
+                    is ObsEvent.SceneCreated,
+                    is ObsEvent.SceneRemoved,
+                    is ObsEvent.SceneNameChanged,
+                    is ObsEvent.SceneListChanged,
+                    is ObsEvent.InputCreated,
+                    is ObsEvent.InputRemoved,
+                    is ObsEvent.InputNameChanged -> refreshDiscovery()
 
-                    is ObsEvent.InputMuteStateChanged -> updateInput(event.inputName) {
-                        it.copy(muted = event.muted)
-                    }
+                    is ObsEvent.InputMuteStateChanged ->
+                        updateInput(event.inputName) {
+                            it.copy(muted = event.muted)
+                        }
 
-                    is ObsEvent.InputVolumeChanged -> updateInput(event.inputName) {
-                        it.copy(volumeMul = event.volumeMul)
-                    }
+                    is ObsEvent.InputVolumeChanged ->
+                        updateInput(event.inputName) {
+                            it.copy(volumeMul = event.volumeMul)
+                        }
 
                     else -> Unit
                 }
@@ -151,11 +170,11 @@ class MixerRepository @Inject constructor(
             client.events.collect { event ->
                 when (event) {
                     is ObsEvent.MediaInputPlaybackStarted,
-                    is ObsEvent.MediaInputPlaybackEnded,
-                    -> refreshMediaStatus(
-                        (event as? ObsEvent.MediaInputPlaybackStarted)?.inputName
-                            ?: (event as ObsEvent.MediaInputPlaybackEnded).inputName,
-                    )
+                    is ObsEvent.MediaInputPlaybackEnded ->
+                        refreshMediaStatus(
+                            (event as? ObsEvent.MediaInputPlaybackStarted)?.inputName
+                                ?: (event as ObsEvent.MediaInputPlaybackEnded).inputName
+                        )
 
                     else -> Unit
                 }
@@ -163,11 +182,14 @@ class MixerRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshDiscovery() {
-        val list = runCatching { client.getSceneList() }.getOrNull()
-        activeScene.value = list?.currentProgramScene
-        sceneNames.value = list?.scenes?.map { it.name }.orEmpty()
-        discovered.value = discoverScene(list?.currentProgramScene)
+    suspend fun refreshDiscovery() = discoveryMutex.withLock {
+        if (client.connectionState.value !is ConnectionState.Ready) return@withLock
+        val list = requestResult { client.getSceneList() }.getOrNull() ?: return@withLock
+        val inputs = discoverScene(list.currentProgramScene)
+        if (client.connectionState.value !is ConnectionState.Ready) return@withLock
+        activeScene.value = list.currentProgramScene
+        _sceneNames.value = list.scenes.map { it.name }
+        discovered.value = inputs
     }
 
     /** Runs discovery for an arbitrary scene (mixer SELECTED mode). */
@@ -179,24 +201,21 @@ class MixerRepository @Inject constructor(
         client.setInputVolume(inputName, volumeMul)
     }
 
+    /** Local-only fader preview while dragging (OBS write happens on commit). */
+    fun previewInputVolume(inputName: String, volumeMul: Double) {
+        updateInput(inputName) { it.copy(volumeMul = volumeMul) }
+    }
+
     suspend fun setInputMute(inputName: String, muted: Boolean) {
         updateInput(inputName) { it.copy(muted = muted) }
         client.setInputMute(inputName, muted)
     }
 
     suspend fun setLocked(inputName: String, locked: Boolean) {
-        val current = settings.settings.first().lockedInputs
-        settings.setLockedInputs(
-            if (locked) current + inputName else current - inputName,
-        )
+        settings.setInputLocked(inputName, locked)
     }
 
     // ── Media inputs (M7) ───────────────────────────────────────────────────
-
-    private val _mediaStatus = MutableStateFlow<Map<String, MediaStatus>>(emptyMap())
-
-    /** Playback status per media-kind input, polled at ~2 s while mixer is visible. */
-    val mediaStatus: StateFlow<Map<String, MediaStatus>> = _mediaStatus.asStateFlow()
 
     suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind) {
         client.triggerMediaInputAction(inputName, action)
@@ -207,16 +226,15 @@ class MixerRepository @Inject constructor(
         client.setMediaInputCursor(inputName, cursorMs)
 
     private suspend fun refreshMediaStatus(inputName: String) {
-        runCatching {
-            _mediaStatus.value = _mediaStatus.value +
-                (inputName to client.getMediaInputStatus(inputName))
+        requestResult {
+            val status = client.getMediaInputStatus(inputName)
+            _mediaStatus.update { it + (inputName to status) }
         }
     }
 
     private suspend fun pollMediaLoop() {
         while (currentCoroutineContext().isActive) {
-            val mediaInputs = mixerState.value.inputs
-                .filter { it.inputKind in MEDIA_INPUT_KINDS }
+            val mediaInputs = mixerState.value.inputs.filter { it.inputKind in MEDIA_INPUT_KINDS }
             mediaInputs.forEach { input -> refreshMediaStatus(input.name) }
             delay(MEDIA_POLL_MS)
         }
@@ -229,19 +247,21 @@ class MixerRepository @Inject constructor(
     suspend fun setInputAudioBalance(inputName: String, balance: Double) =
         client.setInputAudioBalance(inputName, balance)
 
-    suspend fun getInputAudioSyncOffset(inputName: String) = client.getInputAudioSyncOffset(inputName)
+    suspend fun getInputAudioSyncOffset(inputName: String) =
+        client.getInputAudioSyncOffset(inputName)
 
     suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) =
         client.setInputAudioSyncOffset(inputName, offsetMs)
 
-    suspend fun getInputAudioMonitorType(inputName: String) = client.getInputAudioMonitorType(inputName)
+    suspend fun getInputAudioMonitorType(inputName: String) =
+        client.getInputAudioMonitorType(inputName)
 
     suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) =
         client.setInputAudioMonitorType(inputName, monitorType)
 
     private inline fun updateInput(name: String, transform: (DiscoveredInput) -> DiscoveredInput) {
-        discovered.value = discovered.value.map {
-            if (it.name == name) transform(it) else it
+        discovered.update { inputs ->
+            inputs.map { if (it.name == name) transform(it) else it }
         }
     }
 

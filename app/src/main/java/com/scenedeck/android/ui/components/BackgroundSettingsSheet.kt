@@ -25,10 +25,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
 /**
- * App-level "Background" sheet, opened by long-pressing the StatusStrip connection
- * indicator. Lives in :app (not feature/settings) because the keep-alive flag is an
- * app-private platform concern (foreground service), persisted in
- * [com.scenedeck.android.background.BackgroundSettingsStore].
+ * App-level "Background" sheet, opened by long-pressing the StatusStrip connection indicator. Lives
+ * in :app (not feature/settings) because the keep-alive flag is an app-private platform concern
+ * (foreground service), persisted in [com.scenedeck.android.background.BackgroundSettingsStore].
  */
 @Composable
 fun BackgroundSettingsSheet(
@@ -37,17 +36,21 @@ fun BackgroundSettingsSheet(
 ) {
     val keepAlive by viewModel.keepAlive.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { viewModel.setKeepAlive(true) }
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            viewModel.setKeepAlive(true)
+        }
 
     BackgroundSettingsSheetContent(
         keepAlive = keepAlive,
         onKeepAliveChange = { enabled ->
-            val needsPermission = enabled &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                android.content.pm.PackageManager.PERMISSION_GRANTED
+            val needsPermission =
+                enabled &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
             if (needsPermission) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
@@ -74,17 +77,18 @@ internal fun BackgroundSettingsSheetContent(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
             ListItem(
-                headlineContent = { Text("Keep connection alive") },
                 supportingContent = {
                     Text(
                         "Stays connected to OBS when SceneDeck is closed, with a " +
-                            "persistent notification. Uses more battery.",
+                            "persistent notification. Uses more battery."
                     )
                 },
                 trailingContent = {
                     Switch(checked = keepAlive, onCheckedChange = onKeepAliveChange)
                 },
-            )
+            ) {
+                Text("Keep connection alive")
+            }
         }
     }
 }

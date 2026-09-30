@@ -5,6 +5,10 @@ plugins {
 }
 
 android {
+    lint {
+        lintConfig = rootProject.file("lint.xml")
+        warningsAsErrors = true
+    }
     namespace = "com.scenedeck.android.core.designsystem"
     compileSdk = 37
 

@@ -123,3 +123,15 @@ roborazzi = "1.75.0"
 robolectric = "4.17"
 # compose-icons Lucide pack: NOT published on Maven Central — TODO re-check
 ```
+
+## Hardening tooling — 2026-09-30
+
+- Detekt 1.23.8: host JDK21, JVM target17, cognitive/cyclomatic thresholds15 (including Compose).
+- ktfmt0.64: Kotlin style; `ktfmtCheck` verifies, `ktfmtFormat` applies.
+- Semgrep1.156.0: checked-in security rules, local scan, no metrics submission.
+- Android Lint checks all Android modules; CI stores reports and fails on errors.
+- Concurrent futures/ktx1.2.0 and error-prone annotations2.30.0 align app/instrumentation runtime constraints.
+- `scripts/check-quality.sh` runs the complete gate; requires JDK21 and uv.
+- Gitleaks8.30.1: checksum-verified Linux scanner for working tree and Git history.
+- Hosted CodeQL Kotlin/Java security-extended checks use a manual build; Dependabot proposes weekly updates.
+- Reviewed lint upgrade advisories remain tied to the pinned stack; see HARDENING.md.

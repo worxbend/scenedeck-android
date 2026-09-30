@@ -2,6 +2,7 @@ package com.scenedeck.android.core.obs
 
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -97,6 +98,41 @@ internal class HandshakeTest : ObsClientTestBase() {
         val client = newClient()
         assertFails<ObsNotConnectedException> {
             runBlocking { client.getVersion() }
+        }
+    }
+
+    @Test
+    fun cancellingClientScopeFinishesPendingConnect(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            server.enqueueSession()
+            server.responseDelayMs = { 30_000 }
+            val client = newClient()
+            val pending = async { client.connect("127.0.0.1", server.port) }
+            kotlinx.coroutines.withTimeout(5_000) {
+                while (server.receivedCount("GetVersion") == 0) delay(10)
+            }
+            scope.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+            kotlinx.coroutines.withTimeout(5_000) { pending.join() }
+            assertTrue(pending.isCancelled)
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+        }
+    }
+
+    @Test
+    fun cancellingConnectClosesItsSession(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            server.enqueueSession()
+            server.responseDelayMs = { 30_000 }
+            val client = newClient()
+            val pending = async { client.connect("127.0.0.1", server.port) }
+            kotlinx.coroutines.withTimeout(5_000) {
+                while (server.receivedCount("GetVersion") == 0) delay(10)
+            }
+            pending.cancel()
+            kotlinx.coroutines.withTimeout(5_000) { pending.join() }
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
         }
     }
 }

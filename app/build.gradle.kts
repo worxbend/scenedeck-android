@@ -8,6 +8,10 @@ plugins {
 }
 
 android {
+    lint {
+        lintConfig = rootProject.file("lint.xml")
+        warningsAsErrors = true
+    }
     namespace = "com.scenedeck.android"
     compileSdk = 37
 
@@ -53,6 +57,10 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
+    // Keep application and instrumentation runtime constraints compatible.
+    implementation(libs.androidx.concurrent.futures)
+    implementation(libs.androidx.concurrent.futures.ktx)
+    implementation(libs.errorprone.annotations)
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:obs"))

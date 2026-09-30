@@ -25,8 +25,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class StatsScreenRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun holderWith(samples: List<Float>): TrendSamplesHolder {
         val holder = TrendSamplesHolder()
@@ -36,57 +35,77 @@ class StatsScreenRoborazziTest {
 
     @Test
     fun statsScreenPopulatedDark() =
-        capturePopulated(ThemeFamily.SCENEDECK, darkTheme = true, name = "stats_screen_populated_dark.png")
+        capturePopulated(
+            ThemeFamily.SCENEDECK,
+            darkTheme = true,
+            name = "stats_screen_populated_dark.png",
+        )
 
     @Test
     fun statsScreenPopulatedObsDark() =
-        capturePopulated(ThemeFamily.OBS, darkTheme = true, name = "stats_screen_populated_obs_dark.png")
+        capturePopulated(
+            ThemeFamily.OBS,
+            darkTheme = true,
+            name = "stats_screen_populated_obs_dark.png",
+        )
 
     @Test
     fun statsScreenPopulatedNordDark() =
-        capturePopulated(ThemeFamily.NORD, darkTheme = true, name = "stats_screen_populated_nord_dark.png")
+        capturePopulated(
+            ThemeFamily.NORD,
+            darkTheme = true,
+            name = "stats_screen_populated_nord_dark.png",
+        )
 
     @Test
-    fun statsScreenPopulatedHighContrastDark() = capturePopulated(
-        ThemeFamily.HIGH_CONTRAST,
-        darkTheme = true,
-        name = "stats_screen_populated_high_contrast_dark.png",
-    )
+    fun statsScreenPopulatedHighContrastDark() =
+        capturePopulated(
+            ThemeFamily.HIGH_CONTRAST,
+            darkTheme = true,
+            name = "stats_screen_populated_high_contrast_dark.png",
+        )
 
     @Test
-    fun statsScreenPopulatedSceneDeckLight() = capturePopulated(
-        ThemeFamily.SCENEDECK,
-        darkTheme = false,
-        name = "stats_screen_populated_scenedeck_light.png",
-    )
+    fun statsScreenPopulatedSceneDeckLight() =
+        capturePopulated(
+            ThemeFamily.SCENEDECK,
+            darkTheme = false,
+            name = "stats_screen_populated_scenedeck_light.png",
+        )
 
     @Suppress("LongMethod") // rich fixture setup
     private fun capturePopulated(family: ThemeFamily, darkTheme: Boolean, name: String) {
-        val fps = (0 until 120).map { i -> 59f + sin(i / 9.0).toFloat() + if (i in 80..95) -8f else 0f }
-        val render = (0 until 120).map { i -> 1.2f + sin(i / 7.0).toFloat() * 0.4f + if (i in 80..95) 4f else 0f }
-        val drops = FrameDropSeriesHolder().apply {
-            renderSkipped.value = (0 until 120).map { i -> if (i % 17 == 0) 2f else 0f }
-            outputSkipped.value = (0 until 120).map { i -> if (i in 80..95 && i % 3 == 0) 3f else 0f }
-        }
-        val state = StatsUiState(
-            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
-            sampleCount = 120,
-            fps = 59.9f,
-            renderTimeMs = 1.4f,
-            droppedPct = 2.4f,
-            congestionPct = 42f,
-            cpuUsagePct = 12.5,
-            memoryUsageMb = 512.0,
-            bitrateKbps = 6_012,
-            renderTotalFrames = 431_213,
-            renderSkippedFrames = 138,
-            outputTotalFrames = 428_990,
-            outputSkippedFrames = 10_342,
-            streamBytes = 328_400_000,
-            recordBytes = 1_120_500_000,
-            streamActive = true,
-            recordActive = true,
-        )
+        val fps =
+            (0 until 120).map { i -> 59f + sin(i / 9.0).toFloat() + if (i in 80..95) -8f else 0f }
+        val render =
+            (0 until 120).map { i ->
+                1.2f + sin(i / 7.0).toFloat() * 0.4f + if (i in 80..95) 4f else 0f
+            }
+        val drops =
+            FrameDropSeriesHolder().apply {
+                renderSkipped.value = (0 until 120).map { i -> if (i % 17 == 0) 2f else 0f }
+                outputSkipped.value = (0 until 120).map { i -> outputDropFixture(i) }
+            }
+        val state =
+            StatsUiState(
+                connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
+                sampleCount = 120,
+                fps = 59.9f,
+                renderTimeMs = 1.4f,
+                droppedPct = 2.4f,
+                congestionPct = 42f,
+                cpuUsagePct = 12.5,
+                memoryUsageMb = 512.0,
+                bitrateKbps = 6_012,
+                renderTotalFrames = 431_213,
+                renderSkippedFrames = 138,
+                outputTotalFrames = 428_990,
+                outputSkippedFrames = 10_342,
+                streamBytes = 328_400_000,
+                recordBytes = 1_120_500_000,
+                streamActive = true,
+                recordActive = true,
+            )
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
@@ -103,11 +122,15 @@ class StatsScreenRoborazziTest {
         composeRule.onRoot().captureRoboImage(name)
     }
 
+    private fun outputDropFixture(index: Int): Float =
+        if (index in 80..95 && index % 3 == 0) 3f else 0f
+
     @Test
     fun statsScreenEmptyDark() {
-        val state = StatsUiState(
-            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
-        )
+        val state =
+            StatsUiState(
+                connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux"))
+            )
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
                 Surface {

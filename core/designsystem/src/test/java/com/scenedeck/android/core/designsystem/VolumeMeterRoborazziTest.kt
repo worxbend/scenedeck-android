@@ -31,21 +31,22 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class VolumeMeterRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun holderWith(vararg channelDb: Float): MeterLevelsHolder {
         val holder = MeterLevelsHolder()
-        holder.reading.value = VolumeMeterReading(
-            inputName = "Test",
-            channels = channelDb.map { db ->
-                ChannelLevels(
-                    magnitudeMul = dbToMul(db),
-                    peakMul = dbToMul(db),
-                    inputPeakMul = dbToMul(db),
-                )
-            },
-        )
+        holder.reading.value =
+            VolumeMeterReading(
+                inputName = "Test",
+                channels =
+                    channelDb.map { db ->
+                        ChannelLevels(
+                            magnitudeMul = dbToMul(db),
+                            peakMul = dbToMul(db),
+                            inputPeakMul = dbToMul(db),
+                        )
+                    },
+            )
         return holder
     }
 
@@ -58,10 +59,7 @@ class VolumeMeterRoborazziTest {
                         faderMul = 1.0,
                         muted = muted,
                         motionLevel = MotionLevel.OFF,
-                        modifier = Modifier
-                            .width(120.dp)
-                            .height(220.dp)
-                            .padding(8.dp),
+                        modifier = Modifier.width(120.dp).height(220.dp).padding(8.dp),
                     )
                 }
             }

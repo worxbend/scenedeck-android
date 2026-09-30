@@ -7,6 +7,10 @@ plugins {
 }
 
 android {
+    lint {
+        lintConfig = rootProject.file("lint.xml")
+        warningsAsErrors = true
+    }
     namespace = "com.scenedeck.android.feature.mixer"
     compileSdk = 37
 
@@ -54,6 +58,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     implementation(project(":core:designsystem"))
+    implementation(project(":core:common"))
     implementation(project(":core:data"))
     implementation(project(":core:model"))
 

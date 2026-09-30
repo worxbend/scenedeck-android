@@ -3,11 +3,9 @@ package com.scenedeck.android.feature.mixer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -16,6 +14,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +31,10 @@ import com.scenedeck.android.core.model.MonitorTypeKind
 
 private const val MAX_SYNC_OFFSET_MS = 950
 
-/** Current audio extras for one input (loaded when the sheet opens). Balance is OBS-domain 0..1, 0.5 = center. */
+/**
+ * Current audio extras for one input (loaded when the sheet opens). Balance is OBS-domain 0..1, 0.5
+ * = center.
+ */
 data class AudioExtras(
     val balance: Double = 0.5,
     val syncOffsetMs: Int = 0,
@@ -66,10 +68,7 @@ fun AudioExtrasSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(text = inputName, style = MaterialTheme.typography.titleLarge)
@@ -85,21 +84,23 @@ fun AudioExtrasSheet(
                 Column {
                     val panPct = ((balance - 0.5) * 200).toInt()
                     Text(
-                        text = when {
-                            panPct == 0 -> "Balance: Center"
-                            panPct < 0 -> "Balance: L ${-panPct}%"
-                            else -> "Balance: R $panPct%"
-                        },
+                        text =
+                            when {
+                                panPct == 0 -> "Balance: Center"
+                                panPct < 0 -> "Balance: L ${-panPct}%"
+                                else -> "Balance: R $panPct%"
+                            },
                         style = MaterialTheme.typography.labelLarge,
                         fontFamily = FontFamily.Monospace,
                     )
+                    val sliderState = rememberSliderState(value = balance.toFloat())
+                    sliderState.value = balance.toFloat()
                     Slider(
-                        value = balance.toFloat(),
+                        state = sliderState,
                         onValueChange = {
                             balance = it.toDouble()
                             onBalanceChange(balance)
                         },
-                        valueRange = 0f..1f,
                     )
                 }
 
@@ -111,7 +112,8 @@ fun AudioExtrasSheet(
                         modifier = Modifier.weight(1f),
                     )
                     StepperButton(label = "−50") {
-                        syncOffset = (syncOffset - 50).coerceIn(-MAX_SYNC_OFFSET_MS, MAX_SYNC_OFFSET_MS)
+                        syncOffset =
+                            (syncOffset - 50).coerceIn(-MAX_SYNC_OFFSET_MS, MAX_SYNC_OFFSET_MS)
                         onSyncOffsetChange(syncOffset)
                     }
                     Text(
@@ -121,7 +123,8 @@ fun AudioExtrasSheet(
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
                     StepperButton(label = "+50") {
-                        syncOffset = (syncOffset + 50).coerceIn(-MAX_SYNC_OFFSET_MS, MAX_SYNC_OFFSET_MS)
+                        syncOffset =
+                            (syncOffset + 50).coerceIn(-MAX_SYNC_OFFSET_MS, MAX_SYNC_OFFSET_MS)
                         onSyncOffsetChange(syncOffset)
                     }
                 }
@@ -129,21 +132,22 @@ fun AudioExtrasSheet(
                 // Monitor type.
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     listOf(
-                        MonitorTypeKind.NONE to "Off",
-                        MonitorTypeKind.MONITOR_ONLY to "Monitor",
-                        MonitorTypeKind.MONITOR_AND_OUTPUT to "Mon+Out",
-                    ).forEachIndexed { index, (type, label) ->
-                        SegmentedButton(
-                            selected = monitorType == type,
-                            onClick = {
-                                monitorType = type
-                                onMonitorTypeChange(type)
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(index, 3),
-                        ) {
-                            Text(label)
+                            MonitorTypeKind.NONE to "Off",
+                            MonitorTypeKind.MONITOR_ONLY to "Monitor",
+                            MonitorTypeKind.MONITOR_AND_OUTPUT to "Mon+Out",
+                        )
+                        .forEachIndexed { index, (type, label) ->
+                            SegmentedButton(
+                                selected = monitorType == type,
+                                onClick = {
+                                    monitorType = type
+                                    onMonitorTypeChange(type)
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, 3),
+                            ) {
+                                Text(label)
+                            }
                         }
-                    }
                 }
             }
         }

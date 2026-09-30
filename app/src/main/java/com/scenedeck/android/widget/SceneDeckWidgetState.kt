@@ -21,13 +21,15 @@ object SceneDeckWidgetKeys {
 }
 
 /** Short status word for the widget header (mirrors the StatusStrip labels). */
-fun connectionLabelFor(state: ConnectionState): String = when (state) {
-    is ConnectionState.Ready -> "Live"
-    is ConnectionState.Connecting, is ConnectionState.Identifying -> "Connecting"
-    is ConnectionState.Reconnecting -> "Retry ${state.attempt}"
-    is ConnectionState.Failed -> "Failed"
-    ConnectionState.Disconnected -> "Offline"
-}
+fun connectionLabelFor(state: ConnectionState): String =
+    when (state) {
+        is ConnectionState.Ready -> "Connected"
+        is ConnectionState.Connecting,
+        is ConnectionState.Identifying -> "Connecting"
+        is ConnectionState.Reconnecting -> "Retry ${state.attempt}"
+        is ConnectionState.Failed -> "Failed"
+        ConnectionState.Disconnected -> "Offline"
+    }
 
 /** Snapshot written into each widget's Glance preferences by the updater. */
 data class WidgetSnapshot(
@@ -37,12 +39,13 @@ data class WidgetSnapshot(
 ) {
     /** Mutates [prefs] in place (Glance's updateAppWidgetState discards return values). */
     fun writeTo(prefs: MutablePreferences) {
-        prefs[SceneDeckWidgetKeys.sceneCount] = sceneNames.size
-        sceneNames.forEachIndexed { slot, name ->
+        val visibleScenes = sceneNames.take(SceneDeckWidgetKeys.MAX_SCENES)
+        prefs[SceneDeckWidgetKeys.sceneCount] = visibleScenes.size
+        visibleScenes.forEachIndexed { slot, name ->
             prefs[SceneDeckWidgetKeys.sceneName(slot)] = name
         }
         // Clear stale slots from a previous, larger snapshot.
-        for (slot in sceneNames.size until SceneDeckWidgetKeys.MAX_SCENES) {
+        for (slot in visibleScenes.size until SceneDeckWidgetKeys.MAX_SCENES) {
             prefs.remove(SceneDeckWidgetKeys.sceneName(slot))
         }
         val program = programScene
@@ -56,11 +59,16 @@ data class WidgetSnapshot(
 
     companion object {
         fun readFrom(prefs: Preferences): WidgetSnapshot {
-            val count = prefs[SceneDeckWidgetKeys.sceneCount] ?: 0
+            val count =
+                (prefs[SceneDeckWidgetKeys.sceneCount] ?: 0).coerceIn(
+                    0,
+                    SceneDeckWidgetKeys.MAX_SCENES,
+                )
             return WidgetSnapshot(
-                sceneNames = (0 until count)
-                    .mapNotNull { prefs[SceneDeckWidgetKeys.sceneName(it)] }
-                    .take(SceneDeckWidgetKeys.MAX_SCENES),
+                sceneNames =
+                    (0 until count)
+                        .mapNotNull { prefs[SceneDeckWidgetKeys.sceneName(it)] }
+                        .take(SceneDeckWidgetKeys.MAX_SCENES),
                 programScene = prefs[SceneDeckWidgetKeys.programScene],
                 connectionLabel = prefs[SceneDeckWidgetKeys.connectionLabel] ?: "Offline",
             )

@@ -20,18 +20,18 @@ import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 
 /**
- * Holder for one chart's rolling sample window. Read in the Canvas DRAW PHASE only —
- * pushing a new 1 Hz sample must never trigger recomposition (MeterLevelsHolder
- * pattern; docs/DESIGN_SYSTEM.md §7).
+ * Holder for one chart's rolling sample window. Read in the Canvas DRAW PHASE only — pushing a new
+ * 1 Hz sample must never trigger recomposition (MeterLevelsHolder pattern; docs/DESIGN_SYSTEM.md
+ * §7).
  */
 class TrendSamplesHolder {
     val samples: MutableState<List<Float>> = mutableStateOf(emptyList())
 }
 
 /**
- * Auto-scaled Y range for [samples]: anchored at [floor] (charts like FPS/render time
- * never go negative), [headroom] fraction above the peak, at least [minSpan] tall.
- * Empty input yields the default (floor, floor + minSpan) window.
+ * Auto-scaled Y range for [samples]: anchored at [floor] (charts like FPS/render time never go
+ * negative), [headroom] fraction above the peak, at least [minSpan] tall. Empty input yields the
+ * default (floor, floor + minSpan) window.
  */
 internal fun trendYScale(
     samples: List<Float>,
@@ -69,13 +69,13 @@ private class TrendScaleRenderState {
 }
 
 /**
- * 2-minute rolling line/area chart (docs/DESIGN_SYSTEM.md §7): theme-aware grid,
- * auto-scaled Y anchored at [floor], area fill, last-value dot. Samples are
- * right-aligned in a [windowSize]-sample window, so a sparse series hugs the right
- * edge and an empty series renders the grid only.
+ * 2-minute rolling line/area chart (docs/DESIGN_SYSTEM.md §7): theme-aware grid, auto-scaled Y
+ * anchored at [floor], area fill, last-value dot. Samples are right-aligned in a
+ * [windowSize]-sample window, so a sparse series hugs the right edge and an empty series renders
+ * the grid only.
  *
- * Reads [samplesHolder] in the DRAW PHASE ONLY — 1 Hz telemetry updates redraw
- * without recomposition. [motionLevel] OFF snaps Y-scale changes (no animation).
+ * Reads [samplesHolder] in the DRAW PHASE ONLY — 1 Hz telemetry updates redraw without
+ * recomposition. [motionLevel] OFF snaps Y-scale changes (no animation).
  */
 @Composable
 fun TrendChart(
@@ -101,23 +101,13 @@ fun TrendChart(
         fun yFor(value: Float): Float =
             size.height * (1f - ((value - minY) / span).coerceIn(0f, 1f))
 
-        // Theme-aware horizontal grid (GRID_LINES interior lines + baseline).
-        for (i in 0..GRID_LINES) {
-            val y = size.height * i / GRID_LINES
-            drawLine(
-                color = gridColor,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = if (i == GRID_LINES) 1.5f.dp.toPx() else 1f.dp.toPx(),
-            )
-        }
+        drawTrendGrid(gridColor)
         if (samples.isEmpty()) return@Canvas
 
         // Right-align the n samples inside the rolling window.
         val window = windowSize.coerceAtLeast(2)
         val offset = (window - samples.size).coerceAtLeast(0)
-        fun xFor(index: Int): Float =
-            size.width * (offset + index).toFloat() / (window - 1)
+        fun xFor(index: Int): Float = size.width * (offset + index).toFloat() / (window - 1)
 
         val linePath = Path()
         val areaPath = Path()
@@ -138,9 +128,10 @@ fun TrendChart(
 
         drawPath(
             path = areaPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(color.copy(alpha = 0.25f), color.copy(alpha = 0.02f)),
-            ),
+            brush =
+                Brush.verticalGradient(
+                    colors = listOf(color.copy(alpha = 0.25f), color.copy(alpha = 0.02f))
+                ),
         )
         drawPath(
             path = linePath,
@@ -152,5 +143,18 @@ fun TrendChart(
         val lastY = yFor(samples.last())
         drawCircle(color = color, radius = 3.5f.dp.toPx(), center = Offset(lastX, lastY))
         drawCircle(color = gridColor, radius = 1.5f.dp.toPx(), center = Offset(lastX, lastY))
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTrendGrid(gridColor: Color) {
+    // Theme-aware horizontal grid (GRID_LINES interior lines + baseline).
+    for (i in 0..GRID_LINES) {
+        val y = size.height * i / GRID_LINES
+        drawLine(
+            color = gridColor,
+            start = Offset(0f, y),
+            end = Offset(size.width, y),
+            strokeWidth = if (i == GRID_LINES) 1.5f.dp.toPx() else 1f.dp.toPx(),
+        )
     }
 }

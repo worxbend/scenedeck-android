@@ -1,8 +1,8 @@
 package com.scenedeck.android.core.data
 
 /**
- * Keystore-backed storage for OBS passwords. Passwords NEVER touch Room, DataStore
- * or logs (docs/ARCHITECTURE.md rule 5).
+ * Keystore-backed storage for OBS passwords. Passwords NEVER touch Room, DataStore or logs
+ * (docs/ARCHITECTURE.md rule 5).
  */
 interface SecretsStore {
     suspend fun passwordFor(profileId: Long): String?

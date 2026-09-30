@@ -111,7 +111,10 @@ internal class PowerFeaturesTest : ObsClientTestBase() {
                     loadObsFixture("events/virtualcam_state_changed.json"),
                 )
                 assertEquals(
-                    ObsEvent.VirtualcamStateChanged(active = true, state = "OBS_WEBSOCKET_OUTPUT_STARTED"),
+                    ObsEvent.VirtualcamStateChanged(
+                        active = true,
+                        state = "OBS_WEBSOCKET_OUTPUT_STARTED",
+                    ),
                     awaitItem(),
                 )
 
@@ -131,7 +134,10 @@ internal class PowerFeaturesTest : ObsClientTestBase() {
                     "InputAudioSyncOffsetChanged",
                     loadObsFixture("events/input_audio_sync_offset_changed.json"),
                 )
-                assertEquals(ObsEvent.InputAudioSyncOffsetChanged("Test Tone 440", 120), awaitItem())
+                assertEquals(
+                    ObsEvent.InputAudioSyncOffsetChanged("Test Tone 440", 120),
+                    awaitItem(),
+                )
                 cancelAndIgnoreRemainingEvents()
             }
             client.disconnect()

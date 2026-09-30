@@ -1,18 +1,20 @@
 package com.scenedeck.android.core.designsystem.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -20,41 +22,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.setProgress
-import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
+import com.scenedeck.android.core.model.MixerScope
 
 /**
- * Full mixer channel strip (docs/DESIGN_SYSTEM.md §7): scope badge, name, mono dB
- * readout, vertical dB-taper fader, mute, local lock and a live [VolumeMeter].
+ * Full mixer channel strip v2 (docs/DESIGN_SYSTEM.md §7): tonal scope chip, name, mono dB readout,
+ * meter pair (left) next to a REAL fader (right) — 6dp rounded track with dB ticks, accent fill
+ * below the thumb, pill thumb with grip line, and a floating dB bubble while dragging. Footer:
+ * tonal mute, lock, optional extras.
  *
- * Fader interaction: [onVolumePreview] fires continuously while dragging (local UI
- * only — coalesce/debounce OBS writes above), [onVolumeCommit] fires once on drag
- * end (send the final value). All targets ≥ 48dp.
+ * Fader interaction: [onVolumePreview] fires continuously while dragging (local UI only —
+ * coalesce/debounce OBS writes above), [onVolumeCommit] fires once on drag end (send the final
+ * value). All targets ≥ 48dp.
  */
 @Composable
 fun MixerStrip(
@@ -72,19 +68,20 @@ fun MixerStrip(
     onToggleLock: () -> Unit,
     modifier: Modifier = Modifier,
     scopePath: String? = null,
+    /** Optional extras affordance (audio extras sheet); hidden when null. */
+    onExtrasClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     val colors = SceneDeckTheme.colors
+    val db = mulToDb(volumeMul)
 
     Surface(
-        modifier = modifier.width(112.dp),
-        shape = MaterialTheme.shapes.medium,
+        modifier = modifier.width(120.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -93,103 +90,71 @@ fun MixerStrip(
                 text = name,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                minLines = 2,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = formatDb(mulToDb(volumeMul)),
-                style = MaterialTheme.typography.labelMedium,
+                text = formatDb(db),
+                style = MaterialTheme.typography.titleSmall,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Row(
-                modifier = Modifier
-                    .height(220.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.height(220.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             ) {
-                FaderTrack(
-                    volumeMul = volumeMul,
-                    enabled = !locked,
-                    contentDescription =
-                        "Volume fader for $name, ${formatDb(mulToDb(volumeMul))}",
-                    onPreview = onVolumePreview,
-                    onCommit = { value ->
-                        if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                        onVolumeCommit(value)
-                    },
-                    modifier = Modifier
-                        .width(48.dp)
-                        .fillMaxHeight(),
-                )
                 VolumeMeter(
                     levelsHolder = meterHolder,
                     faderMul = volumeMul,
                     muted = muted,
                     motionLevel = motionLevel,
-                    modifier = Modifier
-                        .width(28.dp)
-                        .fillMaxHeight(),
+                    modifier = Modifier.width(18.dp).fillMaxHeight(),
+                )
+                FaderTrack(
+                    volumeMul = volumeMul,
+                    enabled = !locked,
+                    contentDescription = "Volume fader for $name, ${formatDb(db)}",
+                    onPreview = onVolumePreview,
+                    onCommit = { value ->
+                        if (hapticsEnabled)
+                            haptics.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                        onVolumeCommit(value)
+                    },
+                    modifier = Modifier.width(48.dp).fillMaxHeight(),
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(
-                    onClick = onToggleMute,
-                    enabled = !locked,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        imageVector = if (muted) SceneIcon.MIC_OFF.imageVector else SceneIcon.MIC.imageVector,
-                        contentDescription = if (muted) "Unmute $name" else "Mute $name",
-                        tint = if (muted) colors.meterRed else MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
-                    onClick = onToggleLock,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        imageVector = if (locked) {
-                            SceneIcon.LOCK.imageVector
-                        } else {
-                            SceneIcon.LOCK_OPEN.imageVector
-                        },
-                        contentDescription = if (locked) "Unlock $name controls" else "Lock $name controls",
-                        tint = if (locked) colors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.alpha(if (locked) 1f else 0.5f),
-                    )
-                }
-            }
+            MixerFooter(name, muted, locked, onToggleMute, onToggleLock, onExtrasClick)
         }
     }
 }
 
 @Composable
 private fun ScopeBadge(scope: MixerScope, scopePath: String?) {
-    val (icon, label) = when (scope) {
-        MixerScope.GLOBAL -> SceneIcon.GLOBE to "Global"
-        MixerScope.SCENE -> SceneIcon.SCENES to "Scene"
-        MixerScope.NESTED -> SceneIcon.INVENTORY to "Nested"
-        MixerScope.GROUP -> SceneIcon.USERS to "Group"
-    }
+    val (icon, label) =
+        when (scope) {
+            MixerScope.GLOBAL -> SceneIcon.GLOBE to "Global"
+            MixerScope.SCENE -> SceneIcon.SCENES to "Scene"
+            MixerScope.NESTED -> SceneIcon.INVENTORY to "Nested"
+            MixerScope.GROUP -> SceneIcon.USERS to "Group"
+        }
     Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(
                 imageVector = icon.imageVector,
                 contentDescription = null,
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(11.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
             Text(
@@ -203,95 +168,133 @@ private fun ScopeBadge(scope: MixerScope, scopePath: String?) {
     }
 }
 
-/**
- * Vertical fader with dB taper: track position ⇄ dB fraction (linear in dB over
- * the −60…0 scale), drag updates preview continuously and commits once on end.
- */
 @Composable
-private fun FaderTrack(
-    volumeMul: Double,
-    enabled: Boolean,
-    contentDescription: String,
-    onPreview: (Double) -> Unit,
-    onCommit: (Double) -> Unit,
-    modifier: Modifier = Modifier,
+private fun MixerFooter(
+    name: String,
+    muted: Boolean,
+    locked: Boolean,
+    onToggleMute: () -> Unit,
+    onToggleLock: () -> Unit,
+    onExtrasClick: (() -> Unit)?,
 ) {
     val colors = SceneDeckTheme.colors
-    var dragFraction by remember { mutableFloatStateOf(Float.NaN) }
-    val displayFraction = if (dragFraction.isNaN()) dbToFraction(mulToDb(volumeMul)) else dragFraction
-
-    val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    val fillColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-
-    Canvas(
-        modifier = modifier
-            .semantics {
-                this.contentDescription = contentDescription
-                // Screen-reader adjustable: progress is exposed in dB (−60…0).
-                progressBarRangeInfo = ProgressBarRangeInfo(
-                    current = mulToDb(volumeMul),
-                    range = METER_DB_FLOOR..0f,
-                )
-                if (enabled) {
-                    setProgress("Set $contentDescription") { targetDb ->
-                        onCommit(dbToMul(targetDb.coerceIn(METER_DB_FLOOR, 0f)).toDouble())
-                        true
-                    }
-                }
-            }
-            .alpha(if (enabled) 1f else 0.5f)
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                var startFraction = displayFraction
-                detectVerticalDragGestures(
-                    onDragStart = { startFraction = displayFraction },
-                    onDragEnd = {
-                        val final = dragFraction
-                        if (!final.isNaN()) {
-                            onCommit(dbToMul(fractionToDb(final)).toDouble())
-                            dragFraction = Float.NaN
-                        }
-                    },
-                    onDragCancel = { dragFraction = Float.NaN },
-                ) { change, dragAmount ->
-                    change.consume()
-                    val base = if (dragFraction.isNaN()) startFraction else dragFraction
-                    val next = (base - dragAmount / size.height).coerceIn(0f, 1f)
-                    dragFraction = next
-                    onPreview(dbToMul(fractionToDb(next)).toDouble())
-                }
-            },
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        val corner = CornerRadius(6.dp.toPx())
-        drawRoundRect(color = trackColor, size = size, cornerRadius = corner)
-        val fillTop = size.height * (1f - displayFraction)
-        drawRoundRect(
-            color = fillColor.copy(alpha = 0.5f),
-            topLeft = Offset(0f, fillTop),
-            size = Size(size.width, size.height - fillTop),
-            cornerRadius = corner,
-        )
-        // Thumb.
-        val thumbHeight = 4.dp.toPx()
-        drawRoundRect(
-            color = fillColor,
-            topLeft = Offset(0f, fillTop - thumbHeight / 2),
-            size = Size(size.width, thumbHeight),
-            cornerRadius = corner,
-        )
-        // Zone ticks at −20/−9 dB.
-        listOf(YELLOW_TICK to colors.meterYellow, RED_TICK to colors.meterRed).forEach { (db, color) ->
-            val y = size.height * (1f - dbToFraction(db))
-            drawRect(
-                color = color.copy(alpha = 0.6f),
-                topLeft = Offset(0f, y),
-                size = Size(size.width, 1.dp.toPx()),
+        MixerMuteButton(name, muted, locked, onToggleMute)
+        MixerOptions(name, locked, onToggleLock, onExtrasClick)
+    }
+}
+
+@Composable
+private fun MixerMuteButton(
+    name: String,
+    muted: Boolean,
+    locked: Boolean,
+    onToggleMute: () -> Unit,
+) {
+    val colors = SceneDeckTheme.colors
+    val muteTint = if (muted) colors.meterRed else MaterialTheme.colorScheme.onSurfaceVariant
+    val muteIcon = if (muted) SceneIcon.MIC_OFF.imageVector else SceneIcon.MIC.imageVector
+    val muteDescription = if (muted) "Unmute $name" else "Mute $name"
+    IconButton(
+        onClick = onToggleMute,
+        enabled = !locked,
+        modifier = Modifier.size(48.dp),
+    ) {
+        val muteBg =
+            if (muted) {
+                colors.meterRed.copy(alpha = 0.22f)
+            } else {
+                androidx.compose.ui.graphics.Color.Transparent
+            }
+        Box(
+            modifier = Modifier.size(32.dp).background(muteBg, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = muteIcon,
+                contentDescription = muteDescription,
+                tint = muteTint,
+                modifier = Modifier.size(18.dp),
             )
         }
     }
 }
 
-private const val YELLOW_TICK = -20f
-private const val RED_TICK = -9f
+@Composable
+private fun MixerOptions(
+    name: String,
+    locked: Boolean,
+    onToggleLock: () -> Unit,
+    onExtrasClick: (() -> Unit)?,
+) {
+    val colors = SceneDeckTheme.colors
+    val optionsIcon =
+        when {
+            locked -> SceneIcon.LOCK.imageVector
+            onExtrasClick != null -> SceneIcon.SETTINGS.imageVector
+            else -> SceneIcon.LOCK_OPEN.imageVector
+        }
+    val optionsDescription =
+        when {
+            onExtrasClick != null -> "Channel options for $name"
+            locked -> "Unlock $name controls"
+            else -> "Lock $name controls"
+        }
+    val optionsTint = if (locked) colors.warning else MaterialTheme.colorScheme.onSurfaceVariant
+    var optionsOpen by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = {
+                if (onExtrasClick == null) onToggleLock() else optionsOpen = true
+            },
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                imageVector = optionsIcon,
+                contentDescription = optionsDescription,
+                tint = optionsTint,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        MixerOptionsMenu(optionsOpen, { optionsOpen = false }, locked, onToggleLock, onExtrasClick)
+    }
+}
 
-private fun fractionToDb(fraction: Float): Float = METER_DB_FLOOR + fraction * -METER_DB_FLOOR
+@Composable
+private fun MixerOptionsMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    locked: Boolean,
+    onToggleLock: () -> Unit,
+    onExtrasClick: (() -> Unit)?,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text(if (locked) "Unlock controls" else "Lock controls") },
+            onClick = {
+                onDismiss()
+                onToggleLock()
+            },
+            leadingIcon = {
+                Icon(
+                    if (locked) SceneIcon.LOCK_OPEN.imageVector else SceneIcon.LOCK.imageVector,
+                    contentDescription = null,
+                )
+            },
+        )
+        if (onExtrasClick != null) {
+            DropdownMenuItem(
+                text = { Text("Audio settings") },
+                onClick = {
+                    onDismiss()
+                    onExtrasClick()
+                },
+                enabled = !locked,
+                leadingIcon = { Icon(SceneIcon.SETTINGS.imageVector, contentDescription = null) },
+            )
+        }
+    }
+}

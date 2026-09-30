@@ -39,15 +39,16 @@ internal fun expectedAuthResponse(password: String, salt: String, challenge: Str
 
 internal fun loadObsFixture(name: String): String =
     requireNotNull(FakeObsServer::class.java.classLoader?.getResource("obsws/$name")) {
-        "missing fixture obsws/$name"
-    }.readText()
+            "missing fixture obsws/$name"
+        }
+        .readText()
 
 /**
- * Scripted fake obs-websocket v5 server (MockWebServer WebSocket upgrade) speaking
- * from JSON fixtures recorded to match real OBS 31 / obs-websocket 5.6 shapes.
+ * Scripted fake obs-websocket v5 server (MockWebServer WebSocket upgrade) speaking from JSON
+ * fixtures recorded to match real OBS 31 / obs-websocket 5.6 shapes.
  *
- * Usage: `start()`, [enqueueSession] once per expected connection, then drive
- * requests/events; [sendEvent]/[closeActiveSockets] push server-side frames.
+ * Usage: `start()`, [enqueueSession] once per expected connection, then drive requests/events;
+ * [sendEvent]/[closeActiveSockets] push server-side frames.
  */
 internal class FakeObsServer(
     private val password: String? = null,
@@ -68,7 +69,8 @@ internal class FakeObsServer(
 
     private val activeSockets = CopyOnWriteArrayList<WebSocket>()
 
-    val port: Int get() = server.port
+    val port: Int
+        get() = server.port
 
     fun start() = server.start()
 
@@ -77,15 +79,16 @@ internal class FakeObsServer(
         server.enqueue(
             MockResponse()
                 .setHeader("Sec-WebSocket-Protocol", "obswebsocket.json")
-                .withWebSocketUpgrade(SessionListener()),
+                .withWebSocketUpgrade(SessionListener())
         )
     }
 
     fun sendEvent(eventType: String, eventDataJson: String, intent: Int = 1) {
-        val frame = template("event.json")
-            .replace("%TYPE%", eventType)
-            .replace("%INTENT%", intent.toString())
-            .replace("%DATA%", eventDataJson)
+        val frame =
+            template("event.json")
+                .replace("%TYPE%", eventType)
+                .replace("%INTENT%", intent.toString())
+                .replace("%DATA%", eventDataJson)
         activeSockets.forEach { it.send(frame) }
     }
 
@@ -111,13 +114,14 @@ internal class FakeObsServer(
         override fun onOpen(webSocket: WebSocket, response: Response) {
             connectionCount.incrementAndGet()
             activeSockets += webSocket
-            val hello = if (password != null) {
-                template("hello_auth.json")
-                    .replace("%CHALLENGE%", challenge)
-                    .replace("%SALT%", salt)
-            } else {
-                template("hello.json")
-            }
+            val hello =
+                if (password != null) {
+                    template("hello_auth.json")
+                        .replace("%CHALLENGE%", challenge)
+                        .replace("%SALT%", salt)
+                } else {
+                    template("hello.json")
+                }
             webSocket.send(hello)
         }
 
@@ -134,7 +138,10 @@ internal class FakeObsServer(
             activeSockets -= webSocket
         }
 
-        private fun handleIdentify(webSocket: WebSocket, data: kotlinx.serialization.json.JsonObject) {
+        private fun handleIdentify(
+            webSocket: WebSocket,
+            data: kotlinx.serialization.json.JsonObject,
+        ) {
             receivedEventSubs.set(data["eventSubscriptions"]?.jsonPrimitive?.int ?: -1)
             if (password != null) {
                 val auth = data["authentication"]?.jsonPrimitive?.content
@@ -146,17 +153,21 @@ internal class FakeObsServer(
             webSocket.send(template("identified.json"))
         }
 
-        private fun handleRequest(webSocket: WebSocket, data: kotlinx.serialization.json.JsonObject) {
+        private fun handleRequest(
+            webSocket: WebSocket,
+            data: kotlinx.serialization.json.JsonObject,
+        ) {
             val type = data["requestType"]!!.jsonPrimitive.content
             val id = data["requestId"]!!.jsonPrimitive.content
             receivedRequests += type
 
             val responseData = RESPONSE_FIXTURES[type]?.let { fixture("responses/$it") }
             val dataPart = if (responseData != null) ",\"responseData\":$responseData" else ""
-            val frame = template("response.json")
-                .replace("%TYPE%", type)
-                .replace("%ID%", id)
-                .replace("%DATA%", dataPart)
+            val frame =
+                template("response.json")
+                    .replace("%TYPE%", type)
+                    .replace("%ID%", id)
+                    .replace("%DATA%", dataPart)
 
             val delay = responseDelayMs(type)
             if (delay <= 0) {
@@ -171,35 +182,36 @@ internal class FakeObsServer(
         private const val OP_IDENTIFY = 1
         private const val OP_REQUEST = 6
 
-        private val RESPONSE_FIXTURES = mapOf(
-            "GetVersion" to "get_version.json",
-            "GetSceneList" to "get_scene_list.json",
-            "GetCurrentProgramScene" to "get_current_program_scene.json",
-            "GetSceneItemList" to "get_scene_item_list.json",
-            "GetSceneItemEnabled" to "get_scene_item_enabled.json",
-            "GetSpecialInputs" to "get_special_inputs.json",
-            "GetInputMute" to "get_input_mute.json",
-            "GetInputVolume" to "get_input_volume.json",
-            "GetStreamStatus" to "get_stream_status.json",
-            "GetRecordStatus" to "get_record_status.json",
-            "StopRecord" to "stop_record.json",
-            "GetProfileList" to "get_profile_list.json",
-            "GetSceneCollectionList" to "get_scene_collection_list.json",
-            "GetStats" to "get_stats.json",
-            "GetStudioModeEnabled" to "get_studio_mode_enabled.json",
-            "GetCurrentPreviewScene" to "get_current_preview_scene.json",
-            "GetSceneTransitionList" to "get_scene_transition_list.json",
-            "GetCurrentSceneTransition" to "get_current_scene_transition.json",
-            "GetSourceScreenshot" to "get_source_screenshot.json",
-            "GetVirtualCamStatus" to "get_virtualcam_status.json",
-            "ToggleVirtualCam" to "toggle_virtualcam.json",
-            "GetReplayBufferStatus" to "get_replay_buffer_status.json",
-            "ToggleReplayBuffer" to "toggle_replay_buffer.json",
-            "GetLastReplayBufferReplay" to "get_last_replay_buffer_replay.json",
-            "GetMediaInputStatus" to "get_media_input_status.json",
-            "GetInputAudioBalance" to "get_input_audio_balance.json",
-            "GetInputAudioSyncOffset" to "get_input_audio_sync_offset.json",
-            "GetInputAudioMonitorType" to "get_input_audio_monitor_type.json",
-        )
+        private val RESPONSE_FIXTURES =
+            mapOf(
+                "GetVersion" to "get_version.json",
+                "GetSceneList" to "get_scene_list.json",
+                "GetCurrentProgramScene" to "get_current_program_scene.json",
+                "GetSceneItemList" to "get_scene_item_list.json",
+                "GetSceneItemEnabled" to "get_scene_item_enabled.json",
+                "GetSpecialInputs" to "get_special_inputs.json",
+                "GetInputMute" to "get_input_mute.json",
+                "GetInputVolume" to "get_input_volume.json",
+                "GetStreamStatus" to "get_stream_status.json",
+                "GetRecordStatus" to "get_record_status.json",
+                "StopRecord" to "stop_record.json",
+                "GetProfileList" to "get_profile_list.json",
+                "GetSceneCollectionList" to "get_scene_collection_list.json",
+                "GetStats" to "get_stats.json",
+                "GetStudioModeEnabled" to "get_studio_mode_enabled.json",
+                "GetCurrentPreviewScene" to "get_current_preview_scene.json",
+                "GetSceneTransitionList" to "get_scene_transition_list.json",
+                "GetCurrentSceneTransition" to "get_current_scene_transition.json",
+                "GetSourceScreenshot" to "get_source_screenshot.json",
+                "GetVirtualCamStatus" to "get_virtualcam_status.json",
+                "ToggleVirtualCam" to "toggle_virtualcam.json",
+                "GetReplayBufferStatus" to "get_replay_buffer_status.json",
+                "ToggleReplayBuffer" to "toggle_replay_buffer.json",
+                "GetLastReplayBufferReplay" to "get_last_replay_buffer_replay.json",
+                "GetMediaInputStatus" to "get_media_input_status.json",
+                "GetInputAudioBalance" to "get_input_audio_balance.json",
+                "GetInputAudioSyncOffset" to "get_input_audio_sync_offset.json",
+                "GetInputAudioMonitorType" to "get_input_audio_monitor_type.json",
+            )
     }
 }

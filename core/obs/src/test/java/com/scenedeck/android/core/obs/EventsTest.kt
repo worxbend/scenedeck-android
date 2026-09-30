@@ -50,7 +50,10 @@ internal class EventsTest : ObsClientTestBase() {
                     loadObsFixture("events/stream_state_changed.json"),
                 )
                 assertEquals(
-                    ObsEvent.StreamStateChanged(active = true, state = "OBS_WEBSOCKET_OUTPUT_STARTED"),
+                    ObsEvent.StreamStateChanged(
+                        active = true,
+                        state = "OBS_WEBSOCKET_OUTPUT_STARTED",
+                    ),
                     awaitItem(),
                 )
 
@@ -84,11 +87,12 @@ internal class EventsTest : ObsClientTestBase() {
                     listOf(
                         VolumeMeterReading(
                             inputName = "Mic/Aux",
-                            channels = listOf(
-                                ChannelLevels(0.5f, 0.6f, 0.55f),
-                                ChannelLevels(0.4f, 0.45f, 0.42f),
-                            ),
-                        ),
+                            channels =
+                                listOf(
+                                    ChannelLevels(0.5f, 0.6f, 0.55f),
+                                    ChannelLevels(0.4f, 0.45f, 0.42f),
+                                ),
+                        )
                     ),
                     batch,
                 )

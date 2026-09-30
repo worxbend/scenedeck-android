@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.inventory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.RegistryExportCodec
 import com.scenedeck.android.core.data.RegistryRepository
@@ -28,7 +29,8 @@ data class InventoryScene(
     val entry: SceneRegistryEntry?,
     val stale: Boolean,
 ) {
-    val role: SceneRole get() = entry?.role ?: SceneRole.PRIMARY
+    val role: SceneRole
+        get() = entry?.role ?: SceneRole.PRIMARY
 }
 
 /** Staged registry import: merge preview before applying. */
@@ -45,43 +47,47 @@ data class InventoryUiState(
 )
 
 @HiltViewModel
-class InventoryViewModel @Inject constructor(
+class InventoryViewModel
+@Inject
+constructor(
     private val registry: RegistryRepository,
     private val mixer: MixerRepository,
     private val client: ObsClient,
 ) : ViewModel() {
 
-    val uiState: StateFlow<InventoryUiState> = combine(
-        client.connectionState,
-        mixer.sceneNames,
-        registry.entries,
-    ) { connection, sceneNames, entries ->
-        val byName = entries.associateBy { it.sceneName }
-        val present = sceneNames.toSet()
-        val scenes = (
-            sceneNames.map { name ->
-                InventoryScene(name, byName[name], stale = false)
-            } +
-                entries.filter { it.sceneName !in present }
-                    .map { InventoryScene(it.sceneName, it, stale = true) }
+    val uiState: StateFlow<InventoryUiState> =
+        combine(
+                client.connectionState,
+                mixer.sceneNames,
+                registry.entries,
+            ) { connection, sceneNames, entries ->
+                val byName = entries.associateBy { it.sceneName }
+                val present = sceneNames.toSet()
+                val scenes =
+                    (sceneNames.map { name ->
+                            InventoryScene(name, byName[name], stale = false)
+                        } +
+                            entries
+                                .filter { it.sceneName !in present }
+                                .map { InventoryScene(it.sceneName, it, stale = true) })
+                        .sortedWith(
+                            compareBy(
+                                { it.entry?.sortOrder ?: Int.MAX_VALUE },
+                                { it.stale },
+                                { it.name },
+                            )
+                        )
+                InventoryUiState(
+                    connection = connection,
+                    scenes = scenes,
+                    unassignedCount = scenes.count { it.entry == null && !it.stale },
+                )
+            }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                InventoryUiState(),
             )
-            .sortedWith(
-                compareBy(
-                    { it.entry?.sortOrder ?: Int.MAX_VALUE },
-                    { it.stale },
-                    { it.name },
-                ),
-            )
-        InventoryUiState(
-            connection = connection,
-            scenes = scenes,
-            unassignedCount = scenes.count { it.entry == null && !it.stale },
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        InventoryUiState(),
-    )
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
@@ -96,14 +102,24 @@ class InventoryViewModel @Inject constructor(
     fun setAccent(sceneName: String, accentArgb: Long?) {
         viewModelScope.launch {
             val existing = registry.byName(sceneName)
-            registry.update(sceneName, existing?.role ?: SceneRole.PRIMARY, accentArgb, existing?.iconName)
+            registry.update(
+                sceneName,
+                existing?.role ?: SceneRole.PRIMARY,
+                accentArgb,
+                existing?.iconName,
+            )
         }
     }
 
     fun setIcon(sceneName: String, iconName: String?) {
         viewModelScope.launch {
             val existing = registry.byName(sceneName)
-            registry.update(sceneName, existing?.role ?: SceneRole.PRIMARY, existing?.accentColorArgb, iconName)
+            registry.update(
+                sceneName,
+                existing?.role ?: SceneRole.PRIMARY,
+                existing?.accentColorArgb,
+                iconName,
+            )
         }
     }
 
@@ -120,7 +136,8 @@ class InventoryViewModel @Inject constructor(
 
     fun bulkAssignUnassigned() {
         viewModelScope.launch {
-            val names = uiState.value.scenes.filter { it.entry == null && !it.stale }.map { it.name }
+            val names =
+                uiState.value.scenes.filter { it.entry == null && !it.stale }.map { it.name }
             registry.assignRoleToUnassigned(names, SceneRole.SECONDARY)
             _messages.tryEmit("Assigned ${names.size} scenes to Secondary")
         }
@@ -134,9 +151,10 @@ class InventoryViewModel @Inject constructor(
 
     /** Parses the file and stages a preview; malformed files surface as a message. */
     fun stageImport(payload: String) {
-        runCatching { RegistryExportCodec.decode(payload) }
+        coroutineResult { RegistryExportCodec.decode(payload) }
             .onSuccess { decoded ->
-                val known = uiState.value.scenes.mapNotNull { it.entry }.map { it.sceneName }.toSet()
+                val known =
+                    uiState.value.scenes.mapNotNull { it.entry }.map { it.sceneName }.toSet()
                 val newCount = decoded.count { it.sceneName !in known }
                 _importPreview.value = ImportPreview(decoded, newCount, decoded.size - newCount)
             }

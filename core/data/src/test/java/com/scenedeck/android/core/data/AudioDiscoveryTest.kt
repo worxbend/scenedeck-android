@@ -3,7 +3,6 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SpecialInputs
-import com.scenedeck.android.core.obs.ObsClient
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -100,64 +99,72 @@ class AudioDiscoveryTest {
         override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> {
             if (failSceneItems) error("boom")
             return when (sceneName) {
-                "Cam 1" -> listOf(
-                    input(1, "Test Tone 440", enabled = true),
-                    input(2, "Disabled Tone", enabled = false),
-                    input(3, "Broken Source", enabled = true),
-                    group(4, "Music Group", enabled = true),
-                )
+                "Cam 1" ->
+                    listOf(
+                        input(1, "Test Tone 440", enabled = true),
+                        input(2, "Disabled Tone", enabled = false),
+                        input(3, "Broken Source", enabled = true),
+                        group(4, "Music Group", enabled = true),
+                    )
 
-                "Music Group" -> listOf(
-                    input(1, "Grouped Tone", enabled = true),
-                    input(2, "Test Tone 440", enabled = true), // duplicate for dedupe
-                )
+                "Music Group" ->
+                    listOf(
+                        input(1, "Grouped Tone", enabled = true),
+                        input(2, "Test Tone 440", enabled = true), // duplicate for dedupe
+                    )
 
                 "Starting Soon" -> listOf(scene(1, "Nested Audio", enabled = true))
-                "Nested Audio" -> listOf(
-                    input(1, "Nested Tone", enabled = true),
-                    scene(2, "Disabled Nested", enabled = false),
-                )
+                "Nested Audio" ->
+                    listOf(
+                        input(1, "Nested Tone", enabled = true),
+                        scene(2, "Disabled Nested", enabled = false),
+                    )
 
                 else -> emptyList()
             }
         }
 
-        override suspend fun getInputMute(inputName: String): Boolean = when (inputName) {
-            "Broken Source" -> error("no mute state")
-            else -> false
-        }
+        override suspend fun getInputMute(inputName: String): Boolean =
+            when (inputName) {
+                "Broken Source" -> error("no mute state")
+                else -> false
+            }
 
-        override suspend fun getInputVolume(inputName: String): Double = when (inputName) {
-            "Broken Source" -> error("no volume state")
-            "Test Tone 440" -> 0.7
-            else -> 1.0
-        }
+        override suspend fun getInputVolume(inputName: String): Double =
+            when (inputName) {
+                "Broken Source" -> error("no volume state")
+                "Test Tone 440" -> 0.7
+                else -> 1.0
+            }
 
-        private fun input(id: Int, name: String, enabled: Boolean) = SceneItemInfo(
-            id = id,
-            index = id,
-            sourceName = name,
-            enabled = enabled,
-            isGroup = false,
-            inputKind = "ffmpeg_source",
-        )
+        private fun input(id: Int, name: String, enabled: Boolean) =
+            SceneItemInfo(
+                id = id,
+                index = id,
+                sourceName = name,
+                enabled = enabled,
+                isGroup = false,
+                inputKind = "ffmpeg_source",
+            )
 
-        private fun group(id: Int, name: String, enabled: Boolean) = SceneItemInfo(
-            id = id,
-            index = id,
-            sourceName = name,
-            enabled = enabled,
-            isGroup = true,
-            inputKind = null,
-        )
+        private fun group(id: Int, name: String, enabled: Boolean) =
+            SceneItemInfo(
+                id = id,
+                index = id,
+                sourceName = name,
+                enabled = enabled,
+                isGroup = true,
+                inputKind = null,
+            )
 
-        private fun scene(id: Int, name: String, enabled: Boolean) = SceneItemInfo(
-            id = id,
-            index = id,
-            sourceName = name,
-            enabled = enabled,
-            isGroup = false,
-            inputKind = null,
-        )
+        private fun scene(id: Int, name: String, enabled: Boolean) =
+            SceneItemInfo(
+                id = id,
+                index = id,
+                sourceName = name,
+                enabled = enabled,
+                isGroup = false,
+                inputKind = null,
+            )
     }
 }

@@ -25,17 +25,16 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * Golden shots: one [ThemeSwitcher] per [ThemeFamily] in dark mode.
  *
- * Record: `./gradlew :core:designsystem:recordRoborazziDebug`
- * Verify: `./gradlew :core:designsystem:verifyRoborazziDebug`
- * (plain `testDebugUnitTest` verifies by default — see the module's build.gradle.kts).
+ * Record: `./gradlew :core:designsystem:recordRoborazziDebug` Verify: `./gradlew
+ * :core:designsystem:verifyRoborazziDebug` (plain `testDebugUnitTest` verifies by default — see the
+ * module's build.gradle.kts).
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class ThemeSwitcherRoborazziTest(private val family: ThemeFamily) {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun themeSwitcherDark() {
@@ -50,7 +49,8 @@ class ThemeSwitcherRoborazziTest(private val family: ThemeFamily) {
                 }
             }
         }
-        composeRule.onRoot()
+        composeRule
+            .onRoot()
             .captureRoboImage(filePath = "theme_switcher_${family.name.lowercase()}_dark.png")
     }
 
@@ -67,8 +67,7 @@ class ThemeSwitcherRoborazziTest(private val family: ThemeFamily) {
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class GalleryRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun gallerySceneDeckDark() {
@@ -79,7 +78,8 @@ class GalleryRoborazziTest {
                 modifier = Modifier.testTag("gallery"),
             )
         }
-        composeRule.onNodeWithTag("gallery")
+        composeRule
+            .onNodeWithTag("gallery")
             .captureRoboImage(filePath = "gallery_scenedeck_dark.png")
     }
 }

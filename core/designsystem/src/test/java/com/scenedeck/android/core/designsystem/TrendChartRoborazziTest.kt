@@ -29,8 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class TrendChartRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun golden(name: String, samples: List<Float>) {
         val holder = TrendSamplesHolder()
@@ -41,10 +40,7 @@ class TrendChartRoborazziTest {
                     TrendChart(
                         samplesHolder = holder,
                         motionLevel = MotionLevel.OFF,
-                        modifier = Modifier
-                            .width(320.dp)
-                            .height(140.dp)
-                            .padding(8.dp),
+                        modifier = Modifier.width(320.dp).height(140.dp).padding(8.dp),
                     )
                 }
             }
@@ -55,9 +51,10 @@ class TrendChartRoborazziTest {
     @Test
     fun chartPopulated() {
         // Full 120-sample window: 60 fps baseline with a slow sine wobble + dip.
-        val samples = (0 until 120).map { i ->
-            (59f + sin(i / 9.0).toFloat() + if (i in 80..95) -14f else 0f)
-        }
+        val samples =
+            (0 until 120).map { i ->
+                (59f + sin(i / 9.0).toFloat() + if (i in 80..95) -14f else 0f)
+            }
         golden("trend_chart_populated_dark.png", samples)
     }
 

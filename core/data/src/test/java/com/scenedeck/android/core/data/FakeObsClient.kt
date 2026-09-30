@@ -8,7 +8,6 @@ import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SpecialInputs
-import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
@@ -25,8 +24,7 @@ internal open class FakeObsClient(
     var statsResponse: ObsStats = ObsStats(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0),
     var streamStatusResponse: StreamStatus =
         StreamStatus(false, false, "00:00:00.000", 0, 0, 0.0, 0, 0),
-    var recordStatusResponse: RecordStatus =
-        RecordStatus(false, false, "00:00:00.000", 0, 0),
+    var recordStatusResponse: RecordStatus = RecordStatus(false, false, "00:00:00.000", 0, 0),
 ) : ObsClient {
 
     var studioModeEnabled = false
@@ -68,24 +66,30 @@ internal open class FakeObsClient(
 
     override suspend fun getRecordStatus(): RecordStatus = recordStatusResponse
 
-
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
 
     open override suspend fun getStudioModeEnabled(): Boolean = studioModeEnabled
+
     open override suspend fun setStudioModeEnabled(enabled: Boolean) {
         studioModeEnabled = enabled
     }
 
     open override suspend fun getCurrentPreviewScene(): String = previewScene
+
     open override suspend fun setCurrentPreviewScene(sceneName: String) {
         previewScene = sceneName
     }
 
     open override suspend fun triggerStudioModeTransition() = Unit
+
     open override suspend fun getSceneTransitionList() = unused()
+
     open override suspend fun getCurrentSceneTransition() = unused()
+
     open override suspend fun setCurrentSceneTransition(transitionName: String) = Unit
+
     open override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = Unit
+
     val screenshotCalls = mutableListOf<String>()
     var screenshotBytes: ByteArray = ByteArray(0)
 
@@ -100,23 +104,40 @@ internal open class FakeObsClient(
         return screenshotBytes
     }
 
-    private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
+    private fun unused(): Nothing = throw UnsupportedOperationException("not needed by these tests")
 
     override suspend fun getVersion() = unused()
+
     override suspend fun getCurrentProgramScene(): String = unused()
+
     open override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> = unused()
-    open override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int): Boolean = unused()
+
+    open override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int): Boolean =
+        unused()
+
     open override suspend fun getSpecialInputs(): SpecialInputs = unused()
+
     open override suspend fun getInputMute(inputName: String): Boolean = unused()
+
     open override suspend fun setInputMute(inputName: String, muted: Boolean): Unit = unused()
+
     open override suspend fun getInputVolume(inputName: String): Double = unused()
+
     open override suspend fun setInputVolume(inputName: String, volumeMul: Double): Unit = unused()
+
     override suspend fun startStream() = unused()
+
     override suspend fun stopStream() = unused()
+
     override suspend fun startRecord() = unused()
+
     override suspend fun stopRecord() = unused()
+
     override suspend fun getProfileList() = unused()
+
     override suspend fun setCurrentProfile(profileName: String) = unused()
+
     override suspend fun getSceneCollectionList() = unused()
+
     override suspend fun setCurrentSceneCollection(collectionName: String) = unused()
 }

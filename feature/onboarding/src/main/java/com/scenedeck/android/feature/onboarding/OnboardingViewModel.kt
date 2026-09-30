@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.ProfileRepository
 import com.scenedeck.android.core.data.SecretsStore
@@ -12,6 +13,9 @@ import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -29,7 +33,9 @@ sealed interface OnboardingConnectState {
 }
 
 @HiltViewModel
-class OnboardingViewModel @Inject constructor(
+class OnboardingViewModel
+@Inject
+constructor(
     private val profiles: ProfileRepository,
     private val secrets: SecretsStore,
     private val settings: SettingsRepository,
@@ -37,35 +43,56 @@ class OnboardingViewModel @Inject constructor(
     private val client: ObsClient,
 ) : ViewModel() {
 
-    private val _connectState = MutableStateFlow<OnboardingConnectState>(OnboardingConnectState.Editing)
+    private var connectJob: Job? = null
+    private val _connectState =
+        MutableStateFlow<OnboardingConnectState>(OnboardingConnectState.Editing)
     val connectState: StateFlow<OnboardingConnectState> = _connectState
 
     /** Saves the profile, connects through the shared session, verifies via scene list. */
     fun connect(name: String, host: String, port: Int, password: String?) {
         if (_connectState.value is OnboardingConnectState.Connecting) return
-        viewModelScope.launch {
-            _connectState.value = OnboardingConnectState.Connecting
-            val profileId = profiles.add(name.trim().ifBlank { "My OBS" }, host, port)
-            if (!password.isNullOrBlank()) secrets.setPassword(profileId, password)
-
-            sessionHolder.connect(profileId)
-            when (val terminal = sessionHolder.connectionState.first {
-                it is ConnectionState.Ready || it is ConnectionState.Failed
-            }) {
-                is ConnectionState.Ready -> {
-                    val sceneCount = runCatching { client.getSceneList().scenes.size }.getOrDefault(0)
-                    _connectState.value = OnboardingConnectState.Connected(terminal.sessionInfo, sceneCount)
+        _connectState.value = OnboardingConnectState.Connecting
+        connectJob = viewModelScope.launch {
+            coroutineResult { connectProfile(name, host, port, password) }
+                .onFailure {
+                    _connectState.value =
+                        OnboardingConnectState.Failed(
+                            ConnectionError.Protocol("Unable to save or connect this profile")
+                        )
                 }
+        }
+    }
 
-                is ConnectionState.Failed ->
-                    _connectState.value = OnboardingConnectState.Failed(terminal.error)
+    private suspend fun connectProfile(name: String, host: String, port: Int, password: String?) {
+        val profileId = profiles.add(name.trim().ifBlank { "My OBS" }, host, port)
+        if (!password.isNullOrBlank()) secrets.setPassword(profileId, password)
 
-                else -> _connectState.value = OnboardingConnectState.Editing
+        sessionHolder.connect(profileId)
+        when (
+            val terminal =
+                sessionHolder.connectionState.first {
+                    it is ConnectionState.Ready || it is ConnectionState.Failed
+                }
+        ) {
+            is ConnectionState.Ready -> {
+                val sceneCount = coroutineResult {
+                    client.getSceneList().scenes.size
+                }
+                    .getOrDefault(0)
+                currentCoroutineContext().ensureActive()
+                _connectState.value =
+                    OnboardingConnectState.Connected(terminal.sessionInfo, sceneCount)
             }
+
+            is ConnectionState.Failed ->
+                _connectState.value = OnboardingConnectState.Failed(terminal.error)
+
+            else -> _connectState.value = OnboardingConnectState.Editing
         }
     }
 
     fun resetConnect() {
+        connectJob?.cancel()
         _connectState.value = OnboardingConnectState.Editing
     }
 

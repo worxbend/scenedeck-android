@@ -57,4 +57,28 @@ class ObswsUriTest {
         assertNull(parseObswsUri(""))
         assertNull(parseObswsUri("not a uri at all"))
     }
+
+    @Test
+    fun rejectsAmbiguousOrUnexpectedUriComponents() {
+        listOf(
+                "obsws://user@host:4455",
+                "obsws://host/other",
+                "obsws://host#secret",
+                "obsws://ho%73t",
+                "obsws://host?password=first&password=second",
+                "obsws://host?name=first&name=second",
+                "obsws://" + "x".repeat(254),
+                "obsws://host?password=" + "x".repeat(16384),
+            )
+            .forEach { assertNull(parseObswsUri(it)) }
+    }
+
+    @Test
+    fun secretModelsNeverPrintPasswords() {
+        val secret = "unique-private-password"
+        org.junit.Assert.assertFalse(ObswsTarget("host", 4455, secret).toString().contains(secret))
+        org.junit.Assert.assertFalse(
+            ProfileDraft("Studio", "host", 4455, secret).toString().contains(secret)
+        )
+    }
 }

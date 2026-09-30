@@ -17,10 +17,10 @@ data class DiscoveredInput(
 )
 
 /**
- * Audio discovery, ported 1:1 from the desktop rules (.kimi/skills/obs-websocket-v5):
- * special inputs → active-scene audio inputs → recurse into ENABLED nested
- * scenes/groups → dedupe by name → skip sources without volume/mute state →
- * optional allow-list. Never throws: per-source failures just skip that source.
+ * Audio discovery, ported 1:1 from the desktop rules (.kimi/skills/obs-websocket-v5): special
+ * inputs → active-scene audio inputs → recurse into ENABLED nested scenes/groups → dedupe by name →
+ * skip sources without volume/mute state → optional allow-list. Never throws: per-source failures
+ * just skip that source.
  */
 internal class AudioDiscovery(private val client: ObsClient) {
 
@@ -29,12 +29,22 @@ internal class AudioDiscovery(private val client: ObsClient) {
         val visitedScenes = mutableSetOf<String>()
 
         // 1. Global "special" inputs first.
-        runCatching { client.getSpecialInputs() }.getOrNull()?.names?.forEach { name ->
-            probe(name)?.let { (mul, muted) ->
-                result[name] = DiscoveredInput(name, MixerScope.GLOBAL, scopePath = null,
-                    volumeMul = mul, muted = muted, inputKind = null)
+        requestResult { client.getSpecialInputs() }
+            .getOrNull()
+            ?.names
+            ?.forEach { name ->
+                probe(name)?.let { (mul, muted) ->
+                    result[name] =
+                        DiscoveredInput(
+                            name,
+                            MixerScope.GLOBAL,
+                            scopePath = null,
+                            volumeMul = mul,
+                            muted = muted,
+                            inputKind = null,
+                        )
+                }
             }
-        }
 
         // 2. Active-scene inputs, recursing into enabled nested scenes/groups.
         if (activeScene != null) {
@@ -61,29 +71,31 @@ internal class AudioDiscovery(private val client: ObsClient) {
         depth: Int,
     ) {
         if (depth >= MAX_DEPTH || !walk.visitedScenes.add(sceneName)) return
-        val items = runCatching { client.getSceneItemList(sceneName) }.getOrNull() ?: return
+        val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
         for (item in items) {
             if (!item.enabled) continue // prune disabled nested scenes/groups/items
             when {
                 // Groups are scenes in OBS: recurse with GROUP scope.
-                item.isGroup -> walkScene(
-                    sceneName = item.sourceName,
-                    path = "$path › ${item.sourceName}",
-                    scopeForItems = MixerScope.GROUP,
-                    walk = walk,
-                    depth = depth + 1,
-                )
+                item.isGroup ->
+                    walkScene(
+                        sceneName = item.sourceName,
+                        path = "$path › ${item.sourceName}",
+                        scopeForItems = MixerScope.GROUP,
+                        walk = walk,
+                        depth = depth + 1,
+                    )
 
                 item.inputKind != null -> addInput(item, path, scopeForItems, walk.result)
 
                 // Scene source: recurse (only enabled ones reach here).
-                else -> walkScene(
-                    sceneName = item.sourceName,
-                    path = "$path › ${item.sourceName}",
-                    scopeForItems = MixerScope.NESTED,
-                    walk = walk,
-                    depth = depth + 1,
-                )
+                else ->
+                    walkScene(
+                        sceneName = item.sourceName,
+                        path = "$path › ${item.sourceName}",
+                        scopeForItems = MixerScope.NESTED,
+                        walk = walk,
+                        depth = depth + 1,
+                    )
             }
         }
     }
@@ -102,21 +114,23 @@ internal class AudioDiscovery(private val client: ObsClient) {
     ) {
         if (result.containsKey(item.sourceName)) return // dedupe by input name
         probe(item.sourceName)?.let { (mul, muted) ->
-            result[item.sourceName] = DiscoveredInput(
-                name = item.sourceName,
-                scope = scope,
-                scopePath = if (scope == MixerScope.SCENE) null else path,
-                volumeMul = mul,
-                muted = muted,
-                inputKind = item.inputKind,
-            )
+            result[item.sourceName] =
+                DiscoveredInput(
+                    name = item.sourceName,
+                    scope = scope,
+                    scopePath = if (scope == MixerScope.SCENE) null else path,
+                    volumeMul = mul,
+                    muted = muted,
+                    inputKind = item.inputKind,
+                )
         }
     }
 
     /** Skip sources without volume/mute state by tolerating request failures. */
-    private suspend fun probe(inputName: String): Pair<Double, Boolean>? = runCatching {
+    private suspend fun probe(inputName: String): Pair<Double, Boolean>? = requestResult {
         client.getInputVolume(inputName) to client.getInputMute(inputName)
-    }.getOrNull()
+    }
+        .getOrNull()
 
     private companion object {
         const val MAX_DEPTH = 8

@@ -1,8 +1,8 @@
 package com.scenedeck.android
 
+import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
-import com.scenedeck.android.core.data.DarkMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -65,14 +65,15 @@ class SceneDeckAppStateTest {
 
     @Test
     fun `restore falls back to defaults for unknown values`() {
-        val restored = SceneDeckAppState.fromSaveableMap(
-            mapOf(
-                "themeFamily" to "NO_SUCH_FAMILY",
-                "darkMode" to "NOPE",
-                "dynamicColor" to true,
-                "motionLevel" to "HYPERDRIVE",
-            ),
-        )
+        val restored =
+            SceneDeckAppState.fromSaveableMap(
+                mapOf(
+                    "themeFamily" to "NO_SUCH_FAMILY",
+                    "darkMode" to "NOPE",
+                    "dynamicColor" to true,
+                    "motionLevel" to "HYPERDRIVE",
+                )
+            )
 
         assertEquals(ThemeFamily.SCENEDECK, restored.themeFamily)
         assertEquals(DarkMode.SYSTEM, restored.darkMode)

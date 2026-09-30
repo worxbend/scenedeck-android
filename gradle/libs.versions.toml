@@ -1,6 +1,9 @@
 # Version catalog — single source of truth, keep in sync with docs/TECH_STACK.md.
 # Verified against Maven Central / Google Maven on 2026-09-28.
 [versions]
+ktfmt = "0.64"
+concurrent-futures = "1.2.0"
+errorprone-annotations = "2.30.0"
 agp = "9.4.1"                     # latest stable 9.x
 kotlin = "2.4.20"                 # latest stable 2.4.x
 ksp = "2.3.12"                    # new standalone KSP versioning; latest at bootstrap
@@ -41,6 +44,10 @@ androidx-core = "1.19.1"          # ContextCompat/ServiceCompat for the keep-ali
 # (verified 2026-09-28). Re-check later or pick an alternative icon source.
 
 [libraries]
+ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
+androidx-concurrent-futures = { module = "androidx.concurrent:concurrent-futures", version.ref = "concurrent-futures" }
+androidx-concurrent-futures-ktx = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrent-futures" }
+errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref = "errorprone-annotations" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }

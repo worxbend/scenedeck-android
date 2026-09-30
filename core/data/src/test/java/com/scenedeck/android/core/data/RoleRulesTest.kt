@@ -22,22 +22,44 @@ class RoleRulesTest {
 
     @Test
     fun liveToLiveIsSuspicious() {
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.PRIMARY, SceneRole.PRIMARY))
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.PRIMARY, SceneRole.SECONDARY))
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.SECONDARY, SceneRole.PRIMARY))
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.PRIMARY, SceneRole.PRIMARY),
+        )
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.PRIMARY, SceneRole.SECONDARY),
+        )
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.SECONDARY, SceneRole.PRIMARY),
+        )
     }
 
     @Test
     fun invertedHierarchyIsSuspicious() {
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.MODULE, SceneRole.PRIMARY))
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.MODULE, SceneRole.SECONDARY))
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.RAW, SceneRole.MODULE))
-        assertEquals(EdgeVerdict.SUSPICIOUS, RoleRules.classifyEdge(SceneRole.RAW, SceneRole.PRIMARY))
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.MODULE, SceneRole.PRIMARY),
+        )
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.MODULE, SceneRole.SECONDARY),
+        )
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.RAW, SceneRole.MODULE),
+        )
+        assertEquals(
+            EdgeVerdict.SUSPICIOUS,
+            RoleRules.classifyEdge(SceneRole.RAW, SceneRole.PRIMARY),
+        )
     }
 
     @Test
     fun productionIntoDebugOrArchiveIsForbidden() {
-        listOf(SceneRole.PRIMARY, SceneRole.SECONDARY, SceneRole.MODULE, SceneRole.RAW).forEach { parent ->
+        listOf(SceneRole.PRIMARY, SceneRole.SECONDARY, SceneRole.MODULE, SceneRole.RAW).forEach {
+            parent ->
             assertEquals(EdgeVerdict.FORBIDDEN, RoleRules.classifyEdge(parent, SceneRole.DEBUG))
             assertEquals(EdgeVerdict.FORBIDDEN, RoleRules.classifyEdge(parent, SceneRole.ARCHIVE))
         }

@@ -8,6 +8,7 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -26,12 +27,14 @@ enum class SceneSwitchResult {
 }
 
 /**
- * Connect-then-act scene switch shared by the Glance widget and the
- * `scenedeck://scene/{name}` deep link. Works from a cold process: if the session
- * is not [ConnectionState.Ready], connects to the last-used profile first and waits.
+ * Connect-then-act scene switch shared by the Glance widget and the `scenedeck://scene/{name}` deep
+ * link. Works from a cold process: if the session is not [ConnectionState.Ready], connects to the
+ * last-used profile first and waits.
  */
 @Singleton
-class SceneSwitcher @Inject constructor(
+class SceneSwitcher
+@Inject
+constructor(
     private val client: ObsClient,
     private val sessionHolder: ObsSessionHolder,
     private val settings: SettingsRepository,
@@ -39,11 +42,15 @@ class SceneSwitcher @Inject constructor(
     private val deck: ObsStateRepository,
 ) {
     suspend fun switchTo(sceneName: String): SceneSwitchResult =
-        ensureReady() ?: runCatching { deck.setCurrentProgramScene(sceneName) }
-            .fold(
-                onSuccess = { SceneSwitchResult.Success },
-                onFailure = { SceneSwitchResult.RequestFailed },
-            )
+        ensureReady()
+            ?: runCatching { deck.setCurrentProgramScene(sceneName) }
+                .fold(
+                    onSuccess = { SceneSwitchResult.Success },
+                    onFailure = { failure ->
+                        if (failure is CancellationException) throw failure
+                        SceneSwitchResult.RequestFailed
+                    },
+                )
 
     /** null = session is Ready; otherwise the failure to report to the caller. */
     private suspend fun ensureReady(): SceneSwitchResult? =
@@ -54,15 +61,15 @@ class SceneSwitcher @Inject constructor(
         }
 
     private suspend fun connectToLastUsed(): SceneSwitchResult? {
-        val profileId = settings.settings.first().lastUsedProfileId
-            ?: profiles.lastUsed()?.id
+        val profileId = settings.settings.first().lastUsedProfileId ?: profiles.lastUsed()?.id
         if (profileId == null) return SceneSwitchResult.NoProfile
         sessionHolder.connect(profileId)
-        val terminal = withTimeoutOrNull(CONNECT_TIMEOUT_MS) {
-            client.connectionState.first {
-                it is ConnectionState.Ready || it is ConnectionState.Failed
+        val terminal =
+            withTimeoutOrNull(CONNECT_TIMEOUT_MS) {
+                client.connectionState.first {
+                    it is ConnectionState.Ready || it is ConnectionState.Failed
+                }
             }
-        }
         return if (terminal is ConnectionState.Ready) null else SceneSwitchResult.NotConnected
     }
 

@@ -27,39 +27,50 @@ data class DoctorIssue(
 )
 
 /**
- * Pure diagnostic checks (FEATURE_SPEC §7) — every check is a pure function over
- * fixtures so it's fully unit-testable; orchestration lives in the ViewModel.
+ * Pure diagnostic checks (FEATURE_SPEC §7) — every check is a pure function over fixtures so it's
+ * fully unit-testable; orchestration lives in the ViewModel.
  */
 object DoctorChecks {
 
     /** INFO: OBS scenes with no registry entry (they implicitly render as PRIMARY). */
-    fun unassignedRoles(obsSceneNames: List<String>, entries: List<SceneRegistryEntry>): List<DoctorIssue> {
+    fun unassignedRoles(
+        obsSceneNames: List<String>,
+        entries: List<SceneRegistryEntry>,
+    ): List<DoctorIssue> {
         val known = entries.map { it.sceneName }.toSet()
-        return obsSceneNames.filter { it !in known }.map { name ->
-            DoctorIssue(
-                severity = DoctorSeverity.INFO,
-                checkId = "unassigned-role",
-                title = "No role assigned",
-                detail = "“$name” has no registry entry and is treated as Primary on the deck.",
-                sceneName = name,
-                fix = DoctorFix.AssignRole(name),
-            )
-        }
+        return obsSceneNames
+            .filter { it !in known }
+            .map { name ->
+                DoctorIssue(
+                    severity = DoctorSeverity.INFO,
+                    checkId = "unassigned-role",
+                    title = "No role assigned",
+                    detail = "“$name” has no registry entry and is treated as Primary on the deck.",
+                    sceneName = name,
+                    fix = DoctorFix.AssignRole(name),
+                )
+            }
     }
 
     /** WARNING: registry entries whose scene no longer exists in OBS. */
-    fun staleEntries(obsSceneNames: List<String>, entries: List<SceneRegistryEntry>): List<DoctorIssue> {
+    fun staleEntries(
+        obsSceneNames: List<String>,
+        entries: List<SceneRegistryEntry>,
+    ): List<DoctorIssue> {
         val present = obsSceneNames.toSet()
-        return entries.filter { it.sceneName !in present }.map { entry ->
-            DoctorIssue(
-                severity = DoctorSeverity.WARNING,
-                checkId = "stale-entry",
-                title = "Stale registry entry",
-                detail = "“${entry.sceneName}” has curation metadata but no matching OBS scene.",
-                sceneName = entry.sceneName,
-                fix = DoctorFix.RemoveStaleEntry(entry.sceneName),
-            )
-        }
+        return entries
+            .filter { it.sceneName !in present }
+            .map { entry ->
+                DoctorIssue(
+                    severity = DoctorSeverity.WARNING,
+                    checkId = "stale-entry",
+                    title = "Stale registry entry",
+                    detail =
+                        "“${entry.sceneName}” has curation metadata but no matching OBS scene.",
+                    sceneName = entry.sceneName,
+                    fix = DoctorFix.RemoveStaleEntry(entry.sceneName),
+                )
+            }
     }
 
     /** ERROR: scene reference cycles. */
@@ -70,10 +81,12 @@ object DoctorChecks {
                 severity = DoctorSeverity.ERROR,
                 checkId = "cycle",
                 title = "Circular scene reference",
-                detail = "These scenes reference each other in a loop: " +
-                    graph.cycleMembers.sorted().joinToString(" → ") + ". " +
-                    "OBS will silently refuse to render the loop — break one edge.",
-            ),
+                detail =
+                    "These scenes reference each other in a loop: " +
+                        graph.cycleMembers.sorted().joinToString(" → ") +
+                        ". " +
+                        "OBS will silently refuse to render the loop — break one edge.",
+            )
         )
     }
 
@@ -87,10 +100,13 @@ object DoctorChecks {
                 DoctorIssue(
                     severity = if (forbidden) DoctorSeverity.ERROR else DoctorSeverity.WARNING,
                     checkId = "hierarchy-inversion",
-                    title = if (forbidden) "Forbidden scene dependency" else "Surprising scene dependency",
-                    detail = "“${edge.from}” (${roleOf[edge.from]}) depends on " +
-                        "“${edge.to}” (${roleOf[edge.to]}), which the role rules " +
-                        (if (forbidden) "forbid." else "flag as suspicious."),
+                    title =
+                        if (forbidden) "Forbidden scene dependency"
+                        else "Surprising scene dependency",
+                    detail =
+                        "“${edge.from}” (${roleOf[edge.from]}) depends on " +
+                            "“${edge.to}” (${roleOf[edge.to]}), which the role rules " +
+                            (if (forbidden) "forbid." else "flag as suspicious."),
                     sceneName = edge.from,
                 )
             }
@@ -133,8 +149,9 @@ object DoctorChecks {
                         severity = DoctorSeverity.WARNING,
                         checkId = "broken-audio",
                         title = "Audio source without control state",
-                        detail = "“${entry.sceneName}” is on the deck but " +
-                            "${broken.joinToString()} report no volume/mute state.",
+                        detail =
+                            "“${entry.sceneName}” is on the deck but " +
+                                "${broken.joinToString()} report no volume/mute state.",
                         sceneName = entry.sceneName,
                     )
                 }

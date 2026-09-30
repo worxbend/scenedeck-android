@@ -14,15 +14,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.mono
-import kotlin.math.cos
-import kotlin.math.sin
 
 /** Health zone of a gauge reading (docs/DESIGN_SYSTEM.md §3 — amber warn, red crit). */
 enum class GaugeZone {
@@ -32,8 +30,8 @@ enum class GaugeZone {
 }
 
 /**
- * Whether rising or falling values are worse. RISING: dropped %, congestion, render
- * time (warn/crit arcs sit at the TOP of the range). FALLING: FPS (arcs at the BOTTOM).
+ * Whether rising or falling values are worse. RISING: dropped %, congestion, render time (warn/crit
+ * arcs sit at the TOP of the range). FALLING: FPS (arcs at the BOTTOM).
  */
 enum class GaugeDirection {
     RISING,
@@ -41,28 +39,31 @@ enum class GaugeDirection {
 }
 
 /**
- * Classify [value] against the warn/crit thresholds (docs/FEATURE_SPEC.md §5).
- * Boundary values count as the worse zone: exactly-warn is WARNING, exactly-crit
- * is CRITICAL. For [GaugeDirection.FALLING] the comparison inverts (low FPS is bad).
+ * Classify [value] against the warn/crit thresholds (docs/FEATURE_SPEC.md §5). Boundary values
+ * count as the worse zone: exactly-warn is WARNING, exactly-crit is CRITICAL. For
+ * [GaugeDirection.FALLING] the comparison inverts (low FPS is bad).
  */
 fun classifyGaugeZone(
     value: Float,
     warnThreshold: Float,
     critThreshold: Float,
     direction: GaugeDirection = GaugeDirection.RISING,
-): GaugeZone = when (direction) {
-    GaugeDirection.RISING -> when {
-        value >= critThreshold -> GaugeZone.CRITICAL
-        value >= warnThreshold -> GaugeZone.WARNING
-        else -> GaugeZone.NORMAL
-    }
+): GaugeZone =
+    when (direction) {
+        GaugeDirection.RISING ->
+            when {
+                value >= critThreshold -> GaugeZone.CRITICAL
+                value >= warnThreshold -> GaugeZone.WARNING
+                else -> GaugeZone.NORMAL
+            }
 
-    GaugeDirection.FALLING -> when {
-        value <= critThreshold -> GaugeZone.CRITICAL
-        value <= warnThreshold -> GaugeZone.WARNING
-        else -> GaugeZone.NORMAL
+        GaugeDirection.FALLING ->
+            when {
+                value <= critThreshold -> GaugeZone.CRITICAL
+                value <= warnThreshold -> GaugeZone.WARNING
+                else -> GaugeZone.NORMAL
+            }
     }
-}
 
 /** Normalized position of [value] in [minValue]..[maxValue], clamped to 0..1. */
 internal fun gaugeFraction(value: Float, minValue: Float, maxValue: Float): Float {
@@ -74,13 +75,12 @@ internal fun gaugeFraction(value: Float, minValue: Float, maxValue: Float): Floa
 private const val GAUGE_START_ANGLE = 135f
 private const val GAUGE_SWEEP = 270f
 private const val THRESHOLD_ALPHA = 0.45f
-private const val NEEDLE_RADIUS_FRACTION = 0.62f
 
 /**
- * Arc gauge with amber/red threshold arcs (docs/DESIGN_SYSTEM.md §7): track, zone
- * segments from [warnThreshold]/[critThreshold], zone-colored fill arc, needle and a
- * mono-font center readout ([valueText] + [unit]). Used for FPS, render time,
- * dropped-frame % and network congestion on the stats page.
+ * Arc gauge with amber/red threshold arcs (docs/DESIGN_SYSTEM.md §7): track, zone segments from
+ * [warnThreshold]/[critThreshold], zone-colored fill arc and a mono-font center readout
+ * ([valueText] + [unit]). Used for FPS, render time, dropped-frame % and network congestion on the
+ * stats page.
  *
  * @param value current reading; clamped into [minValue]..[maxValue] for drawing.
  * @param warnThreshold amber zone boundary (top of range for RISING, bottom for FALLING).
@@ -102,92 +102,42 @@ fun StatGauge(
 ) {
     val colors = SceneDeckTheme.colors
     val zone = classifyGaugeZone(value, warnThreshold, critThreshold, direction)
-    val zoneColor = when (zone) {
-        GaugeZone.NORMAL -> MaterialTheme.colorScheme.primary
-        GaugeZone.WARNING -> colors.warning
-        GaugeZone.CRITICAL -> colors.meterRed
-    }
+    val zoneColor =
+        when (zone) {
+            GaugeZone.NORMAL -> MaterialTheme.colorScheme.primary
+            GaugeZone.WARNING -> colors.warning
+            GaugeZone.CRITICAL -> colors.meterRed
+        }
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val needleColor = MaterialTheme.colorScheme.onSurface
-    val zoneText = when (zone) {
-        GaugeZone.NORMAL -> "normal"
-        GaugeZone.WARNING -> "warning"
-        GaugeZone.CRITICAL -> "critical"
-    }
+    val zoneText =
+        when (zone) {
+            GaugeZone.NORMAL -> "normal"
+            GaugeZone.WARNING -> "warning"
+            GaugeZone.CRITICAL -> "critical"
+        }
     val readout = (valueText ?: "%.1f".format(value)) + if (unit.isNotEmpty()) " $unit" else ""
 
     Column(
-        modifier = modifier.semantics(mergeDescendants = true) {
-            contentDescription = "$label: $readout, $zoneText"
-        },
+        modifier =
+            modifier.semantics(mergeDescendants = true) {
+                contentDescription = "$label: $readout, $zoneText"
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier.aspectRatio(1f),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val strokeWidth = 8.dp.toPx()
-                val diameter = size.minDimension - strokeWidth
-                val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
-                val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
-                val style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                val center = Offset(size.width / 2, size.height / 2)
-                val radius = diameter / 2
-
-                fun angleFor(fraction: Float) = GAUGE_START_ANGLE + GAUGE_SWEEP * fraction
-
-                fun drawArcSegment(fromFraction: Float, toFraction: Float, color: Color, alpha: Float = 1f) {
-                    if (toFraction <= fromFraction) return
-                    drawArc(
-                        color = color,
-                        startAngle = angleFor(fromFraction),
-                        sweepAngle = GAUGE_SWEEP * (toFraction - fromFraction),
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        alpha = alpha,
-                        style = style,
-                    )
-                }
-
-                val warnF = gaugeFraction(warnThreshold, minValue, maxValue)
-                val critF = gaugeFraction(critThreshold, minValue, maxValue)
-                val valueF = gaugeFraction(value, minValue, maxValue)
-
-                // Track.
-                drawArcSegment(0f, 1f, trackColor)
-
-                // Threshold arcs: RISING puts amber/red at the top of the range,
-                // FALLING at the bottom.
-                when (direction) {
-                    GaugeDirection.RISING -> {
-                        drawArcSegment(warnF, critF, colors.warning, THRESHOLD_ALPHA)
-                        drawArcSegment(critF, 1f, colors.meterRed, THRESHOLD_ALPHA)
-                    }
-
-                    GaugeDirection.FALLING -> {
-                        drawArcSegment(0f, critF, colors.meterRed, THRESHOLD_ALPHA)
-                        drawArcSegment(critF, warnF, colors.warning, THRESHOLD_ALPHA)
-                    }
-                }
-
-                // Value fill + needle.
-                drawArcSegment(0f, valueF, zoneColor)
-                val needleAngle = Math.toRadians(angleFor(valueF).toDouble())
-                val needleEnd = Offset(
-                    center.x + (radius * NEEDLE_RADIUS_FRACTION * cos(needleAngle)).toFloat(),
-                    center.y + (radius * NEEDLE_RADIUS_FRACTION * sin(needleAngle)).toFloat(),
-                )
-                drawLine(
-                    color = needleColor,
-                    start = center,
-                    end = needleEnd,
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-                drawCircle(color = needleColor, radius = 3.dp.toPx(), center = center)
-            }
+            GaugeArc(
+                value,
+                minValue,
+                maxValue,
+                warnThreshold,
+                critThreshold,
+                direction,
+                zoneColor,
+                trackColor,
+            )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = valueText ?: "%.1f".format(value),
@@ -213,5 +163,71 @@ fun StatGauge(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun GaugeArc(
+    value: Float,
+    minValue: Float,
+    maxValue: Float,
+    warnThreshold: Float,
+    critThreshold: Float,
+    direction: GaugeDirection,
+    zoneColor: Color,
+    trackColor: Color,
+) {
+    val colors = SceneDeckTheme.colors
+    Canvas(Modifier.fillMaxSize()) {
+        val strokeWidth = 8.dp.toPx()
+        val diameter = size.minDimension - strokeWidth
+        val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
+        val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
+        val style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+
+        fun angleFor(fraction: Float) = GAUGE_START_ANGLE + GAUGE_SWEEP * fraction
+
+        fun drawArcSegment(
+            fromFraction: Float,
+            toFraction: Float,
+            color: Color,
+            alpha: Float = 1f,
+        ) {
+            if (toFraction <= fromFraction) return
+            drawArc(
+                color = color,
+                startAngle = angleFor(fromFraction),
+                sweepAngle = GAUGE_SWEEP * (toFraction - fromFraction),
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                alpha = alpha,
+                style = style,
+            )
+        }
+
+        val warnF = gaugeFraction(warnThreshold, minValue, maxValue)
+        val critF = gaugeFraction(critThreshold, minValue, maxValue)
+        val valueF = gaugeFraction(value, minValue, maxValue)
+
+        // Track.
+        drawArcSegment(0f, 1f, trackColor)
+
+        // Threshold arcs: RISING puts amber/red at the top of the range,
+        // FALLING at the bottom.
+        when (direction) {
+            GaugeDirection.RISING -> {
+                drawArcSegment(warnF, critF, colors.warning, THRESHOLD_ALPHA)
+                drawArcSegment(critF, 1f, colors.meterRed, THRESHOLD_ALPHA)
+            }
+
+            GaugeDirection.FALLING -> {
+                drawArcSegment(0f, critF, colors.meterRed, THRESHOLD_ALPHA)
+                drawArcSegment(critF, warnF, colors.warning, THRESHOLD_ALPHA)
+            }
+        }
+
+        // The arc conveys progress without drawing across the numeric readout.
+        drawArcSegment(0f, valueF, zoneColor)
     }
 }

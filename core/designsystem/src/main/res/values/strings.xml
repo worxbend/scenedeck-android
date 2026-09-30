@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="obs_connecting">Connecting to OBS…</string>
+    <string name="obs_reconnecting">Reconnecting · attempt %1$d</string>
+    <string name="obs_failed">Connection needs attention</string>
+    <string name="obs_offline_title">Your studio, within reach</string>
+    <string name="obs_waiting_detail">Waiting for your studio. You can check the connection settings while we reconnect.</string>
+    <string name="obs_auth_detail">Check the WebSocket password in OBS, then update your connection profile.</string>
+    <string name="obs_failed_detail">Check the host, port and password. Your phone and OBS computer need to be on a reachable network.</string>
+    <string name="obs_offline_detail">Connect to OBS to switch scenes, mix audio and monitor your broadcast from your phone.</string>
+    <string name="obs_open_connections">Open connections</string>
+    <string name="obs_connect_action">Connect to OBS</string>
+    <string name="scene_program">PROGRAM</string>
+    <string name="scene_preview">PREVIEW</string>
+    <string name="scene_switching">Switching…</string>
+    <string name="scene_tap_preview">Tap to preview</string>
+    <string name="scene_tap_switch">Tap to switch</string>
+    <string name="broadcast_live">LIVE</string>
+    <string name="broadcast_recording">REC</string>
+    <string name="broadcast_standby">Standby</string>
+    <string name="broadcast_status_description">%1$s, elapsed %2$s</string>
+</resources>

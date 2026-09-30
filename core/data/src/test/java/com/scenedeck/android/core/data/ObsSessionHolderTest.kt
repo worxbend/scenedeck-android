@@ -1,16 +1,14 @@
 package com.scenedeck.android.core.data
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.database.ConnectionProfileDao
 import com.scenedeck.android.core.database.ConnectionProfileEntity
-import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
-import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -68,7 +67,9 @@ class ObsSessionHolderTest {
         assertEquals("secret-pw", call.password)
         // markUsed persisted.
         withTimeout(5_000) {
-            while (settings.settings.first().lastUsedProfileId != FakeProfileDao.PROFILE_ID) delay(25)
+            while (settings.settings.first().lastUsedProfileId != FakeProfileDao.PROFILE_ID) delay(
+                25
+            )
         }
     }
 
@@ -97,31 +98,85 @@ class ObsSessionHolderTest {
         withTimeout(5_000) { while (!client.disconnectCalled) delay(25) }
     }
 
+    @Test
+    fun failedCredentialReadBecomesObservableFailure(): Unit = runBlocking {
+        secrets.readFailure = IllegalStateException("sensitive credential detail")
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        val failed =
+            withTimeout(5_000) {
+                holder.connectionState.first { it is ConnectionState.Failed }
+            }
+        assertTrue(failed is ConnectionState.Failed)
+        assertTrue(!failed.toString().contains("sensitive credential detail"))
+        assertEquals(0, client.connectCalls.size)
+    }
+
+    @Test
+    fun missingProfileBecomesObservableFailure(): Unit = runBlocking {
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connect(-1)
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Failed } }
+        assertEquals(0, client.connectCalls.size)
+    }
+
+    @Test
+    fun disconnectCancelsPendingProfilePreparation(): Unit = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        secrets.waitForPassword = gate
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { secrets.passwordRequested.await() }
+        holder.disconnect()
+        withTimeout(5_000) { while (!client.disconnectCalled) delay(10) }
+        gate.complete(Unit)
+        assertEquals(0, client.connectCalls.size)
+        assertEquals(ConnectionState.Disconnected, holder.connectionState.value)
+    }
+
     // ── Fakes ───────────────────────────────────────────────────────────────
 
     private class FakeSecretsStore : SecretsStore {
-        override suspend fun passwordFor(profileId: Long): String? = "secret-pw"
+        var readFailure: Exception? = null
+        var waitForPassword: CompletableDeferred<Unit>? = null
+        val passwordRequested = CompletableDeferred<Unit>()
+
+        override suspend fun passwordFor(profileId: Long): String? {
+            passwordRequested.complete(Unit)
+            waitForPassword?.await()
+            readFailure?.let { throw it }
+            return "secret-pw"
+        }
+
         override suspend fun setPassword(profileId: Long, password: String?) = Unit
     }
 
     private class FakeProfileDao : ConnectionProfileDao {
-        private val entity = ConnectionProfileEntity(
-            id = PROFILE_ID,
-            name = "Studio",
-            host = "studio.local",
-            port = 4456,
-            createdAt = 1L,
-        )
+        private val entity =
+            ConnectionProfileEntity(
+                id = PROFILE_ID,
+                name = "Studio",
+                host = "studio.local",
+                port = 4456,
+                createdAt = 1L,
+            )
 
         override fun observeAll(): Flow<List<ConnectionProfileEntity>> = flowOf(listOf(entity))
-        override suspend fun byId(id: Long): ConnectionProfileEntity? =
-            entity.takeIf { it.id == id }
+
+        override suspend fun byId(id: Long): ConnectionProfileEntity? = entity.takeIf {
+            it.id == id
+        }
 
         override suspend fun lastUsed(): ConnectionProfileEntity? = entity
+
         override suspend fun insert(entity: ConnectionProfileEntity): Long = entity.id
+
         override suspend fun update(entity: ConnectionProfileEntity) = Unit
+
         override suspend fun markUsed(id: Long, usedAt: Long) = Unit
+
         override suspend fun delete(entity: ConnectionProfileEntity) = Unit
+
         override suspend fun deleteById(id: Long) = Unit
 
         companion object {
@@ -137,16 +192,16 @@ class ObsSessionHolderTest {
 
         @Volatile var disconnectCalled = false
 
-        private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+        private val _connectionState =
+            MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
         override val events: SharedFlow<ObsEvent> = MutableSharedFlow()
         override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = MutableSharedFlow()
 
         override suspend fun connect(host: String, port: Int, password: String?) {
             connectCalls += ConnectCall(host, port, password)
-            _connectionState.value = ConnectionState.Ready(
-                ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
-            )
+            _connectionState.value =
+                ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test"))
         }
 
         override suspend fun disconnect() {
@@ -157,37 +212,67 @@ class ObsSessionHolderTest {
         private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 
         override suspend fun getVersion() = unused()
+
         override suspend fun getStats(): ObsStats = unused()
+
         override suspend fun getSceneList() = unused()
+
         override suspend fun getCurrentProgramScene(): String = unused()
+
         override suspend fun setCurrentProgramScene(sceneName: String) = unused()
+
         override suspend fun getSceneItemList(sceneName: String) = unused()
+
         override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int) = unused()
+
         override suspend fun getSpecialInputs() = unused()
+
         override suspend fun getInputMute(inputName: String) = unused()
+
         override suspend fun setInputMute(inputName: String, muted: Boolean) = unused()
+
         override suspend fun getInputVolume(inputName: String) = unused()
+
         override suspend fun setInputVolume(inputName: String, volumeMul: Double) = unused()
+
         override suspend fun getStreamStatus() = unused()
+
         override suspend fun startStream() = unused()
+
         override suspend fun stopStream() = unused()
+
         override suspend fun getRecordStatus() = unused()
+
         override suspend fun startRecord() = unused()
+
         override suspend fun stopRecord() = unused()
+
         override suspend fun getProfileList() = unused()
+
         override suspend fun setCurrentProfile(profileName: String) = unused()
+
         override suspend fun getSceneCollectionList() = unused()
+
         override suspend fun setCurrentSceneCollection(collectionName: String) = unused()
 
         override suspend fun getStudioModeEnabled(): Boolean = unused()
+
         override suspend fun setStudioModeEnabled(enabled: Boolean) = unused()
+
         override suspend fun getCurrentPreviewScene(): String = unused()
+
         override suspend fun setCurrentPreviewScene(sceneName: String) = unused()
+
         override suspend fun triggerStudioModeTransition() = unused()
+
         override suspend fun getSceneTransitionList() = unused()
+
         override suspend fun getCurrentSceneTransition() = unused()
+
         override suspend fun setCurrentSceneTransition(transitionName: String) = unused()
+
         override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
+
         override suspend fun getSourceScreenshot(
             sourceName: String,
             format: String,

@@ -21,10 +21,12 @@ class RegistryRepositoryTest {
 
     @Before
     fun setUp() {
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
-            SceneDeckDatabase::class.java,
-        ).build()
+        database =
+            Room.inMemoryDatabaseBuilder(
+                    ApplicationProvider.getApplicationContext(),
+                    SceneDeckDatabase::class.java,
+                )
+                .build()
         repository = RegistryRepository(database.sceneRegistryDao())
     }
 

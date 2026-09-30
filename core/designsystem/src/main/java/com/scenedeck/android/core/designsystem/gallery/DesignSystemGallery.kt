@@ -32,9 +32,8 @@ import com.scenedeck.android.core.designsystem.theme.families.displayName
 import com.scenedeck.android.core.designsystem.theme.mono
 
 /**
- * Design-system sampler for a single [ThemeFamily]: scheme colors, semantic
- * (product) colors, typography, shapes and the icon catalogue. Used by previews
- * and Roborazzi goldens.
+ * Design-system sampler for a single [ThemeFamily]: scheme colors, semantic (product) colors,
+ * typography, shapes and the icon catalogue. Used by previews and Roborazzi goldens.
  */
 @Composable
 fun DesignSystemGallery(
@@ -151,10 +150,9 @@ private fun ColorChipRow(vararg chips: Pair<String, Color>) {
 @Composable
 private fun ShapeSample(shape: Shape) {
     Box(
-        Modifier
-            .size(width = 56.dp, height = 40.dp)
+        Modifier.size(width = 56.dp, height = 40.dp)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(MaterialTheme.colorScheme.primaryContainer)
     )
 }
 

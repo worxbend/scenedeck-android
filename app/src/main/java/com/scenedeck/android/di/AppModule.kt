@@ -30,19 +30,20 @@ object AppModule {
 
     /** v1 → v2: adds the local scene registry (profiles are preserved). */
     @VisibleForTesting
-    val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                "CREATE TABLE IF NOT EXISTS `scene_registry` (" +
-                    "`sceneName` TEXT NOT NULL, " +
-                    "`role` TEXT NOT NULL, " +
-                    "`accentColorArgb` INTEGER, " +
-                    "`iconName` TEXT, " +
-                    "`sortOrder` INTEGER NOT NULL, " +
-                    "PRIMARY KEY(`sceneName`))",
-            )
+    val MIGRATION_1_2 =
+        object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `scene_registry` (" +
+                        "`sceneName` TEXT NOT NULL, " +
+                        "`role` TEXT NOT NULL, " +
+                        "`accentColorArgb` INTEGER, " +
+                        "`iconName` TEXT, " +
+                        "`sortOrder` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`sceneName`))"
+                )
+            }
         }
-    }
 
     @Provides
     @Singleton
@@ -72,7 +73,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideBackgroundSettingsStore(
-        @ApplicationContext context: Context,
+        @ApplicationContext context: Context
     ): BackgroundSettingsStore = BackgroundSettingsStore(context)
 
     @Provides

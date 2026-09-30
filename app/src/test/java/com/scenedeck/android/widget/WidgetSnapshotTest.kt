@@ -15,11 +15,12 @@ class WidgetSnapshotTest {
 
     @Test
     fun `write then read round-trips`() {
-        val snapshot = WidgetSnapshot(
-            sceneNames = listOf("Cam 1", "Screen"),
-            programScene = "Cam 1",
-            connectionLabel = "Live",
-        )
+        val snapshot =
+            WidgetSnapshot(
+                sceneNames = listOf("Cam 1", "Screen"),
+                programScene = "Cam 1",
+                connectionLabel = "Live",
+            )
 
         val restored = WidgetSnapshot.readFrom(snapshot.writtenTo(emptyPreferences()))
 
@@ -28,10 +29,11 @@ class WidgetSnapshotTest {
 
     @Test
     fun `write clears stale slots from a larger previous snapshot`() {
-        val big = WidgetSnapshot(
-            sceneNames = listOf("A", "B", "C", "D"),
-            programScene = "A",
-        )
+        val big =
+            WidgetSnapshot(
+                sceneNames = listOf("A", "B", "C", "D"),
+                programScene = "A",
+            )
         val prefs = big.writtenTo(emptyPreferences())
 
         val small = WidgetSnapshot(sceneNames = listOf("A"), programScene = null)
@@ -60,19 +62,35 @@ class WidgetSnapshotTest {
 
     @Test
     fun `connection labels mirror the status strip`() {
-        assertEquals("Live", connectionLabelFor(ready))
+        assertEquals("Connected", connectionLabelFor(ready))
         assertEquals("Connecting", connectionLabelFor(ConnectionState.Connecting))
         assertEquals("Retry 2", connectionLabelFor(ConnectionState.Reconnecting(2)))
         assertEquals("Offline", connectionLabelFor(ConnectionState.Disconnected))
     }
 
+    @Test
+    fun `corrupt excessive count is bounded before allocation`() {
+        val prefs = mutablePreferencesOf(SceneDeckWidgetKeys.sceneCount to Int.MAX_VALUE)
+        prefs[SceneDeckWidgetKeys.sceneName(0)] = "Main"
+        assertEquals(listOf("Main"), WidgetSnapshot.readFrom(prefs).sceneNames)
+    }
+
+    @Test
+    fun `snapshot writes at most the supported scene count`() {
+        val prefs = mutablePreferencesOf()
+        WidgetSnapshot(sceneNames = (0..20).map { "Scene $it" }).writeTo(prefs)
+        assertEquals(SceneDeckWidgetKeys.MAX_SCENES, prefs[SceneDeckWidgetKeys.sceneCount])
+        assertNull(prefs[SceneDeckWidgetKeys.sceneName(SceneDeckWidgetKeys.MAX_SCENES)])
+    }
+
     private companion object {
-        val ready = ConnectionState.Ready(
-            com.scenedeck.android.core.model.ObsVersionInfo(
-                obsVersion = "31.0.0",
-                obsWebSocketVersion = "5.5.2",
-                rpcVersion = 1,
-            ),
-        )
+        val ready =
+            ConnectionState.Ready(
+                com.scenedeck.android.core.model.ObsVersionInfo(
+                    obsVersion = "31.0.0",
+                    obsWebSocketVersion = "5.5.2",
+                    rpcVersion = 1,
+                )
+            )
     }
 }

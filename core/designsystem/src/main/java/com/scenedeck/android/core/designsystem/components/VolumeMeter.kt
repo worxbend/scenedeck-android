@@ -14,7 +14,6 @@ import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.VolumeMeterReading
 import kotlin.math.max
-import kotlin.math.min
 
 /** Zone thresholds in dB (OBS semantics). */
 private const val YELLOW_DB = -20f
@@ -23,12 +22,14 @@ private const val RED_DB = -9f
 private const val DECAY_DB_PER_MS = 60f / 300f // ~300 ms full-scale fall-off
 private const val NOTCH_DECAY_DB_PER_MS = 60f / 800f
 private const val PEAK_HOLD_MS = 20_000L
-private const val BASE_SQUARE_DP = 6f
+private const val BAR_WIDTH_DP = 7f
+private const val BAR_GAP_DP = 4f
+private const val BAR_CORNER_DP = 3f
 private const val LINE_THICKNESS_DP = 1.5f
 
 /**
- * Per-channel render state carried across draw calls WITHOUT Compose snapshots —
- * mutating it in the draw phase never invalidates composition.
+ * Per-channel render state carried across draw calls WITHOUT Compose snapshots — mutating it in the
+ * draw phase never invalidates composition.
  */
 private class ChannelRenderState {
     var displayDb = METER_DB_FLOOR
@@ -64,13 +65,12 @@ private class MeterRenderState {
 }
 
 /**
- * OBS-accurate volume meter (docs/DESIGN_SYSTEM.md §7): −60…0 dB scale,
- * green/yellow/red zones at −20/−9 dB, one bar per channel, magnitude fill with
- * fall-off, slow loudness notch, 20 s peak-hold line, pre-fader base square.
+ * OBS-accurate volume meter (docs/DESIGN_SYSTEM.md §7): −60…0 dB scale, green/yellow/red zones at
+ * −20/−9 dB, one bar per channel, magnitude fill with fall-off, slow loudness notch, 20 s peak-hold
+ * line, pre-fader base square.
  *
- * Reads [levelsHolder] in the DRAW PHASE ONLY: 50 ms meter updates redraw the
- * canvas without any recomposition. Empty channel arrays render the base square
- * only (protocol quirk guard).
+ * Reads [levelsHolder] in the DRAW PHASE ONLY: 50 ms meter updates redraw the canvas without any
+ * recomposition. Empty channel arrays render the base square only (protocol quirk guard).
  *
  * @param faderMul current fader position (pre-fader base square), linear multiplier.
  * @param muted draws the meter dimmed (base square stays visible).
@@ -90,26 +90,35 @@ fun VolumeMeter(
     val zoneYellow = colors.meterYellow
     val zoneRed = colors.meterRed
 
-    fun zoneColorForDb(db: Float): Color = when {
-        db > RED_DB -> zoneRed
-        db > YELLOW_DB -> zoneYellow
-        else -> zoneGreen
-    }
+    fun zoneColorForDb(db: Float): Color =
+        when {
+            db > RED_DB -> zoneRed
+            db > YELLOW_DB -> zoneYellow
+            else -> zoneGreen
+        }
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val reading: VolumeMeterReading? = levelsHolder.reading.value
         val nowMs = System.currentTimeMillis()
         val animate = motionLevel != MotionLevel.OFF
 
+        // Fixed-width bars (7dp, 4dp gap), centered in the allotted width.
         val channelCount = reading?.channels?.size ?: 0
-        val gapPx = 2.dp.toPx()
-        val barWidth =
-            if (channelCount == 0) size.width else (size.width - gapPx * (channelCount - 1)) / channelCount
+        val barWidth = BAR_WIDTH_DP.dp.toPx()
+        val gapPx = BAR_GAP_DP.dp.toPx()
+        val barCorner = CornerRadius(BAR_CORNER_DP.dp.toPx())
+        val rowWidth =
+            if (channelCount == 0) {
+                size.width
+            } else {
+                channelCount * barWidth + (channelCount - 1) * gapPx
+            }
+        val rowLeft = ((size.width - rowWidth) / 2).coerceAtLeast(0f)
 
         fun yFor(db: Float): Float = size.height * (1f - dbToFraction(db))
 
         // Zone background segments (full width, subtle).
-        val zoneAlpha = 0.14f
+        val zoneAlpha = 0.12f
         drawRect(
             color = zoneGreen.copy(alpha = zoneAlpha),
             size = Size(size.width, yFor(YELLOW_DB)),
@@ -124,6 +133,19 @@ fun VolumeMeter(
             topLeft = Offset(0f, 0f),
             size = Size(size.width, yFor(RED_DB)),
         )
+        // Zone ticks (−20/−9 dB) + 0 dB top marker.
+        listOf(YELLOW_DB, RED_DB).forEach { tickDb ->
+            drawRect(
+                color = zoneColorForDb(tickDb).copy(alpha = 0.55f),
+                topLeft = Offset(0f, yFor(tickDb) - 0.5.dp.toPx()),
+                size = Size(size.width, 1.dp.toPx()),
+            )
+        }
+        drawRect(
+            color = Color.White.copy(alpha = 0.5f),
+            topLeft = Offset(0f, 0f),
+            size = Size(size.width, 1.5.dp.toPx()),
+        )
 
         val meterAlpha = if (muted) 0.45f else 1f
 
@@ -135,7 +157,7 @@ fun VolumeMeter(
                 nowMs = nowMs,
                 animate = animate,
             )
-            val x = index * (barWidth + gapPx)
+            val x = rowLeft + index * (barWidth + gapPx)
             val barColor = zoneColorForDb(state.displayDb)
 
             // Magnitude fill (bottom → level).
@@ -145,7 +167,7 @@ fun VolumeMeter(
                     color = barColor.copy(alpha = meterAlpha),
                     topLeft = Offset(x, top),
                     size = Size(barWidth, size.height - top),
-                    cornerRadius = CornerRadius(2.dp.toPx()),
+                    cornerRadius = barCorner,
                 )
             }
             // Loudness notch (~slow decay marker).
@@ -164,16 +186,17 @@ fun VolumeMeter(
             )
         }
 
-        // Pre-fader base square — visible even when muted or with no meter data.
+        // Pre-fader fader marker — visible even when muted or with no meter data.
         val baseY = yFor(mulToDb(faderMul.toFloat()))
-        val square = BASE_SQUARE_DP.dp.toPx()
-        drawRect(
+        drawRoundRect(
             color = Color.White.copy(alpha = 0.9f),
-            topLeft = Offset(
-                (size.width - square) / 2,
-                (baseY - square / 2).coerceIn(0f, size.height - square),
-            ),
-            size = Size(square, square),
+            topLeft =
+                Offset(
+                    rowLeft - 1.dp.toPx(),
+                    (baseY - LINE_THICKNESS_DP.dp.toPx()).coerceIn(0f, size.height - 2.dp.toPx()),
+                ),
+            size = Size(rowWidth + 2.dp.toPx(), 2.dp.toPx()),
+            cornerRadius = CornerRadius(1.dp.toPx()),
         )
     }
 }

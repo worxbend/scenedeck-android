@@ -2,10 +2,10 @@ package com.scenedeck.android.core.data
 
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
-import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
+import com.scenedeck.android.core.obs.ObsClient
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -19,10 +19,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` +
- * virtualcam/replay status while connected (obs-websocket has no push stats;
- * FEATURE_SPEC §5). Drives the StatusStrip, the TransportBar and the stats page;
- * [StatsRepository.samples] keeps the rolling 2-minute window for charts.
+ * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtualcam/replay
+ * status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
+ * StatusStrip, the TransportBar and the stats page; [StatsRepository.samples] keeps the rolling
+ * 2-minute window for charts.
  */
 data class Telemetry(
     val connection: ConnectionState = ConnectionState.Disconnected,
@@ -36,7 +36,9 @@ data class Telemetry(
 )
 
 @Singleton
-class StatsRepository @Inject constructor(
+class StatsRepository
+@Inject
+constructor(
     private val client: ObsClient,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
@@ -46,8 +48,8 @@ class StatsRepository @Inject constructor(
     val telemetry: StateFlow<Telemetry> = _telemetry.asStateFlow()
 
     /**
-     * Rolling 2-minute [TelemetrySample] window (FEATURE_SPEC §5). Connection-scoped:
-     * filled by the 1 Hz poll loop for the whole session, cleared on disconnect.
+     * Rolling 2-minute [TelemetrySample] window (FEATURE_SPEC §5). Connection-scoped: filled by the
+     * 1 Hz poll loop for the whole session, cleared on disconnect.
      */
     private val history = TelemetryHistory()
     private val _samples = MutableStateFlow<List<TelemetrySample>>(emptyList())
@@ -74,30 +76,35 @@ class StatsRepository @Inject constructor(
         var lastBytes: Long? = null
         var lastSampleAtMs = 0L
         while (currentCoroutineContext().isActive) {
-            runCatching {
+            requestResult {
                 val stats = client.getStats()
                 val stream = client.getStreamStatus()
                 val record = client.getRecordStatus()
-                val virtualCam = runCatching { client.getVirtualCamStatus() }.getOrDefault(false)
-                val replayBuffer = runCatching { client.getReplayBufferStatus() }.getOrDefault(false)
+                val virtualCam = requestResult { client.getVirtualCamStatus() }.getOrDefault(false)
+                val replayBuffer = requestResult {
+                    client.getReplayBufferStatus()
+                }
+                    .getOrDefault(false)
                 val nowMs = nowMs()
-                val bitrate = computeBitrateKbps(
-                    active = stream.active,
-                    bytes = stream.bytes,
-                    previousBytes = lastBytes,
-                    elapsedMs = nowMs - lastSampleAtMs,
-                )
+                val bitrate =
+                    computeBitrateKbps(
+                        active = stream.active,
+                        bytes = stream.bytes,
+                        previousBytes = lastBytes,
+                        elapsedMs = nowMs - lastSampleAtMs,
+                    )
                 lastBytes = stream.bytes
                 lastSampleAtMs = nowMs
-                val snapshot = Telemetry(
-                    connection = connection,
-                    stats = stats,
-                    stream = stream,
-                    record = record,
-                    bitrateKbps = bitrate,
-                    virtualCamActive = virtualCam,
-                    replayBufferActive = replayBuffer,
-                )
+                val snapshot =
+                    Telemetry(
+                        connection = connection,
+                        stats = stats,
+                        stream = stream,
+                        record = record,
+                        bitrateKbps = bitrate,
+                        virtualCamActive = virtualCam,
+                        replayBufferActive = replayBuffer,
+                    )
                 _telemetry.value = snapshot
                 history.add(snapshot.toSample(history.latest()))
                 _samples.value = history.toList()
@@ -118,7 +125,10 @@ class StatsRepository @Inject constructor(
         ): Int {
             if (!active || previousBytes == null || elapsedMs <= 0) return 0
             val deltaBytes = (bytes - previousBytes).coerceAtLeast(0)
-            return (deltaBytes * 8 / elapsedMs).toInt() // bits per ms == kbit/s
+            // Floating-point multiplication avoids overflow for long-running counters.
+            return (deltaBytes.toDouble() * 8 / elapsedMs)
+                .coerceAtMost(Int.MAX_VALUE.toDouble())
+                .toInt() // bits per ms == kbit/s
         }
     }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="live_title">Live</string>
+    <string name="live_title">Scenes</string>
     <string name="previews_toggle">Previews</string>
     <string name="studio_toggle">Studio</string>
 
@@ -29,12 +29,13 @@
     <string name="cut_button">CUT</string>
     <string name="tbar_cd">T-bar: drag down to arm the transition, release past 80% to fire</string>
 
-    <string name="mixer_section">Mixer</string>
+    <string name="audio_section">Audio</string>
+    <string name="scenes_section">Scenes</string>
     <string name="open_mixer">Open mixer</string>
     <string name="no_audio_sources">No audio sources in this scene</string>
 
     <string name="show_on_deck">Show on deck</string>
-    <string name="show_on_deck_desc">Primary scenes appear on the Live page</string>
+    <string name="show_on_deck_desc">Primary scenes appear in the Deck filter</string>
     <string name="accent_color">Accent color</string>
     <string name="icon_label">Icon</string>
     <string name="sources_section">Sources</string>
@@ -45,4 +46,34 @@
     <string name="transition_duration_ms">Duration: %1$d ms</string>
     <string name="hide_source">Hide %1$s</string>
     <string name="show_source">Show %1$s</string>
+    <string name="program_scene">Program · %1$s</string>
+    <string name="scene_switch_hint">Your live switching surface</string>
+    <string name="scene_options">Scene options</string>
+    <string name="hide_previews">Hide thumbnails</string>
+    <string name="show_previews">Show thumbnails</string>
+    <string name="enable_studio">Enable Studio mode</string>
+    <string name="disable_studio">Disable Studio mode</string>
+    <string name="all_scenes">All scenes · %1$d</string>
+    <string name="deck_filter">Deck</string>
+    <string name="tap_to_preview">Tap to preview</string>
+    <string name="tap_to_switch">Tap to switch</string>
+    <string name="empty_deck">No scenes on your deck. Choose All scenes, then long-press a scene to add it.</string>
+    <string name="empty_scenes">No scenes in this OBS collection.</string>
+    <string name="output_options">Output controls</string>
+    <string name="stream_short">Stream</string>
+    <string name="stream_live_short">Live</string>
+    <string name="record_short">Record</string>
+    <string name="record_active_short">Recording</string>
+    <string name="transition_options">Transition settings and T-bar</string>
+    <string name="start_replay">Start replay buffer</string>
+    <string name="stop_replay">Stop replay buffer</string>
+    <string name="find_scene">Find scene</string>
+    <string name="close_search">Close search</string>
+    <string name="search_scenes">Search scenes</string>
+    <string name="no_matching_scenes">No matching scenes. Try another name.</string>
+    <string name="reorder_scenes">Reorder scenes</string>
+    <string name="finish_reordering">Done</string>
+    <string name="reorder_hint">Drag the grips to arrange your deck</string>
+    <string name="stream_stop_short">Stop</string>
+    <string name="record_stop_short">Stop rec</string>
 </resources>

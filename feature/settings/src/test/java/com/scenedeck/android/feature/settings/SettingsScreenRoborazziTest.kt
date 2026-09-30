@@ -23,8 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class SettingsScreenRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
         composeRule.setContent {
@@ -61,7 +60,11 @@ class SettingsScreenRoborazziTest {
 
     @Test
     fun settingsScreenHighContrastDark() =
-        capture(ThemeFamily.HIGH_CONTRAST, darkTheme = true, name = "settings_high_contrast_dark.png")
+        capture(
+            ThemeFamily.HIGH_CONTRAST,
+            darkTheme = true,
+            name = "settings_high_contrast_dark.png",
+        )
 
     @Test
     fun settingsScreenSceneDeckLight() =

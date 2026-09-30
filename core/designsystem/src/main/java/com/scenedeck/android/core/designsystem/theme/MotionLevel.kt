@@ -16,23 +16,25 @@ enum class MotionLevel {
     OFF,
 }
 
-private val StaticMotionScheme = object : MotionScheme {
-    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+private val StaticMotionScheme =
+    object : MotionScheme {
+        override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
 
-    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+        override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
 
-    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+        override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
 
-    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+        override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
 
-    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+        override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
 
-    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
-}
+        override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
+    }
 
 /** Maps a user [MotionLevel] onto a Material [MotionScheme] (docs/DESIGN_SYSTEM.md §8). */
-fun motionSchemeFor(level: MotionLevel): MotionScheme = when (level) {
-    MotionLevel.FULL -> MotionScheme.expressive()
-    MotionLevel.REDUCED -> MotionScheme.standard()
-    MotionLevel.OFF -> StaticMotionScheme
-}
+fun motionSchemeFor(level: MotionLevel): MotionScheme =
+    when (level) {
+        MotionLevel.FULL -> MotionScheme.expressive()
+        MotionLevel.REDUCED -> MotionScheme.standard()
+        MotionLevel.OFF -> StaticMotionScheme
+    }

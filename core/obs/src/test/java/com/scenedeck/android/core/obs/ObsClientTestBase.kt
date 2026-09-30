@@ -26,7 +26,10 @@ internal abstract class ObsClientTestBase {
     protected fun newClient(backoffMillis: (Int) -> Long = { TEST_BACKOFF_MS }): KtobsObsClient =
         KtobsObsClient(scope = scope, backoffMillis = backoffMillis)
 
-    protected suspend fun connectedClient(server: FakeObsServer, password: String? = null): KtobsObsClient {
+    protected suspend fun connectedClient(
+        server: FakeObsServer,
+        password: String? = null,
+    ): KtobsObsClient {
         server.enqueueSession()
         return newClient().apply { connect("127.0.0.1", server.port, password = password) }
     }

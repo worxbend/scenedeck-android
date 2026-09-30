@@ -6,11 +6,12 @@ import org.junit.Test
 
 class RegistryExportTest {
 
-    private val fixtures = listOf(
-        SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
-        SceneRegistryEntry("Quiet A", SceneRole.ARCHIVE, null, null, 5),
-        SceneRegistryEntry("Nested Audio", SceneRole.MODULE, null, "MUSIC", 3),
-    )
+    private val fixtures =
+        listOf(
+            SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
+            SceneRegistryEntry("Quiet A", SceneRole.ARCHIVE, null, null, 5),
+            SceneRegistryEntry("Nested Audio", SceneRole.MODULE, null, "MUSIC", 3),
+        )
 
     @Test
     fun roundTripPreservesEverything() {
@@ -42,14 +43,16 @@ class RegistryExportTest {
 
     @Test
     fun unknownRoleFallsBackToSecondary() {
-        val yaml = """
+        val yaml =
+            """
             format: scenedeck-registry
             version: 1
             entries:
             - sceneName: X
               role: HERO
               sortOrder: 0
-        """.trimIndent()
+            """
+                .trimIndent()
         assertEquals(SceneRole.SECONDARY, RegistryExportCodec.decode(yaml).single().role)
     }
 

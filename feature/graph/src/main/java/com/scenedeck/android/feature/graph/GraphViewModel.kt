@@ -25,25 +25,30 @@ data class GraphUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class GraphViewModel @Inject constructor(
+class GraphViewModel
+@Inject
+constructor(
     private val registry: RegistryRepository,
     private val client: ObsClient,
 ) : ViewModel() {
 
     private val builder = SceneGraphBuilder(client)
 
-    val uiState: StateFlow<GraphUiState> = combine(
-        client.connectionState,
-        registry.entries,
-    ) { connection, entries -> connection to entries }
-        .transformLatest { (connection, entries) ->
-            if (connection is ConnectionState.Ready) {
-                emit(GraphUiState(connection = connection, graph = builder.build(entries)))
-            } else {
-                emit(GraphUiState(connection = connection, graph = null))
+    val uiState: StateFlow<GraphUiState> =
+        combine(
+                client.connectionState,
+                registry.entries,
+            ) { connection, entries ->
+                connection to entries
             }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GraphUiState())
+            .transformLatest { (connection, entries) ->
+                if (connection is ConnectionState.Ready) {
+                    emit(GraphUiState(connection = connection, graph = builder.build(entries)))
+                } else {
+                    emit(GraphUiState(connection = connection, graph = null))
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GraphUiState())
 
     /** Selected node for the detail sheet. */
     private val _selectedNode = MutableStateFlow<String?>(null)

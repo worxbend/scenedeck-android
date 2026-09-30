@@ -6,28 +6,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.scenedeck.android.core.designsystem.components.StudioIconWell
+import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
+import com.scenedeck.android.core.designsystem.components.StudioTone
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
@@ -49,9 +55,9 @@ import com.scenedeck.android.ui.components.StatusStrip
 import com.scenedeck.android.ui.components.StatusStripState
 
 /**
- * App shell. First run ([onboardingCompleted] false) shows the wizard full-screen;
- * once completed (persisted), the adaptive navigation suite hosts the Nav3 back stack
- * with the persistent StatusStrip docked above the navigation bar.
+ * App shell. First run ([onboardingCompleted] false) shows the wizard full-screen; once completed
+ * (persisted), the adaptive navigation suite hosts the Nav3 back stack with the persistent
+ * StatusStrip docked above the navigation bar.
  */
 @Composable
 fun SceneDeckApp(
@@ -64,22 +70,27 @@ fun SceneDeckApp(
     modifier: Modifier = Modifier,
 ) {
     when (onboardingCompleted) {
-        null -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        null ->
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
-        false -> OnboardingScreen(
-            onFinished = {},
-            onSkip = onOnboardingSkip,
-        )
+        false ->
+            Surface(modifier = modifier.fillMaxSize()) {
+                OnboardingScreen(
+                    onFinished = {},
+                    onSkip = onOnboardingSkip,
+                )
+            }
 
-        true -> SceneDeckShell(
-            appState = appState,
-            connectionState = connectionState,
-            stripState = stripState,
-            startWithConnections = skipToConnections,
-            modifier = modifier,
-        )
+        true ->
+            SceneDeckShell(
+                appState = appState,
+                connectionState = connectionState,
+                stripState = stripState,
+                startWithConnections = skipToConnections,
+                modifier = modifier,
+            )
     }
 }
 
@@ -94,19 +105,16 @@ private fun SceneDeckShell(
 ) {
     KeepScreenOnEffect(enabled = appState.keepScreenOn && connectionState is ConnectionState.Ready)
 
-    val startDestination =
-        if (startWithConnections) SceneDeckDestination.Connections else SceneDeckDestination.Live
-    val backStack = rememberNavBackStack(startDestination)
+    val backStack = rememberNavBackStack(SceneDeckDestination.Live)
+    LaunchedEffect(startWithConnections) {
+        if (startWithConnections) backStack.selectTopLevel(SceneDeckDestination.Connections)
+    }
     val current = backStack.lastOrNull() as? SceneDeckDestination
     var moreSheetOpen by rememberSaveable { mutableStateOf(false) }
     var backgroundSheetOpen by rememberSaveable { mutableStateOf(false) }
 
-    fun selectTopLevel(destination: SceneDeckDestination) {
-        if (current == destination) return
-        // Tab-style navigation: Live stays the root, any other top-level
-        // destination replaces the current one so Back always returns to Live.
-        while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
-        if (destination != SceneDeckDestination.Live) backStack.add(destination)
+    val selectTopLevel: (SceneDeckDestination) -> Unit = { destination ->
+        backStack.selectTopLevel(destination)
     }
 
     val navDisplay: @Composable (Modifier) -> Unit = { displayModifier ->
@@ -114,7 +122,7 @@ private fun SceneDeckShell(
             backStack = backStack,
             modifier = displayModifier,
             onBack = { backStack.removeLastOrNull() },
-            entryProvider = sceneDeckEntryProvider(appState, backStack, ::selectTopLevel),
+            entryProvider = sceneDeckEntryProvider(appState, backStack, selectTopLevel),
         )
     }
 
@@ -146,16 +154,12 @@ private fun SceneDeckShell(
             },
         ) {
             Column(Modifier.fillMaxSize()) {
-                navDisplay(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                )
+                navDisplay(Modifier.weight(1f).fillMaxWidth())
                 StatusStrip(
                     state = stripState,
                     onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
                     onConnectionLongClick = { backgroundSheetOpen = true },
-                    animateConnection = appState.motionLevel != MotionLevel.OFF,
+                    animateConnection = appState.motionLevel == MotionLevel.FULL,
                 )
             }
         }
@@ -165,91 +169,149 @@ private fun SceneDeckShell(
         }
 
         if (moreSheetOpen) {
-            ModalBottomSheet(onDismissRequest = { moreSheetOpen = false }) {
-                Text(
-                    text = "More",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-                (SceneDeckDestination.overflow + SceneDeckDestination.Onboarding).forEach { destination ->
-                    ListItem(
-                        leadingContent = {
-                            Icon(destination.icon, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable {
-                            moreSheetOpen = false
-                            if (destination == SceneDeckDestination.Onboarding) {
-                                backStack.add(SceneDeckDestination.Onboarding)
-                            } else {
-                                selectTopLevel(destination)
-                            }
-                        },
-                    ) {
-                        Text(destination.label)
-                    }
-                }
-            }
+            StudioToolsSheet(
+                onDismiss = { moreSheetOpen = false },
+                onDestination = { destination ->
+                    moreSheetOpen = false
+                    if (destination == SceneDeckDestination.Onboarding) backStack.add(destination)
+                    else selectTopLevel(destination)
+                },
+                onBackgroundSettings = {
+                    moreSheetOpen = false
+                    backgroundSheetOpen = true
+                },
+            )
         }
     }
 }
+
+private val SceneDeckDestination.description: String
+    @Composable
+    get() =
+        stringResource(
+            when (this) {
+                SceneDeckDestination.Inventory -> R.string.inventory_description
+                SceneDeckDestination.Graph -> R.string.graph_description
+                SceneDeckDestination.Doctor -> R.string.doctor_description
+                SceneDeckDestination.Connections -> R.string.connections_description
+                SceneDeckDestination.Settings -> R.string.settings_description
+                else -> R.string.help_description
+            }
+        )
 
 private fun sceneDeckEntryProvider(
     appState: SceneDeckAppState,
     backStack: NavBackStack<NavKey>,
     selectTopLevel: (SceneDeckDestination) -> Unit,
-) = entryProvider<NavKey> {
-    entry<SceneDeckDestination.Live> {
-        LiveScreen(
-            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
-            onNavigateToMixer = { selectTopLevel(SceneDeckDestination.Mixer) },
-        )
+) =
+    entryProvider<NavKey> {
+        entry<SceneDeckDestination.Live> {
+            LiveScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
+        entry<SceneDeckDestination.Mixer> {
+            MixerScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+                motionLevel = appState.motionLevel,
+                hapticsEnabled = appState.haptics,
+            )
+        }
+        entry<SceneDeckDestination.Stats> {
+            StatsScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
+        entry<SceneDeckDestination.Inventory> {
+            InventoryScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
+        entry<SceneDeckDestination.Graph> {
+            GraphScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
+        entry<SceneDeckDestination.Doctor> {
+            DoctorScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+                onNavigateToInventory = { selectTopLevel(SceneDeckDestination.Inventory) },
+            )
+        }
+        entry<SceneDeckDestination.Settings> {
+            SettingsScreen(
+                currentTheme = appState.themeFamily,
+                onThemeSelect = { appState.themeFamily = it },
+                darkMode = appState.darkMode,
+                onDarkModeChange = { appState.darkMode = it },
+                motionLevel = appState.motionLevel,
+                onMotionLevelChange = { appState.motionLevel = it },
+                dynamicColor = appState.dynamicColor,
+                onDynamicColorChange = { appState.dynamicColor = it },
+                haptics = appState.haptics,
+                onHapticsChange = { appState.haptics = it },
+                keepScreenOn = appState.keepScreenOn,
+                onKeepScreenOnChange = { appState.keepScreenOn = it },
+            )
+        }
+        entry<SceneDeckDestination.Connections> { ConnectionsScreen() }
+        entry<SceneDeckDestination.Onboarding> {
+            OnboardingScreen(
+                onFinished = { backStack.removeLastOrNull() },
+                onSkip = { backStack.removeLastOrNull() },
+            )
+        }
     }
-    entry<SceneDeckDestination.Mixer> {
-        MixerScreen(
-            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
-            motionLevel = appState.motionLevel,
-            hapticsEnabled = appState.haptics,
-        )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StudioToolsSheet(
+    onDismiss: () -> Unit,
+    onDestination: (SceneDeckDestination) -> Unit,
+    onBackgroundSettings: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            StudioSectionHeader(
+                stringResource(R.string.studio_tools),
+                Modifier.padding(horizontal = 24.dp),
+            )
+            (SceneDeckDestination.overflow + SceneDeckDestination.Onboarding).forEach { destination
+                ->
+                ListItem(
+                    leadingContent = {
+                        StudioIconWell(
+                            destination.icon,
+                            tone =
+                                when (destination) {
+                                    SceneDeckDestination.Connections -> StudioTone.SECONDARY
+                                    SceneDeckDestination.Settings -> StudioTone.TERTIARY
+                                    SceneDeckDestination.Doctor -> StudioTone.SUCCESS
+                                    else -> StudioTone.PRIMARY
+                                },
+                        )
+                    },
+                    supportingContent = { Text(destination.description) },
+                    modifier = Modifier.clickable { onDestination(destination) },
+                ) {
+                    Text(destination.label)
+                }
+            }
+            ListItem(
+                supportingContent = { Text(stringResource(R.string.session_behavior_description)) },
+                leadingContent = {
+                    StudioIconWell(SceneDeckIcons.Connections, tone = StudioTone.SECONDARY)
+                },
+                modifier = Modifier.clickable(onClick = onBackgroundSettings),
+            ) {
+                Text(stringResource(R.string.session_behavior))
+            }
+        }
     }
-    entry<SceneDeckDestination.Stats> { StatsScreen() }
-    entry<SceneDeckDestination.Inventory> {
-        InventoryScreen(
-            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
-        )
-    }
-    entry<SceneDeckDestination.Graph> {
-        GraphScreen(
-            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
-        )
-    }
-    entry<SceneDeckDestination.Doctor> {
-        DoctorScreen(
-            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
-            onNavigateToInventory = { selectTopLevel(SceneDeckDestination.Inventory) },
-        )
-    }
-    entry<SceneDeckDestination.Settings> {
-        SettingsScreen(
-            currentTheme = appState.themeFamily,
-            onThemeSelect = { appState.themeFamily = it },
-            darkMode = appState.darkMode,
-            onDarkModeChange = { appState.darkMode = it },
-            motionLevel = appState.motionLevel,
-            onMotionLevelChange = { appState.motionLevel = it },
-            dynamicColor = appState.dynamicColor,
-            onDynamicColorChange = { appState.dynamicColor = it },
-            haptics = appState.haptics,
-            onHapticsChange = { appState.haptics = it },
-            keepScreenOn = appState.keepScreenOn,
-            onKeepScreenOnChange = { appState.keepScreenOn = it },
-        )
-    }
-    entry<SceneDeckDestination.Connections> { ConnectionsScreen() }
-    entry<SceneDeckDestination.Onboarding> {
-        OnboardingScreen(
-            onFinished = { backStack.removeLastOrNull() },
-            onSkip = { backStack.removeLastOrNull() },
-        )
-    }
+}
+
+private fun NavBackStack<NavKey>.selectTopLevel(destination: SceneDeckDestination) {
+    if (lastOrNull() == destination) return
+    while (size > 1) removeAt(lastIndex)
+    if (destination != SceneDeckDestination.Live) add(destination)
 }

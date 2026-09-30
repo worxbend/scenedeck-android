@@ -4,8 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Local curation metadata for an OBS scene (FEATURE_SPEC §6). NEVER written back to
- * OBS — the scene collection in OBS stays untouched (project non-negotiable).
+ * Local curation metadata for an OBS scene (FEATURE_SPEC §6). NEVER written back to OBS — the scene
+ * collection in OBS stays untouched (project non-negotiable).
  */
 @Entity(tableName = "scene_registry")
 data class SceneRegistryEntity(

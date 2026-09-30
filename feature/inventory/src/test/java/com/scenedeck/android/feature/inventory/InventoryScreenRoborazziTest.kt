@@ -25,8 +25,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class InventoryScreenRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun inventoryScreenDark() =
@@ -41,39 +40,46 @@ class InventoryScreenRoborazziTest {
         capture(ThemeFamily.NORD, darkTheme = true, name = "inventory_screen_nord_dark.png")
 
     @Test
-    fun inventoryScreenHighContrastDark() = capture(
-        ThemeFamily.HIGH_CONTRAST,
-        darkTheme = true,
-        name = "inventory_screen_high_contrast_dark.png",
-    )
+    fun inventoryScreenHighContrastDark() =
+        capture(
+            ThemeFamily.HIGH_CONTRAST,
+            darkTheme = true,
+            name = "inventory_screen_high_contrast_dark.png",
+        )
 
     @Test
     fun inventoryScreenSceneDeckLight() =
-        capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "inventory_screen_scenedeck_light.png")
+        capture(
+            ThemeFamily.SCENEDECK,
+            darkTheme = false,
+            name = "inventory_screen_scenedeck_light.png",
+        )
 
     private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
-        val state = InventoryUiState(
-            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
-            scenes = listOf(
-                InventoryScene(
-                    "Cam 1",
-                    SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
-                    stale = false,
-                ),
-                InventoryScene("Screen", null, stale = false),
-                InventoryScene(
-                    "Quiet A",
-                    SceneRegistryEntry("Quiet A", SceneRole.ARCHIVE, null, null, 5),
-                    stale = false,
-                ),
-                InventoryScene(
-                    "Ghost",
-                    SceneRegistryEntry("Ghost", SceneRole.MODULE, null, null, 6),
-                    stale = true,
-                ),
-            ),
-            unassignedCount = 1,
-        )
+        val state =
+            InventoryUiState(
+                connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
+                scenes =
+                    listOf(
+                        InventoryScene(
+                            "Cam 1",
+                            SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
+                            stale = false,
+                        ),
+                        InventoryScene("Screen", null, stale = false),
+                        InventoryScene(
+                            "Quiet A",
+                            SceneRegistryEntry("Quiet A", SceneRole.ARCHIVE, null, null, 5),
+                            stale = false,
+                        ),
+                        InventoryScene(
+                            "Ghost",
+                            SceneRegistryEntry("Ghost", SceneRole.MODULE, null, null, 6),
+                            stale = true,
+                        ),
+                    ),
+                unassignedCount = 1,
+            )
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {

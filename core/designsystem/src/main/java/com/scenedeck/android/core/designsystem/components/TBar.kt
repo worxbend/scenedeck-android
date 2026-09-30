@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -27,9 +28,9 @@ import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 private const val TRIGGER_THRESHOLD = 0.8f
 
 /**
- * T-bar transition lever (FEATURE_SPEC §8, M6 deferral): pull down to arm, release
- * past ~80 % to fire the studio transition; otherwise the thumb springs home.
- * [motionLevel] OFF disables the spring-back animation (instant snap).
+ * T-bar transition lever (FEATURE_SPEC §8, M6 deferral): pull down to arm, release past ~80 % to
+ * fire the studio transition; otherwise the thumb springs home. [motionLevel] OFF disables the
+ * spring-back animation (instant snap).
  */
 @Composable
 fun TBar(
@@ -37,71 +38,85 @@ fun TBar(
     onTrigger: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentTrigger by rememberUpdatedState(onTrigger)
     val colors = SceneDeckTheme.colors
     var dragFraction by remember { mutableFloatStateOf(0f) }
     var dragging by remember { mutableStateOf(false) }
 
-    val displayed by animateFloatAsState(
-        targetValue = if (dragging) dragFraction else 0f,
-        animationSpec = spring(
-            dampingRatio = if (motionLevel == MotionLevel.OFF) 1f else 0.6f,
-            stiffness = if (motionLevel == MotionLevel.OFF) 10_000f else 400f,
-        ),
-        label = "tbarThumb",
-    )
+    val displayed by
+        animateFloatAsState(
+            targetValue = if (dragging) dragFraction else 0f,
+            animationSpec =
+                spring(
+                    dampingRatio = if (motionLevel == MotionLevel.OFF) 1f else 0.6f,
+                    stiffness = if (motionLevel == MotionLevel.OFF) 10_000f else 400f,
+                ),
+            label = "tbarThumb",
+        )
     val armed = displayed >= TRIGGER_THRESHOLD
     val trackBase = MaterialTheme.colorScheme.surfaceContainerHighest
     val thumbBase = MaterialTheme.colorScheme.primary
 
     Canvas(
-        modifier = modifier
-            .width(36.dp)
-            .height(56.dp)
-            .semantics {
-                contentDescription =
-                    "T-bar: drag down to arm transition, release to fire (${(TRIGGER_THRESHOLD * 100).toInt()}%)"
-            }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        dragging = true
-                        dragFraction = 0f
-                    },
-                    onDragEnd = {
-                        if (dragFraction >= TRIGGER_THRESHOLD) onTrigger()
-                        dragging = false
-                    },
-                    onDragCancel = { dragging = false },
-                ) { change, dragAmount ->
-                    change.consume()
-                    dragFraction = (dragFraction + dragAmount / size.height).coerceIn(0f, 1f)
+        modifier =
+            modifier
+                .width(36.dp)
+                .height(56.dp)
+                .semantics {
+                    contentDescription =
+                        "T-bar: drag down to arm transition, release to fire (${(TRIGGER_THRESHOLD * 100).toInt()}%)"
                 }
-            },
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            dragging = true
+                            dragFraction = 0f
+                        },
+                        onDragEnd = {
+                            if (dragFraction >= TRIGGER_THRESHOLD) currentTrigger()
+                            dragging = false
+                        },
+                        onDragCancel = { dragging = false },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        dragFraction = (dragFraction + dragAmount / size.height).coerceIn(0f, 1f)
+                    }
+                }
     ) {
-        val corner = CornerRadius(8.dp.toPx())
-        val trackColor = if (armed) colors.preview.copy(alpha = 0.5f)
-        else trackBase
-        drawRoundRect(color = trackColor, size = size, cornerRadius = corner)
+        drawTBar(armed, displayed, trackBase, thumbBase, colors.preview)
+    }
+}
 
-        // Armed marker line at the trigger threshold.
-        val thresholdY = size.height * TRIGGER_THRESHOLD
-        drawRect(
-            color = colors.preview,
-            topLeft = Offset(0f, thresholdY - 1.dp.toPx()),
-            size = Size(size.width, 2.dp.toPx()),
-        )
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTBar(
+    armed: Boolean,
+    displayed: Float,
+    trackBase: androidx.compose.ui.graphics.Color,
+    thumbBase: androidx.compose.ui.graphics.Color,
+    previewColor: androidx.compose.ui.graphics.Color,
+) {
+    val corner = CornerRadius(8.dp.toPx())
+    val trackColor = if (armed) previewColor.copy(alpha = 0.5f) else trackBase
+    drawRoundRect(color = trackColor, size = size, cornerRadius = corner)
 
-        // Thumb.
-        val thumbHeight = 14.dp.toPx()
-        val thumbY = size.height * displayed - thumbHeight / 2
-        drawRoundRect(
-            color = if (armed) colors.preview else thumbBase,
-            topLeft = Offset(
+    // Armed marker line at the trigger threshold.
+    val thresholdY = size.height * TRIGGER_THRESHOLD
+    drawRect(
+        color = previewColor,
+        topLeft = Offset(0f, thresholdY - 1.dp.toPx()),
+        size = Size(size.width, 2.dp.toPx()),
+    )
+
+    // Thumb.
+    val thumbHeight = 14.dp.toPx()
+    val thumbY = size.height * displayed - thumbHeight / 2
+    drawRoundRect(
+        color = if (armed) previewColor else thumbBase,
+        topLeft =
+            Offset(
                 3.dp.toPx(),
                 thumbY.coerceIn(0f, size.height - thumbHeight),
             ),
-            size = Size(size.width - 6.dp.toPx(), thumbHeight),
-            cornerRadius = corner,
-        )
-    }
+        size = Size(size.width - 6.dp.toPx(), thumbHeight),
+        cornerRadius = corner,
+    )
 }

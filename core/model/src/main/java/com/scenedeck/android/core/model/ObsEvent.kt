@@ -1,8 +1,8 @@
 package com.scenedeck.android.core.model
 
 /**
- * Domain events pushed by OBS over the WebSocket (op 5). Volume meters are NOT
- * part of this hierarchy — they stream on their own high-volume flow.
+ * Domain events pushed by OBS over the WebSocket (op 5). Volume meters are NOT part of this
+ * hierarchy — they stream on their own high-volume flow.
  */
 sealed interface ObsEvent {
 
@@ -43,7 +43,10 @@ sealed interface ObsEvent {
 
     data class InputAudioSyncOffsetChanged(val inputName: String, val offsetMs: Int) : ObsEvent
 
-    data class InputAudioMonitorTypeChanged(val inputName: String, val monitorType: MonitorTypeKind) : ObsEvent
+    data class InputAudioMonitorTypeChanged(
+        val inputName: String,
+        val monitorType: MonitorTypeKind,
+    ) : ObsEvent
 
     // ── Media inputs ────────────────────────────────────────────────────────
     data class MediaInputPlaybackStarted(val inputName: String) : ObsEvent

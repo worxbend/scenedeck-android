@@ -74,10 +74,12 @@ class GraphViewModelTest {
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
-        override fun observeAll(): Flow<List<SceneRegistryEntity>> =
-            entities.map { map -> map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName })) }
+        override fun observeAll(): Flow<List<SceneRegistryEntity>> = entities.map { map ->
+            map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName }))
+        }
 
-        override suspend fun byName(sceneName: String): SceneRegistryEntity? = entities.value[sceneName]
+        override suspend fun byName(sceneName: String): SceneRegistryEntity? =
+            entities.value[sceneName]
 
         override suspend fun upsert(entity: SceneRegistryEntity) {
             entities.update { it + (entity.sceneName to entity) }
@@ -98,80 +100,136 @@ class GraphViewModelTest {
 
     @Suppress("TooManyFunctions")
     private class FakeObsClient : ObsClient {
-        private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+        private val _connectionState =
+            MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
         override val events: SharedFlow<ObsEvent> = MutableSharedFlow(extraBufferCapacity = 4)
         override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = MutableSharedFlow()
 
         fun setReady() {
-            _connectionState.value = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "test"))
+            _connectionState.value =
+                ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "test"))
         }
 
         override suspend fun connect(host: String, port: Int, password: String?) = Unit
+
         override suspend fun disconnect() = Unit
 
-        override suspend fun getSceneList(): SceneListSnapshot = SceneListSnapshot(
-            currentProgramScene = "Show",
-            scenes = listOf(
-                SceneSummary("Show", 0),
-                SceneSummary("Cam 1", 1),
-                SceneSummary("LowerThird", 2),
-                SceneSummary("Scratch", 3),
-            ),
-        )
-
-        override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> = when (sceneName) {
-            "Show" -> listOf(
-                SceneItemInfo(1, 0, "LowerThird", enabled = true, isGroup = false, inputKind = null),
-                SceneItemInfo(2, 1, "Scratch", enabled = true, isGroup = false, inputKind = null),
+        override suspend fun getSceneList(): SceneListSnapshot =
+            SceneListSnapshot(
+                currentProgramScene = "Show",
+                scenes =
+                    listOf(
+                        SceneSummary("Show", 0),
+                        SceneSummary("Cam 1", 1),
+                        SceneSummary("LowerThird", 2),
+                        SceneSummary("Scratch", 3),
+                    ),
             )
 
-            "Cam 1" -> listOf(
-                SceneItemInfo(1, 0, "Tone", enabled = true, isGroup = false, inputKind = "ffmpeg_source"),
-            )
+        override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> =
+            when (sceneName) {
+                "Show" ->
+                    listOf(
+                        SceneItemInfo(
+                            1,
+                            0,
+                            "LowerThird",
+                            enabled = true,
+                            isGroup = false,
+                            inputKind = null,
+                        ),
+                        SceneItemInfo(
+                            2,
+                            1,
+                            "Scratch",
+                            enabled = true,
+                            isGroup = false,
+                            inputKind = null,
+                        ),
+                    )
 
-            else -> emptyList()
-        }
+                "Cam 1" ->
+                    listOf(
+                        SceneItemInfo(
+                            1,
+                            0,
+                            "Tone",
+                            enabled = true,
+                            isGroup = false,
+                            inputKind = "ffmpeg_source",
+                        )
+                    )
 
-    
-    override suspend fun getStudioModeEnabled(): Boolean = false
-    override suspend fun setStudioModeEnabled(enabled: Boolean) = Unit
-    override suspend fun getCurrentPreviewScene(): String = unused()
-    override suspend fun setCurrentPreviewScene(sceneName: String) = unused()
-    override suspend fun triggerStudioModeTransition() = unused()
-    override suspend fun getSceneTransitionList() = unused()
-    override suspend fun getCurrentSceneTransition() = unused()
-    override suspend fun setCurrentSceneTransition(transitionName: String) = unused()
-    override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
-    override suspend fun getSourceScreenshot(
-        sourceName: String,
-        format: String,
-        compressionQuality: Int,
-        width: Int?,
-        height: Int?,
-    ): ByteArray = unused()
+                else -> emptyList()
+            }
 
-    private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
+        override suspend fun getStudioModeEnabled(): Boolean = false
+
+        override suspend fun setStudioModeEnabled(enabled: Boolean) = Unit
+
+        override suspend fun getCurrentPreviewScene(): String = unused()
+
+        override suspend fun setCurrentPreviewScene(sceneName: String) = unused()
+
+        override suspend fun triggerStudioModeTransition() = unused()
+
+        override suspend fun getSceneTransitionList() = unused()
+
+        override suspend fun getCurrentSceneTransition() = unused()
+
+        override suspend fun setCurrentSceneTransition(transitionName: String) = unused()
+
+        override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
+
+        override suspend fun getSourceScreenshot(
+            sourceName: String,
+            format: String,
+            compressionQuality: Int,
+            width: Int?,
+            height: Int?,
+        ): ByteArray = unused()
+
+        private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 
         override suspend fun getVersion() = unused()
+
         override suspend fun getStats() = unused()
+
         override suspend fun getCurrentProgramScene(): String = unused()
+
         override suspend fun setCurrentProgramScene(sceneName: String) = unused()
+
         override suspend fun getSceneItemEnabled(sceneName: String, sceneItemId: Int) = unused()
+
         override suspend fun getSpecialInputs() = unused()
+
         override suspend fun getInputMute(inputName: String) = unused()
+
         override suspend fun setInputMute(inputName: String, muted: Boolean) = unused()
+
         override suspend fun getInputVolume(inputName: String) = unused()
+
         override suspend fun setInputVolume(inputName: String, volumeMul: Double) = unused()
+
         override suspend fun getStreamStatus() = unused()
+
         override suspend fun startStream() = unused()
+
         override suspend fun stopStream() = unused()
+
         override suspend fun getRecordStatus() = unused()
+
         override suspend fun startRecord() = unused()
+
         override suspend fun stopRecord() = unused()
+
         override suspend fun getProfileList() = unused()
+
         override suspend fun setCurrentProfile(profileName: String) = unused()
+
         override suspend fun getSceneCollectionList() = unused()
+
         override suspend fun setCurrentSceneCollection(collectionName: String) = unused()
     }
 }

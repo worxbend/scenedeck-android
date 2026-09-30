@@ -32,8 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class M5ComponentsRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun inventoryRowsDark() {
@@ -72,17 +71,19 @@ class M5ComponentsRoborazziTest {
                 val colors = SceneDeckTheme.colors
                 Surface {
                     GraphCanvas(
-                        nodes = listOf(
-                            GraphNodeSpec("Starting Soon", colors.program),
-                            GraphNodeSpec("Cam 1", colors.program),
-                            GraphNodeSpec("Nested Audio", colors.preview),
-                            GraphNodeSpec("Scratch", colors.warning, inCycle = true),
-                        ),
-                        edges = listOf(
-                            GraphEdgeSpec("Starting Soon", "Nested Audio", Color(0xFF8A8A92)),
-                            GraphEdgeSpec("Cam 1", "Nested Audio", Color(0xFF8A8A92)),
-                            GraphEdgeSpec("Starting Soon", "Scratch", colors.recording),
-                        ),
+                        nodes =
+                            listOf(
+                                GraphNodeSpec("Starting Soon", colors.program),
+                                GraphNodeSpec("Cam 1", colors.program),
+                                GraphNodeSpec("Nested Audio", colors.preview),
+                                GraphNodeSpec("Scratch", colors.warning, inCycle = true),
+                            ),
+                        edges =
+                            listOf(
+                                GraphEdgeSpec("Starting Soon", "Nested Audio", Color(0xFF8A8A92)),
+                                GraphEdgeSpec("Cam 1", "Nested Audio", Color(0xFF8A8A92)),
+                                GraphEdgeSpec("Starting Soon", "Scratch", colors.recording),
+                            ),
                         onNodeClick = {},
                     )
                 }

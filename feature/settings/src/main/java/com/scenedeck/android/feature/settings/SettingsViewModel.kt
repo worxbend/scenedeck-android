@@ -13,20 +13,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
-    private val settings: SettingsRepository,
-) : ViewModel() {
+class SettingsViewModel @Inject constructor(private val settings: SettingsRepository) :
+    ViewModel() {
 
-    val outputSafety: StateFlow<OutputSafety> = settings.settings
-        .map {
-            OutputSafety(
-                confirmStartStream = it.confirmStartStream,
-                confirmStopStream = it.confirmStopStream,
-                confirmStartRecord = it.confirmStartRecord,
-                confirmStopRecord = it.confirmStopRecord,
-            )
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OutputSafety())
+    val outputSafety: StateFlow<OutputSafety> =
+        settings.settings
+            .map {
+                OutputSafety(
+                    confirmStartStream = it.confirmStartStream,
+                    confirmStopStream = it.confirmStopStream,
+                    confirmStartRecord = it.confirmStartRecord,
+                    confirmStopRecord = it.confirmStopRecord,
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OutputSafety())
 
     fun setConfirmStartStream(value: Boolean) {
         viewModelScope.launch { settings.setConfirmStartStream(value) }

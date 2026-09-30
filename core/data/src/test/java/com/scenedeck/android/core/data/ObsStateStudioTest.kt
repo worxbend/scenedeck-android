@@ -1,13 +1,12 @@
 package com.scenedeck.android.core.data
 
-import com.scenedeck.android.core.model.CurrentTransition
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.TransitionInfo
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,23 +21,28 @@ class ObsStateStudioTest {
 
     @Before
     fun setUp() {
-        scope = kotlinx.coroutines.CoroutineScope(
-            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default,
-        )
-        client = FakeObsClient(
-            sceneListSnapshot = com.scenedeck.android.core.model.SceneListSnapshot(
-                currentProgramScene = "Cam 1",
-                scenes = listOf(
-                    com.scenedeck.android.core.model.SceneSummary("Cam 1", 0),
-                    com.scenedeck.android.core.model.SceneSummary("Screen", 1),
-                ),
-            ),
-        )
-        repository = ObsStateRepository(
-            client,
-            RegistryRepository(FakeRegistryDao()),
-            scope,
-        )
+        scope =
+            kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
+            )
+        client =
+            FakeObsClient(
+                sceneListSnapshot =
+                    com.scenedeck.android.core.model.SceneListSnapshot(
+                        currentProgramScene = "Cam 1",
+                        scenes =
+                            listOf(
+                                com.scenedeck.android.core.model.SceneSummary("Cam 1", 0),
+                                com.scenedeck.android.core.model.SceneSummary("Screen", 1),
+                            ),
+                    )
+            )
+        repository =
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                scope,
+            )
     }
 
     @org.junit.After
@@ -111,20 +115,28 @@ class ObsStateStudioTest {
 
     /** Map-backed registry DAO. */
     private class FakeRegistryDao : com.scenedeck.android.core.database.SceneRegistryDao {
-        private val entities = kotlinx.coroutines.flow.MutableStateFlow<
-            Map<String, com.scenedeck.android.core.database.SceneRegistryEntity>,
-            >(emptyMap())
+        private val entities =
+            kotlinx.coroutines.flow.MutableStateFlow<
+                Map<String, com.scenedeck.android.core.database.SceneRegistryEntity>
+            >(
+                emptyMap()
+            )
 
         override fun observeAll() = entities.map { map ->
             map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName }))
         }
 
         override suspend fun byName(sceneName: String) = entities.value[sceneName]
-        override suspend fun upsert(entity: com.scenedeck.android.core.database.SceneRegistryEntity) {
+
+        override suspend fun upsert(
+            entity: com.scenedeck.android.core.database.SceneRegistryEntity
+        ) {
             entities.value = entities.value + (entity.sceneName to entity)
         }
 
-        override suspend fun upsertAll(entities: List<com.scenedeck.android.core.database.SceneRegistryEntity>) {
+        override suspend fun upsertAll(
+            entities: List<com.scenedeck.android.core.database.SceneRegistryEntity>
+        ) {
             this.entities.value = this.entities.value + entities.associateBy { it.sceneName }
         }
 

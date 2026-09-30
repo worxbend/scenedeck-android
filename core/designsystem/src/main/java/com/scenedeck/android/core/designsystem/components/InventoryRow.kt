@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
 /**
- * Inventory registry row (FEATURE_SPEC §6): scene icon, name, stale badge,
- * accent dot and role chip. All mutation happens through the callbacks; pickers
- * (icon/accent/role menu) are owned by the feature screen.
+ * Inventory registry row (FEATURE_SPEC §6): scene icon, name, stale badge, accent dot and role
+ * chip. All mutation happens through the callbacks; pickers (icon/accent/role menu) are owned by
+ * the feature screen.
  */
 @Composable
 fun InventoryRow(
@@ -49,9 +49,7 @@ fun InventoryRow(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -59,14 +57,14 @@ fun InventoryRow(
 
             // Icon (tap → icon picker).
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(
-                        accentColor?.copy(alpha = 0.35f)
-                            ?: MaterialTheme.colorScheme.surfaceContainerHighest,
-                    )
-                    .clickable(onClick = onIconClick),
+                modifier =
+                    Modifier.size(40.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(
+                            accentColor?.copy(alpha = 0.35f)
+                                ?: MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                        .clickable(onClick = onIconClick),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -108,18 +106,18 @@ fun InventoryRow(
 
             // Accent dot (tap → accent picker).
             Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(accentColor ?: Color.Transparent)
-                    .let { base ->
-                        if (accentColor == null) {
-                            base.background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        } else {
-                            base
+                modifier =
+                    Modifier.size(22.dp)
+                        .clip(CircleShape)
+                        .background(accentColor ?: Color.Transparent)
+                        .let { base ->
+                            if (accentColor == null) {
+                                base.background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                            } else {
+                                base
+                            }
                         }
-                    }
-                    .clickable(onClick = onAccentClick),
+                        .clickable(onClick = onAccentClick)
             )
 
             // Role chip (tap → role menu).
@@ -141,10 +139,10 @@ fun InventoryRow(
                     text = "Remove",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .clickable(onClick = onRemoveStale)
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    modifier =
+                        Modifier.clip(MaterialTheme.shapes.small)
+                            .clickable(onClick = onRemoveStale)
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
                 )
             }
         }

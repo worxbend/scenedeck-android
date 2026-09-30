@@ -26,14 +26,13 @@ data class SceneGraph(
 )
 
 /**
- * Builds the scene dependency graph from `GetSceneItemList` traversal
- * (mirrors the AudioDiscovery traversal; cycle-guarded). Edges are classified
- * against [RoleRules].
+ * Builds the scene dependency graph from `GetSceneItemList` traversal (mirrors the AudioDiscovery
+ * traversal; cycle-guarded). Edges are classified against [RoleRules].
  */
 class SceneGraphBuilder(private val client: ObsClient) {
 
     suspend fun build(registryEntries: List<SceneRegistryEntry>): SceneGraph {
-        val scenes = runCatching { client.getSceneList().scenes }.getOrDefault(emptyList())
+        val scenes = requestResult { client.getSceneList().scenes }.getOrDefault(emptyList())
         val sceneNames = scenes.map { it.name }.toSet()
         val roleOf = { name: String ->
             registryEntries.firstOrNull { it.sceneName == name }?.role ?: SceneRole.PRIMARY
@@ -46,13 +45,16 @@ class SceneGraphBuilder(private val client: ObsClient) {
         }
 
         val edgeTargets = edges.flatMap { listOf(it.from, it.to) }.toSet()
-        val nodes = (sceneNames + edgeTargets).map { name ->
-            SceneGraphNode(
-                name = name,
-                role = roleOf(name),
-                isStale = name !in sceneNames,
-            )
-        }.sortedBy { it.name }
+        val nodes =
+            (sceneNames + edgeTargets)
+                .map { name ->
+                    SceneGraphNode(
+                        name = name,
+                        role = roleOf(name),
+                        isStale = name !in sceneNames,
+                    )
+                }
+                .sortedBy { it.name }
 
         return SceneGraph(
             nodes = nodes,
@@ -69,15 +71,16 @@ class SceneGraphBuilder(private val client: ObsClient) {
         depth: Int,
     ) {
         if (depth >= MAX_DEPTH || !visited.add(sceneName)) return
-        val items = runCatching { client.getSceneItemList(sceneName) }.getOrNull() ?: return
+        val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
         for (item in items) {
             // Scene sources only (inputKind == null, not a group, enabled).
             if (item.inputKind != null || item.isGroup || !item.enabled) continue
-            edges += SceneGraphEdge(
-                from = sceneName,
-                to = item.sourceName,
-                verdict = RoleRules.classifyEdge(roleOf(sceneName), roleOf(item.sourceName)),
-            )
+            edges +=
+                SceneGraphEdge(
+                    from = sceneName,
+                    to = item.sourceName,
+                    verdict = RoleRules.classifyEdge(roleOf(sceneName), roleOf(item.sourceName)),
+                )
             collectEdges(item.sourceName, roleOf, edges, visited, depth + 1)
         }
     }

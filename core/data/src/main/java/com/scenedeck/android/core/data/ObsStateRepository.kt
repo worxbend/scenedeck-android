@@ -3,16 +3,17 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.CurrentTransition
-import com.scenedeck.android.core.model.TransitionInfo
-import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneSummary
+import com.scenedeck.android.core.model.TransitionInfo
+import com.scenedeck.android.core.obs.ObsClient
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -43,16 +44,20 @@ data class DeckState(
     val previewScene: String? = null,
     val currentTransition: CurrentTransition? = null,
     val transitions: List<TransitionInfo> = emptyList(),
+    /** All OBS scenes, with local metadata, in registry order. */
+    val allScenes: List<SceneCardState> = scenes,
 )
 
 /**
- * Combines the OBS scene list/program state with the local registry into the deck
- * model (docs/ARCHITECTURE.md rule 2). M3 DEFAULT RULE: scenes without a registry
- * entry are treated as PRIMARY so the deck shows everything until Inventory (M5).
+ * Combines the OBS scene list/program state with the local registry into the deck model
+ * (docs/ARCHITECTURE.md rule 2). M3 DEFAULT RULE: scenes without a registry entry are treated as
+ * PRIMARY so the deck shows everything until Inventory (M5).
  */
 @Singleton
 @Suppress("TooManyFunctions") // deck state + studio control surface
-class ObsStateRepository @Inject constructor(
+class ObsStateRepository
+@Inject
+constructor(
     private val client: ObsClient,
     private val registry: RegistryRepository,
     @ApplicationScope private val scope: CoroutineScope,
@@ -71,51 +76,65 @@ class ObsStateRepository @Inject constructor(
         val transitions: List<TransitionInfo>,
     )
 
-    private val studio = combine(
-        studioMode, previewScene, currentTransition, transitions,
-    ) { mode, preview, transition, list ->
-        StudioSnapshot(mode, preview, transition, list)
-    }
+    private val studio =
+        combine(
+            studioMode,
+            previewScene,
+            currentTransition,
+            transitions,
+        ) { mode, preview, transition, list ->
+            StudioSnapshot(mode, preview, transition, list)
+        }
 
-    val deckState: StateFlow<DeckState> = combine(
-        client.connectionState,
-        sceneList,
-        programScene,
-        registry.entries,
-        studio,
-    ) { connection, scenes, program, entries, studioSnap ->
-        DeckState(
-            connectionState = connection,
-            currentProgramScene = program,
-            studioMode = studioSnap.studioMode,
-            previewScene = studioSnap.previewScene,
-            currentTransition = studioSnap.currentTransition,
-            transitions = studioSnap.transitions,
-            scenes = scenes.map { scene ->
-                val entry = entries.firstOrNull { it.sceneName == scene.name }
-                SceneCardState(
-                    name = scene.name,
-                    role = entry?.role ?: SceneRole.PRIMARY,
-                    accentColorArgb = entry?.accentColorArgb,
-                    iconName = entry?.iconName,
-                    sortOrder = entry?.sortOrder ?: Int.MAX_VALUE,
-                    isActive = scene.name == program,
-                    isPreview = studioSnap.studioMode && scene.name == studioSnap.previewScene,
+    val deckState: StateFlow<DeckState> =
+        combine(
+                client.connectionState,
+                sceneList,
+                programScene,
+                registry.entries,
+                studio,
+            ) { connection, scenes, program, entries, studioSnap ->
+                val cards =
+                    scenes
+                        .map { scene ->
+                            val entry = entries.firstOrNull { it.sceneName == scene.name }
+                            SceneCardState(
+                                name = scene.name,
+                                role = entry?.role ?: SceneRole.PRIMARY,
+                                accentColorArgb = entry?.accentColorArgb,
+                                iconName = entry?.iconName,
+                                sortOrder = entry?.sortOrder ?: Int.MAX_VALUE,
+                                isActive = scene.name == program,
+                                isPreview =
+                                    studioSnap.studioMode && scene.name == studioSnap.previewScene,
+                            )
+                        }
+                        .sortedWith(compareBy({ it.sortOrder }, { it.name }))
+                DeckState(
+                    connectionState = connection,
+                    currentProgramScene = program,
+                    studioMode = studioSnap.studioMode,
+                    previewScene = studioSnap.previewScene,
+                    currentTransition = studioSnap.currentTransition,
+                    transitions = studioSnap.transitions,
+                    scenes = cards.filter { it.role == SceneRole.PRIMARY },
+                    allScenes = cards,
                 )
             }
-                .filter { it.role == SceneRole.PRIMARY }
-                .sortedWith(compareBy({ it.sortOrder }, { it.name })),
-        )
-    }.stateIn(scope, SharingStarted.WhileSubscribed(5_000), DeckState())
+            .stateIn(scope, SharingStarted.WhileSubscribed(5_000), DeckState())
 
     init {
         scope.launch {
-            client.connectionState.collect { state ->
+            client.connectionState.collectLatest { state ->
                 when (state) {
                     is ConnectionState.Ready -> refresh()
                     ConnectionState.Disconnected -> {
                         sceneList.value = emptyList()
                         programScene.value = null
+                        studioMode.value = false
+                        previewScene.value = null
+                        currentTransition.value = null
+                        transitions.value = emptyList()
                     }
 
                     else -> Unit
@@ -125,22 +144,20 @@ class ObsStateRepository @Inject constructor(
         scope.launch {
             client.events.collect { event ->
                 when (event) {
-                    is ObsEvent.CurrentProgramSceneChanged ->
-                        programScene.value = event.sceneName
+                    is ObsEvent.CurrentProgramSceneChanged -> programScene.value = event.sceneName
 
                     is ObsEvent.StudioModeStateChanged -> {
                         studioMode.value = event.enabled
                         refreshStudio()
                     }
 
-                    is ObsEvent.CurrentPreviewSceneChanged ->
-                        previewScene.value = event.sceneName
+                    is ObsEvent.CurrentPreviewSceneChanged -> previewScene.value = event.sceneName
 
                     is ObsEvent.CurrentSceneTransitionChanged,
-                    is ObsEvent.CurrentSceneTransitionDurationChanged,
-                    -> refreshTransition()
+                    is ObsEvent.CurrentSceneTransitionDurationChanged -> refreshTransition()
 
-                    is ObsEvent.SceneTransitionStarted, is ObsEvent.SceneTransitionEnded -> Unit
+                    is ObsEvent.SceneTransitionStarted,
+                    is ObsEvent.SceneTransitionEnded -> Unit
 
                     is ObsEvent.SceneListChanged -> {
                         sceneList.value = event.scenes
@@ -154,7 +171,7 @@ class ObsStateRepository @Inject constructor(
     }
 
     private suspend fun refresh() {
-        runCatching {
+        requestResult {
             val list = client.getSceneList()
             sceneList.value = list.scenes
             programScene.value = list.currentProgramScene
@@ -164,7 +181,7 @@ class ObsStateRepository @Inject constructor(
     }
 
     private suspend fun refreshStudio() {
-        runCatching {
+        requestResult {
             studioMode.value = client.getStudioModeEnabled()
             if (studioMode.value) {
                 previewScene.value = client.getCurrentPreviewScene()
@@ -176,7 +193,7 @@ class ObsStateRepository @Inject constructor(
     }
 
     private suspend fun refreshTransition() {
-        runCatching {
+        requestResult {
             currentTransition.value = client.getCurrentSceneTransition()
             transitions.value = client.getSceneTransitionList().transitions
         }

@@ -1,6 +1,10 @@
 package com.scenedeck.android.core.obs
 
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.CurrentTransition
+import com.scenedeck.android.core.model.MediaActionKind
+import com.scenedeck.android.core.model.MediaStatus
+import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsProfile
 import com.scenedeck.android.core.model.ObsStats
@@ -10,10 +14,6 @@ import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneCollectionListSnapshot
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
-import com.scenedeck.android.core.model.CurrentTransition
-import com.scenedeck.android.core.model.MediaActionKind
-import com.scenedeck.android.core.model.MediaStatus
-import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.TransitionListSnapshot
@@ -24,11 +24,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The single entry point to OBS (docs/ARCHITECTURE.md rule 1). Implementation is
- * ktobs/Ktor-based but no ktobs/Ktor type escapes this API (see core/obs/README.md).
+ * The single entry point to OBS (docs/ARCHITECTURE.md rule 1). Implementation is ktobs/Ktor-based
+ * but no ktobs/Ktor type escapes this API (see core/obs/README.md).
  *
- * Typical use: `connect(...)` → collect [connectionState]/[events]/[volumeMeters] →
- * call suspend requests while [ConnectionState.Ready].
+ * Typical use: `connect(...)` → collect [connectionState]/[events]/[volumeMeters] → call suspend
+ * requests while [ConnectionState.Ready].
  */
 @Suppress("TooManyFunctions") // the OBS request surface is intentionally broad
 interface ObsClient {
@@ -37,8 +37,8 @@ interface ObsClient {
     val connectionState: StateFlow<ConnectionState>
 
     /**
-     * Domain events pushed by OBS (scene/input/output/config lifecycle). Buffered;
-     * on overflow the oldest events are dropped — never blocks the protocol lane.
+     * Domain events pushed by OBS (scene/input/output/config lifecycle). Buffered; on overflow the
+     * oldest events are dropped — never blocks the protocol lane.
      */
     val events: SharedFlow<ObsEvent>
 
@@ -49,14 +49,16 @@ interface ObsClient {
     val volumeMeters: SharedFlow<List<VolumeMeterReading>>
 
     /**
-     * Connects and authenticates. Suspends until the session is [ConnectionState.Ready]
-     * or the first attempt ends in [ConnectionState.Failed]. On unexpected socket loss
-     * the client reconnects automatically with exponential backoff; auth failures are
-     * terminal ([ConnectionError.Auth], no retry).
+     * Connects and authenticates. Suspends until the session is [ConnectionState.Ready] or the
+     * first attempt ends in [ConnectionState.Failed]. On unexpected socket loss the client
+     * reconnects automatically with exponential backoff; auth failures are terminal
+     * ([ConnectionError.Auth], no retry).
      */
     suspend fun connect(host: String, port: Int = ObsProfile.DEFAULT_PORT, password: String? = null)
 
-    /** Ends the session and stops any reconnect loop. State becomes [ConnectionState.Disconnected]. */
+    /**
+     * Ends the session and stops any reconnect loop. State becomes [ConnectionState.Disconnected].
+     */
     suspend fun disconnect()
 
     // ── General ─────────────────────────────────────────────────────────────
@@ -124,9 +126,8 @@ interface ObsClient {
     suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = Unit
 
     /**
-     * Scene screenshot (OBS `GetSourceScreenshot`) as encoded image bytes
-     * (JPEG when [format] is "jpeg"). Throws [ObsRequestFailedException] on
-     * sources that can't be captured.
+     * Scene screenshot (OBS `GetSourceScreenshot`) as encoded image bytes (JPEG when [format] is
+     * "jpeg"). Throws [ObsRequestFailedException] on sources that can't be captured.
      */
     suspend fun getSourceScreenshot(
         sourceName: String,
@@ -173,7 +174,8 @@ interface ObsClient {
 
     suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) = Unit
 
-    suspend fun getInputAudioMonitorType(inputName: String): MonitorTypeKind = error(NOT_IMPLEMENTED)
+    suspend fun getInputAudioMonitorType(inputName: String): MonitorTypeKind =
+        error(NOT_IMPLEMENTED)
 
     suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) = Unit
 

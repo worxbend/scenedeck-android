@@ -3,6 +3,10 @@ plugins {
 }
 
 android {
+    lint {
+        lintConfig = rootProject.file("lint.xml")
+        warningsAsErrors = true
+    }
     namespace = "com.scenedeck.android.core.datastore"
     compileSdk = 37
 

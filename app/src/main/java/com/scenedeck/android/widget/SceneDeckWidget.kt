@@ -37,10 +37,10 @@ import com.scenedeck.android.MainActivity
 import com.scenedeck.android.R
 
 /**
- * Home-screen mini-deck: 2-column grid of PRIMARY scenes (up to
- * [SceneDeckWidgetKeys.MAX_SCENES]) with the program scene tallied red. Scene taps
- * route through [SetSceneAction] → SceneSwitcher (connect-then-act); the title bar
- * opens the app. State is pushed by [SceneDeckWidgetUpdater] (no periodic polling).
+ * Home-screen mini-deck: 2-column grid of PRIMARY scenes (up to [SceneDeckWidgetKeys.MAX_SCENES])
+ * with the program scene tallied red. Scene taps route through [SetSceneAction] → SceneSwitcher
+ * (connect-then-act); the title bar opens the app. State is pushed by [SceneDeckWidgetUpdater] (no
+ * periodic polling).
  */
 class SceneDeckWidget : GlanceAppWidget() {
 
@@ -66,7 +66,8 @@ internal fun WidgetContent(snapshot: WidgetSnapshot) {
                 modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>()),
             )
         },
-        modifier = GlanceModifier.appWidgetBackground().background(GlanceTheme.colors.widgetBackground),
+        modifier =
+            GlanceModifier.appWidgetBackground().background(GlanceTheme.colors.widgetBackground),
     ) {
         if (snapshot.sceneNames.isEmpty()) {
             EmptyState()
@@ -111,27 +112,28 @@ private fun SceneChip(name: String, isProgram: Boolean) {
     val content =
         if (isProgram) GlanceTheme.colors.onError else GlanceTheme.colors.onSecondaryContainer
     Box(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .padding(4.dp)
-            .cornerRadius(12.dp)
-            .background(background)
-            .clickable(
-                actionRunCallback<SetSceneAction>(
-                    actionParametersOf(SceneDeckWidgetKeys.sceneNameParam to name),
-                ),
-            )
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+        modifier =
+            GlanceModifier.fillMaxWidth()
+                .padding(4.dp)
+                .cornerRadius(12.dp)
+                .background(background)
+                .clickable(
+                    actionRunCallback<SetSceneAction>(
+                        actionParametersOf(SceneDeckWidgetKeys.sceneNameParam to name)
+                    )
+                )
+                .padding(horizontal = 12.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = name,
             maxLines = 1,
-            style = TextStyle(
-                color = content,
-                fontWeight = if (isProgram) FontWeight.Bold else FontWeight.Medium,
-                textAlign = TextAlign.Center,
-            ),
+            style =
+                TextStyle(
+                    color = content,
+                    fontWeight = if (isProgram) FontWeight.Bold else FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                ),
         )
     }
 }

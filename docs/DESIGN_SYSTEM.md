@@ -26,7 +26,7 @@ Built-in theme families (port of the desktop's 12 themes + new mobile exclusives
 
 | Family | Character | Source |
 |---|---|---|
-| `SceneDeck` (default) | signature deep-space indigo + electric violet accent | new brand |
+| `SceneDeck` (default) | charcoal studio surfaces + azure and cyan accents | new brand |
 | `OBS` | faithful to OBS Studio's dark UI (grey-blue panels, teal accent) | desktop port |
 | `Obsidian` | near-black, high-contrast white/violet | desktop port |
 | `Nord` | arctic blue-grey palette | desktop port |
@@ -117,3 +117,74 @@ These hues carry product meaning and adapt per theme but keep their roles:
 - 48dp+ targets, TalkBack labels on cards ("Scene Camera 1, ready, double-tap to
   switch"), meters expose text dB values, sufficient contrast in every theme family
   (verify with Roborazzi contrast goldens), reduced-motion respected everywhere.
+
+## 11. Mobile navigation refresh (2026-09-30)
+
+Daily operation has three tabs: Scenes, Mixer and Stats. More groups configuration
+and diagnostic tools. Page headers use a shared tonal identity panel with titleLarge and compact supporting
+context. Scenes prioritize the grid and separate audio into Mixer; advanced output
+controls use menus instead of a permanent second transport row. Stats use a 2×2
+phone gauge grid and a threshold-based health summary. The default palette defines
+all tonal surface containers explicitly for coherent panels in light and dark modes.
+Connection readiness uses a green OBS indicator; it must never imply the stream
+is on air. The status strip adapts secondary telemetry to available width.
+
+The polish pass adds collapsible scene search, aligned mixer fader baselines and
+channel options for lock/advanced settings. Stats gauges sit in tonal panels with
+a capped diameter; progress arcs leave numeric readouts clear. More includes
+explained destinations and an explicit Session behavior entry. Offline states
+remain scrollable on short screens and permit opening connection settings while reconnecting.
+
+## 12. Reference-inspired studio refresh
+
+The default SceneDeck family uses charcoal panels, azure controls and cyan highlights.
+Scene tiles form a uniform card grid with a soft diagonal tonal wash, one rounded icon
+well and stacked name/state labels. Avoid duplicate oversized background glyphs.
+Placeholder cards use theme-aware text in light and dark; thumbnails retain a
+scrim. Active borders preserve program red and preview green without expanding
+into neighboring tiles. The references guide texture, restraint and hierarchy,
+while navigation and actions remain specific to OBS.
+
+Scene cards use compact proportions, a consistent two-line title area, scene-number
+labels and state/action captions. Drag handles are shown only in reorder mode,
+which suppresses scene-switch taps. Pending shimmer and press scaling respect
+Reduced/Off motion settings.
+
+## 13. Studio stylebook
+
+The living Compose reference is `StudioStylebook` in `:core:designsystem/gallery`.
+Rendered examples: `core/designsystem/studio_stylebook_dark.png`,
+`studio_stylebook_light.png` and `studio_stylebook_obs.png`.
+
+| Element | Shared treatment |
+|---|---|
+| Page identity | `StudioPageHeader`: 24dp rounded tonal panel, quiet accent wash, 40dp icon well, bold titleLarge and one-line context; actions retain 48dp targets |
+| Section label | `StudioSectionHeader`: accent titleSmall and faint divider, 8dp vertical spacing |
+| Scene tile | 24dp radius, diagonal tinted surface, 36dp colored icon well, subtle perimeter outline and numbered position; **no left rail**; program/preview retain red/green border and pill |
+| Icon well | `StudioIconWell`: 40dp rounded square, 12% tint fill and quiet border; primary/secondary/tertiary decorative tones plus semantic success/warning |
+| Buttons | Primary filled for the main action; tonal for supporting actions; outlined for optional actions; stadium shape and 48dp minimum touch targets |
+| Button groups | `studioSegmentedButtonColors`: filled accent selection over neutral tonal segments, no competing outlines |
+| Filter chips | `studioFilterChipColors`: neutral filled idle, primaryContainer selected; no outline; keep selected semantics |
+| Checkbox/switch | Material 3 theme colors and rounded shapes; parent labels expose toggle semantics without duplicate actions |
+| Inputs | `studioTextFieldColors`: tonal container, quiet outline, accent focus; rounded shape, leading icon, persistent label, helper/error text |
+| Settings | Related controls in rounded tonal panels; varied theme-aware icon wells distinguish appearance, feedback and safety |
+| Connection editor | Fully expanded, scrollable editor sheet; identity/server/security sections; host and port helper text; secure password visibility control and keyboard Next/Done actions |
+
+Use the shared components instead of styling a new page independently. Decorative
+colors never imply streaming or recording. Card thumbnails keep their contrast
+scrim. All families support light/dark modes; High Contrast keeps semantic state
+outlines. Goldens cover the stylebook and primary screens.
+
+Main screen status-bar padding sits outside scroll containers, including Mixer, so page headers and scrolled controls stay below system icons and display cutouts.
+
+Stream transport uses a primary blue idle Stream action and a semantic red Stop
+button while streaming. The breathing halo runs only with Full motion; Reduced/Off
+use the same static red control. Mono timers remain visible in compact layouts:
+green for streaming, amber for recording. Light themes
+use a darker amber for readable timer text. Shared implementation: BroadcastControls.
+
+The Scenes header owns output status and timers in its trailing area: neutral
+Standby when idle, LIVE with green stream time and REC with amber recording time.
+Simultaneous outputs show both rows; status dots pulse only with Full motion.
+The direct control row contains Stream, Record and VCam. Replay controls live in
+the header overflow menu. Keep system insets and accessible status descriptions.

@@ -27,8 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class StatGaugeRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun golden(name: String, droppedPct: Float, congestionPct: Float, fps: Float) {
         composeRule.setContent {
@@ -43,9 +42,7 @@ class StatGaugeRoborazziTest {
                             critThreshold = 5f,
                             label = "Dropped",
                             unit = "%",
-                            modifier = Modifier
-                                .size(96.dp)
-                                .padding(4.dp),
+                            modifier = Modifier.size(96.dp).padding(4.dp),
                         )
                         StatGauge(
                             value = congestionPct,
@@ -56,9 +53,7 @@ class StatGaugeRoborazziTest {
                             label = "Congestion",
                             unit = "%",
                             valueText = "%.0f".format(congestionPct),
-                            modifier = Modifier
-                                .size(96.dp)
-                                .padding(4.dp),
+                            modifier = Modifier.size(96.dp).padding(4.dp),
                         )
                         StatGauge(
                             value = fps,
@@ -69,9 +64,7 @@ class StatGaugeRoborazziTest {
                             label = "FPS",
                             unit = "fps",
                             direction = GaugeDirection.FALLING,
-                            modifier = Modifier
-                                .size(96.dp)
-                                .padding(4.dp),
+                            modifier = Modifier.size(96.dp).padding(4.dp),
                         )
                     }
                 }

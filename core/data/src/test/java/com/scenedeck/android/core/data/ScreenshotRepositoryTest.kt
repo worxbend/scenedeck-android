@@ -8,6 +8,7 @@ import com.scenedeck.android.core.model.SceneSummary
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,30 +31,37 @@ class ScreenshotRepositoryTest {
 
     @Before
     fun setUp() {
-        client = FakeObsClient(
-            sceneListSnapshot = SceneListSnapshot(
-                currentProgramScene = "Hot",
-                scenes = listOf(
-                    SceneSummary("Hot", 0),
-                    SceneSummary("Cold A", 1),
-                    SceneSummary("Cold B", 2),
-                ),
-            ),
-        )
+        client =
+            FakeObsClient(
+                sceneListSnapshot =
+                    SceneListSnapshot(
+                        currentProgramScene = "Hot",
+                        scenes =
+                            listOf(
+                                SceneSummary("Hot", 0),
+                                SceneSummary("Cold A", 1),
+                                SceneSummary("Cold B", 2),
+                            ),
+                    )
+            )
         client.screenshotBytes = makeJpeg()
         settings = SettingsRepository(SettingsRepositoryTest.newIsolatedStore())
     }
 
     @Test
     fun hotScenesRefreshFastColdScenesSlow() = runTest {
-        val obsState = ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        settings.settings
+            .first() // Poll cadence starts after asynchronous preferences are available.
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         var virtualNow = 0L
         repository.nowMs = { virtualNow }
 
-        // Screen visible = an active collector on thumbnails.
-        val collectJob = backgroundScope.launch { repository.thumbnails.collect { } }
         client.setReady()
+        obsState.deckState.first { it.allScenes.size == 3 }
+        // Screen visible = an active collector on thumbnails.
+        val collectJob = backgroundScope.launch { repository.thumbnails.collect {} }
         runCurrent()
 
         // First tick: all three scenes captured immediately.
@@ -80,14 +88,39 @@ class ScreenshotRepositoryTest {
     @Test
     fun disabledSettingStopsPolling() = runTest {
         settings.setScenePreviewsEnabled(false)
-        val obsState = ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
 
-        backgroundScope.launch { repository.thumbnails.collect { } }
+        backgroundScope.launch { repository.thumbnails.collect {} }
         client.setReady()
         advanceTimeBy(2_000)
         runCurrent()
 
+        assertTrue(client.screenshotCalls.isEmpty())
+        assertTrue(repository.thumbnails.value.isEmpty())
+    }
+
+    @Test
+    fun openingAndLeavingScenesStartsAndStopsPolling() = runTest {
+        settings.settings.first() // Await asynchronous DataStore initialization.
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        client.setReady()
+        obsState.deckState.first { it.allScenes.size == 3 }
+        runCurrent()
+        assertTrue(client.screenshotCalls.isEmpty())
+
+        val collector = backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        assertEquals(setOf("Hot", "Cold A", "Cold B"), client.screenshotCalls.toSet())
+
+        collector.cancel()
+        runCurrent()
+        client.screenshotCalls.clear()
+        advanceTimeBy(12_000)
+        runCurrent()
         assertTrue(client.screenshotCalls.isEmpty())
         assertTrue(repository.thumbnails.value.isEmpty())
     }
@@ -103,10 +136,12 @@ class ScreenshotRepositoryTest {
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
-        override fun observeAll(): Flow<List<SceneRegistryEntity>> =
-            entities.map { map -> map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName })) }
+        override fun observeAll(): Flow<List<SceneRegistryEntity>> = entities.map { map ->
+            map.values.sortedWith(compareBy({ it.sortOrder }, { it.sceneName }))
+        }
 
-        override suspend fun byName(sceneName: String): SceneRegistryEntity? = entities.value[sceneName]
+        override suspend fun byName(sceneName: String): SceneRegistryEntity? =
+            entities.value[sceneName]
 
         override suspend fun upsert(entity: SceneRegistryEntity) {
             entities.update { it + (entity.sceneName to entity) }

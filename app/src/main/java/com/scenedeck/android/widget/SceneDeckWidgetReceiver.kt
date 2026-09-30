@@ -15,7 +15,11 @@ class SceneDeckWidgetReceiver : GlanceAppWidgetReceiver() {
         pokeUpdater(context)
     }
 
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         // A newly placed widget must not wait for the next DeckState change.
         pokeUpdater(context)

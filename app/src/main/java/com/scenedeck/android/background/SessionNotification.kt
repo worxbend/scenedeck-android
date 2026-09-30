@@ -17,37 +17,40 @@ object SessionNotification {
     const val NOTIFICATION_ID = 42
 
     /** Pure text mapping (unit-tested): title stays the app name; text carries state. */
-    fun textFor(state: ConnectionState, programScene: String?): String = when (state) {
-        is ConnectionState.Ready ->
-            programScene?.let { "On air · $it" } ?: "Connected to OBS"
+    fun textFor(state: ConnectionState, programScene: String?): String =
+        when (state) {
+            is ConnectionState.Ready -> programScene?.let { "On air · $it" } ?: "Connected to OBS"
 
-        is ConnectionState.Connecting, is ConnectionState.Identifying -> "Connecting to OBS…"
-        is ConnectionState.Reconnecting -> "Reconnecting (attempt ${state.attempt})…"
-        is ConnectionState.Failed -> "Connection failed — tap to open SceneDeck"
-        ConnectionState.Disconnected -> "Disconnected"
-    }
+            is ConnectionState.Connecting,
+            is ConnectionState.Identifying -> "Connecting to OBS…"
+            is ConnectionState.Reconnecting -> "Reconnecting (attempt ${state.attempt})…"
+            is ConnectionState.Failed -> "Connection failed — tap to open SceneDeck"
+            ConnectionState.Disconnected -> "Disconnected"
+        }
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "OBS session", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL_ID, "OBS session", NotificationManager.IMPORTANCE_LOW)
         )
     }
 
     fun build(context: Context, state: ConnectionState, programScene: String?): Notification {
-        val openApp = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val disconnect = PendingIntent.getBroadcast(
-            context,
-            1,
-            Intent(context, NotificationActionReceiver::class.java)
-                .setAction(NotificationActionReceiver.ACTION_DISCONNECT),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val openApp =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val disconnect =
+            PendingIntent.getBroadcast(
+                context,
+                1,
+                Intent(context, NotificationActionReceiver::class.java)
+                    .setAction(NotificationActionReceiver.ACTION_DISCONNECT),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle("SceneDeck")

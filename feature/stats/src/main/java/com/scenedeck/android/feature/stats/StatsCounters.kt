@@ -23,19 +23,65 @@ import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.mono
 
-/** Counter cards grid + stream/record state chips (FEATURE_SPEC §5 — counter cards). */
+/** Live resource readings stay above the fold; session totals follow the charts. */
+@Composable
+internal fun TelemetryOverview(uiState: StatsUiState) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OverviewReading(
+                "Bitrate",
+                "%,d".format(uiState.bitrateKbps),
+                "kb/s",
+                Modifier.weight(1.2f),
+            )
+            OverviewReading("CPU", "%.1f".format(uiState.cpuUsagePct), "%", Modifier.weight(1f))
+            OverviewReading(
+                "Memory",
+                "%.0f".format(uiState.memoryUsageMb),
+                "MB",
+                Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun OverviewReading(label: String, value: String, unit: String, modifier: Modifier) {
+    Column(modifier) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.mono,
+            fontSize = MaterialTheme.typography.titleMedium.fontSize,
+        )
+        Text(
+            unit,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 internal fun CounterCards(uiState: StatsUiState) {
-    val counters = listOf(
-        "CPU" to "%.1f %%".format(uiState.cpuUsagePct),
-        "Memory" to "%.0f MB".format(uiState.memoryUsageMb),
-        "Bitrate" to "%,d kb/s".format(uiState.bitrateKbps),
-        "Rendered" to "%,d".format(uiState.renderTotalFrames),
-        "Skipped" to "%,d".format(uiState.renderSkippedFrames),
-        "Lagged" to "%,d".format(uiState.outputSkippedFrames),
-        "Streamed" to formatBytes(uiState.streamBytes),
-        "Recorded" to formatBytes(uiState.recordBytes),
-    )
+    val counters =
+        listOf(
+            "Rendered" to "%,d".format(uiState.renderTotalFrames),
+            "Output frames" to "%,d".format(uiState.outputTotalFrames),
+            "Render skipped" to "%,d".format(uiState.renderSkippedFrames),
+            "Output skipped" to "%,d".format(uiState.outputSkippedFrames),
+            "Streamed" to formatBytes(uiState.streamBytes),
+            "Recorded" to formatBytes(uiState.recordBytes),
+        )
     counters.chunked(2).forEach { rowItems ->
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -59,9 +105,10 @@ private fun CounterCard(label: String, value: String, modifier: Modifier = Modif
     Card(
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
@@ -88,11 +135,12 @@ internal fun OutputStateChips(uiState: StatsUiState) {
             activeColor = MaterialTheme.colorScheme.primary,
         )
         OutputChip(
-            label = when {
-                uiState.recordActive && uiState.recordPaused -> "REC PAUSED"
-                uiState.recordActive -> "REC"
-                else -> "REC OFF"
-            },
+            label =
+                when {
+                    uiState.recordActive && uiState.recordPaused -> "REC PAUSED"
+                    uiState.recordActive -> "REC"
+                    else -> "REC OFF"
+                },
             active = uiState.recordActive,
             activeColor = SceneDeckTheme.colors.recording,
         )
@@ -105,11 +153,12 @@ private fun OutputChip(
     active: Boolean,
     activeColor: Color,
 ) {
-    val container = if (active) {
-        activeColor.copy(alpha = 0.2f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
+    val container =
+        if (active) {
+            activeColor.copy(alpha = 0.2f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
     Surface(
         shape = MaterialTheme.shapes.small,
         color = container,

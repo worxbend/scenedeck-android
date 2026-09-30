@@ -30,13 +30,17 @@ colors, icons, ordering) lives in a local registry on the device.
 - QR-code / deep-link based pairing (mobile convenience): OBS host shows
   `obsws://host:port` QR, phone scans to add a profile.
 
-## 2. Live page (the deck) — hero screen
+## 2. Scenes page (the deck) — hero screen
 
-- Grid of **scene cards**: only scenes assigned local role `Primary`.
+- Grid of **scene cards**: all OBS scenes by default; an optional **Deck** filter shows
+  scenes assigned local role `Primary`. Mixer controls live on their dedicated tab.
+- Scene-name search preserves the All/Deck filter; reorder is disabled while searching.
 - Current **program scene** highlighted (Active state); others show Ready state.
 - Tap card → `SetCurrentProgramScene`. Haptic feedback + animated state flip.
+- Uniform card tiles use an accent rail, icon well and separate scene/state labels.
 - Per-scene optional **accent color** and **icon** (local metadata).
-- Scene card order = user-defined drag order, persisted locally.
+- Scene card order = user-defined drag order, persisted locally. Enable Reorder scenes
+  in scene options to expose grips; scene taps do not switch OBS during reordering.
 - Long-press card → quick actions (rename local label, change icon/color, remove from deck).
 - **Studio mode (extension)**: when enabled, deck switches the *preview* scene;
   a prominent TRANSITION button commits preview → program.
@@ -66,6 +70,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - Status strip shows output state + elapsed time; transitional states (Starting /
   Stopping / Reconnecting); recording indicator pulses like a tally light (respects
   reduced-motion settings).
+- Compact stream/record row on Scenes; virtual camera and replay actions live in its
+  overflow menu. Studio mode and thumbnail preferences live in the scene options menu.
 - **Extensions**: virtual camera toggle, replay buffer toggle + save (desktop leaves
   both unimplemented).
 
@@ -74,6 +80,7 @@ colors, icons, ordering) lives in a local registry on the device.
 - Poll `GetStats` + `GetStreamStatus` once per second (obs-websocket has no push stats).
 - Gauges with amber/red thresholds: FPS, avg frame render time, dropped-frame %
   (warn 1%, crit 5%), network congestion (30%/60%).
+- Compact gauge panels follow bitrate, CPU, memory and output-state summaries.
 - Trend charts (FPS, render time), per-sample skipped/missed frame bars, counter cards
   (CPU, memory, bitrate, frame totals); rolling bitrate from consecutive byte counters.
 - 2-minute ring-buffer history kept for the whole connection, not just while page open.
@@ -116,6 +123,10 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 
 - Connection profiles; Output Safety toggles; theme (System/Light/Dark) + theme family
   (see DESIGN_SYSTEM.md); dynamic color (Material You) toggle.
+- Appearance uses a focused theme picker sheet; settings toggle rows are tappable.
+- Connection profile edit/delete actions use a contextual menu; deletion asks for confirmation.
+- Profile forms open fully expanded and scroll with the keyboard; they group identity/server/security, use host/port keyboard navigation, and provide a secure password visibility toggle. Editing endpoint fields invalidates stale connection-test feedback.
+- Inventory role choices use a sheet; Doctor reports can filter by severity.
 - Motion level: full / reduced / off (respects system animator duration scale).
 - UI density (compact / comfortable), haptics toggle.
 - Audio allow-list; meter refresh behavior; keep-screen-on while connected.
@@ -132,3 +143,19 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 - **Accessibility**: content descriptions on all cards/faders, min 48dp touch targets,
   TalkBack-friendly meter alternatives (text dB readouts).
 - **Localization-ready**: all strings in resources; ship en first.
+
+## Hardening behavior
+
+- Pairing rejects ambiguous authorities, duplicate parameters, unexpected paths/fragments,
+  invalid ports and oversized input. Scene deep links reject ambiguous authorities/NUL names.
+- Password drafts intentionally do not survive process recreation; credentials stay encrypted.
+- Mixer selection discards obsolete discoveries; Doctor keeps prior results on request failure.
+- Onboarding reset cancels the running connection attempt; duplicate attempts are ignored.
+- Connected widgets say Connected; their scene list is limited to six items.
+- Stream button reads Stream when idle and Stop when active; active halo respects motion settings.
+- Elapsed timers stay visible on phones: green stream, amber recording.
+- Newer Android backup/data-transfer rules explicitly exclude all app data.
+- Failed profile saves preserve the draft and show a sanitized message; concurrent duplicate writes are blocked.
+- Profile/credential operations attempt rollback on storage failure; edited connection tests reuse saved passwords when blank.
+- Scenes header shows output status and separate elapsed timers; simultaneous stream/record shows both.
+- Stream, Record and VCam are direct controls; replay toggles/save live in the header overflow menu.

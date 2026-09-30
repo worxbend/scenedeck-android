@@ -32,43 +32,50 @@ class StatsViewModelTest {
 
     @Before
     fun setUp() {
-        client = FakeObsClient(
-            statsResponse = ObsStats(
-                cpuUsage = 12.5,
-                memoryUsageMb = 512.0,
-                availableDiskSpaceMb = 1_000.0,
-                activeFps = 59.94,
-                averageFrameRenderTimeMs = 1.2,
-                renderSkippedFrames = 2,
-                renderTotalFrames = 10_000,
-                outputSkippedFrames = 7,
-                outputTotalFrames = 9_000,
-            ),
-            streamStatusResponse = StreamStatus(
-                active = true,
-                reconnecting = false,
-                timecode = "00:00:10.000",
-                durationMs = 10_000,
-                bytes = 750_000,
-                congestion = 0.45,
-                skippedFrames = 10,
-                totalFrames = 500,
-            ),
-            recordStatusResponse = RecordStatus(
-                active = true,
-                paused = true,
-                timecode = "00:00:05.000",
-                durationMs = 5_000,
-                bytes = 1_234,
-            ),
-        )
-        val settings = SettingsRepository(
-            SceneDeckSettingsStore.forTesting(
-                PreferenceDataStoreFactory.create(
-                    produceFile = { File.createTempFile("stats_settings_test", ".preferences_pb") },
-                ),
-            ),
-        )
+        client =
+            FakeObsClient(
+                statsResponse =
+                    ObsStats(
+                        cpuUsage = 12.5,
+                        memoryUsageMb = 512.0,
+                        availableDiskSpaceMb = 1_000.0,
+                        activeFps = 59.94,
+                        averageFrameRenderTimeMs = 1.2,
+                        renderSkippedFrames = 2,
+                        renderTotalFrames = 10_000,
+                        outputSkippedFrames = 7,
+                        outputTotalFrames = 9_000,
+                    ),
+                streamStatusResponse =
+                    StreamStatus(
+                        active = true,
+                        reconnecting = false,
+                        timecode = "00:00:10.000",
+                        durationMs = 10_000,
+                        bytes = 750_000,
+                        congestion = 0.45,
+                        skippedFrames = 10,
+                        totalFrames = 500,
+                    ),
+                recordStatusResponse =
+                    RecordStatus(
+                        active = true,
+                        paused = true,
+                        timecode = "00:00:05.000",
+                        durationMs = 5_000,
+                        bytes = 1_234,
+                    ),
+            )
+        val settings =
+            SettingsRepository(
+                SceneDeckSettingsStore.forTesting(
+                    PreferenceDataStoreFactory.create(
+                        produceFile = {
+                            File.createTempFile("stats_settings_test", ".preferences_pb")
+                        }
+                    )
+                )
+            )
         pollScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         repository = StatsRepository(client, pollScope)
         viewModel = StatsViewModel(repository, settings)

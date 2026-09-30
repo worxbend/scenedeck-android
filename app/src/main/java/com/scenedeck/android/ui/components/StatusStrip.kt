@@ -10,9 +10,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,9 +34,9 @@ import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 
 /**
- * Persistent bottom strip (sits above the navigation bar): tappable connection
- * indicator (real [ConnectionState]), FPS, dropped frames, CPU and bitrate.
- * Long-pressing the connection indicator opens the app-level Background sheet.
+ * Persistent bottom strip (sits above the navigation bar): tappable connection indicator (real
+ * [ConnectionState]), FPS, dropped frames, CPU and bitrate. Long-pressing the connection indicator
+ * opens the app-level Background sheet.
  */
 @Composable
 fun StatusStrip(
@@ -49,23 +51,26 @@ fun StatusStrip(
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ConnectionIndicator(
-                state = state.connection,
-                animate = animateConnection,
-                onClick = onConnectionClick,
-                onLongClick = onConnectionLongClick,
-            )
-            MonoStat(value = "%.1f".format(state.fps), label = "FPS")
-            MonoStat(value = state.droppedFrames.toString(), label = "DROP")
-            MonoStat(value = "%.1f%%".format(state.cpuPercent), label = "CPU")
-            MonoStat(value = formatBitrate(state.bitrateKbps), label = "")
+        BoxWithConstraints {
+            val availableWidth = maxWidth
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                ConnectionIndicator(
+                    state = state.connection,
+                    animate = animateConnection,
+                    onClick = onConnectionClick,
+                    onLongClick = onConnectionLongClick,
+                )
+                MonoStat(value = "%.1f".format(state.fps), label = "FPS")
+                MonoStat(value = state.droppedFrames.toString(), label = "DROP")
+                if (availableWidth >= 400.dp)
+                    MonoStat(value = "%.1f%%".format(state.cpuPercent), label = "CPU")
+                if (availableWidth >= 360.dp)
+                    MonoStat(value = formatBitrate(state.bitrateKbps), label = "")
+            }
         }
     }
 }
@@ -79,44 +84,45 @@ private fun ConnectionIndicator(
     onLongClick: () -> Unit,
 ) {
     val colors = SceneDeckTheme.colors
-    val (dotColor, label, pulse) = when (state) {
-        is ConnectionState.Ready -> Triple(colors.program, "Live", false)
-        is ConnectionState.Connecting -> Triple(colors.warning, "Connecting", true)
-        is ConnectionState.Identifying -> Triple(colors.warning, "Connecting", true)
-        is ConnectionState.Reconnecting -> Triple(colors.warning, "Retry ${state.attempt}", true)
-        is ConnectionState.Failed -> Triple(colors.recording, "Failed", false)
-        ConnectionState.Disconnected -> Triple(colors.idle, "Offline", false)
-    }
+    val (dotColor, label, pulse) =
+        when (state) {
+            is ConnectionState.Ready -> Triple(colors.preview, "OBS", false)
+            is ConnectionState.Connecting -> Triple(colors.warning, "Connecting", true)
+            is ConnectionState.Identifying -> Triple(colors.warning, "Connecting", true)
+            is ConnectionState.Reconnecting ->
+                Triple(colors.warning, "Retry ${state.attempt}", true)
+            is ConnectionState.Failed -> Triple(colors.recording, "Failed", false)
+            ConnectionState.Disconnected -> Triple(colors.idle, "Offline", false)
+        }
 
-    val alpha = if (pulse && animate) {
-        rememberInfiniteTransition(label = "connectionPulse").animateFloat(
-            initialValue = 1f,
-            targetValue = 0.3f,
-            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-            label = "connectionPulseAlpha",
-        ).value
-    } else {
-        1f
-    }
+    val alpha =
+        if (pulse && animate) {
+            rememberInfiniteTransition(label = "connectionPulse")
+                .animateFloat(
+                    initialValue = 1f,
+                    targetValue = 0.3f,
+                    animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+                    label = "connectionPulseAlpha",
+                )
+                .value
+        } else {
+            1f
+        }
 
     Row(
-        modifier = Modifier
-            .combinedClickable(
-                role = Role.Button,
-                onClickLabel = "Open connections",
-                onClick = onClick,
-                onLongClickLabel = "Background settings",
-                onLongClick = onLongClick,
-            )
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier.combinedClickable(
+                    role = Role.Button,
+                    onClickLabel = "Open connections",
+                    onClick = onClick,
+                    onLongClickLabel = "Background settings",
+                    onLongClick = onLongClick,
+                )
+                .heightIn(min = 48.dp)
+                .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .alpha(alpha)
-                .size(10.dp)
-                .background(dotColor, CircleShape),
-        )
+        Box(modifier = Modifier.alpha(alpha).size(10.dp).background(dotColor, CircleShape))
         Spacer(Modifier.width(8.dp))
         Text(text = label, style = MaterialTheme.typography.labelMedium)
     }
@@ -141,11 +147,12 @@ private fun MonoStat(value: String, label: String) {
     }
 }
 
-private fun formatBitrate(kbps: Int): String = if (kbps >= 1000) {
-    "%.1f Mb/s".format(kbps / 1000.0)
-} else {
-    "$kbps kb/s"
-}
+private fun formatBitrate(kbps: Int): String =
+    if (kbps >= 1000) {
+        "%.1f Mb/s".format(kbps / 1000.0)
+    } else {
+        "$kbps kb/s"
+    }
 
 @PreviewLightDark
 @Composable

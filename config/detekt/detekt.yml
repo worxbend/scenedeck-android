@@ -3,8 +3,12 @@
 # parameters and use PascalCase names. MagicNumber is off: color/design tokens are
 # hex literals by nature in a design-system-heavy project.
 complexity:
+  CognitiveComplexMethod:
+    active: true
+    threshold: 15
   CyclomaticComplexMethod:
-    ignoreAnnotated: [ 'Composable', 'Preview' ]
+    active: true
+    threshold: 15
   LongMethod:
     ignoreAnnotated: [ 'Composable', 'Preview' ]
   LongParameterList:

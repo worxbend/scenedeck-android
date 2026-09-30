@@ -28,33 +28,10 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class MixerScreenRoborazziTest {
 
-    @get:Rule
-    val composeRule = createComposeRule()
+    @get:Rule val composeRule = createComposeRule()
 
     private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
-        val state = MixerUiState(
-            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
-            mode = MixerMode.ACTIVE,
-            grouping = MixerGrouping.SCOPE,
-            activeScene = "Cam 1",
-            displayedScene = "Cam 1",
-            inputs = listOf(
-                MixerInputState(
-                    "Test Tone 440", MixerScope.SCENE, null, 0.7,
-                    muted = false, locked = false, inputKind = "ffmpeg_source",
-                ),
-                MixerInputState("Desktop Audio", MixerScope.GLOBAL, null, 1.0, muted = false, locked = false),
-                MixerInputState("Mic/Aux", MixerScope.GLOBAL, null, 0.8, muted = true, locked = false),
-                MixerInputState(
-                    "Nested Tone",
-                    MixerScope.NESTED,
-                    "Starting Soon › Nested Audio",
-                    0.35,
-                    muted = false,
-                    locked = true,
-                ),
-            ),
-        )
+        val state = previewMixerUiState()
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
@@ -64,13 +41,15 @@ class MixerScreenRoborazziTest {
                         motionLevel = MotionLevel.OFF,
                         hapticsEnabled = false,
                         callbacks = MixerCallbacks(),
-                        mediaStatus = mapOf(
-                            "Test Tone 440" to MediaStatus(
-                                state = MediaStateKind.PLAYING,
-                                durationMs = 60_000,
-                                cursorMs = 12_345,
+                        mediaStatus =
+                            mapOf(
+                                "Test Tone 440" to
+                                    MediaStatus(
+                                        state = MediaStateKind.PLAYING,
+                                        durationMs = 60_000,
+                                        cursorMs = 12_345,
+                                    )
                             ),
-                        ),
                     )
                 }
             }
@@ -79,19 +58,71 @@ class MixerScreenRoborazziTest {
     }
 
     @Test
-    fun mixerScreenDark() = capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "mixer_screen_dark.png")
+    fun mixerScreenDark() =
+        capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "mixer_screen_dark.png")
 
     @Test
-    fun mixerScreenObsDark() = capture(ThemeFamily.OBS, darkTheme = true, name = "mixer_screen_obs_dark.png")
+    fun mixerScreenObsDark() =
+        capture(ThemeFamily.OBS, darkTheme = true, name = "mixer_screen_obs_dark.png")
 
     @Test
-    fun mixerScreenNordDark() = capture(ThemeFamily.NORD, darkTheme = true, name = "mixer_screen_nord_dark.png")
+    fun mixerScreenNordDark() =
+        capture(ThemeFamily.NORD, darkTheme = true, name = "mixer_screen_nord_dark.png")
 
     @Test
     fun mixerScreenHighContrastDark() =
-        capture(ThemeFamily.HIGH_CONTRAST, darkTheme = true, name = "mixer_screen_high_contrast_dark.png")
+        capture(
+            ThemeFamily.HIGH_CONTRAST,
+            darkTheme = true,
+            name = "mixer_screen_high_contrast_dark.png",
+        )
 
     @Test
     fun mixerScreenSceneDeckLight() =
         capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "mixer_screen_scenedeck_light.png")
+
+    private fun previewMixerUiState(): MixerUiState =
+        MixerUiState(
+            connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
+            mode = MixerMode.ACTIVE,
+            grouping = MixerGrouping.SCOPE,
+            activeScene = "Cam 1",
+            displayedScene = "Cam 1",
+            inputs =
+                listOf(
+                    MixerInputState(
+                        "Test Tone 440",
+                        MixerScope.SCENE,
+                        null,
+                        0.7,
+                        muted = false,
+                        locked = false,
+                        inputKind = "ffmpeg_source",
+                    ),
+                    MixerInputState(
+                        "Desktop Audio",
+                        MixerScope.GLOBAL,
+                        null,
+                        1.0,
+                        muted = false,
+                        locked = false,
+                    ),
+                    MixerInputState(
+                        "Mic/Aux",
+                        MixerScope.GLOBAL,
+                        null,
+                        0.8,
+                        muted = true,
+                        locked = false,
+                    ),
+                    MixerInputState(
+                        "Nested Tone",
+                        MixerScope.NESTED,
+                        "Starting Soon › Nested Audio",
+                        0.35,
+                        muted = false,
+                        locked = true,
+                    ),
+                ),
+        )
 }

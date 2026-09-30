@@ -4,8 +4,8 @@ import androidx.compose.runtime.Immutable
 import com.scenedeck.android.core.database.ConnectionProfileEntity
 
 /**
- * A named OBS connection profile (FEATURE_SPEC §1). The password is NOT part of
- * this type — it lives in Keystore-backed encrypted storage ([SecretsStore]).
+ * A named OBS connection profile (FEATURE_SPEC §1). The password is NOT part of this type — it
+ * lives in Keystore-backed encrypted storage ([SecretsStore]).
  */
 @Immutable
 data class ConnectionProfile(
@@ -17,11 +17,12 @@ data class ConnectionProfile(
     val lastUsedAt: Long? = null,
 )
 
-internal fun ConnectionProfileEntity.toDomain() = ConnectionProfile(
-    id = id,
-    name = name,
-    host = host,
-    port = port,
-    createdAt = createdAt,
-    lastUsedAt = lastUsedAt,
-)
+internal fun ConnectionProfileEntity.toDomain() =
+    ConnectionProfile(
+        id = id,
+        name = name,
+        host = host,
+        port = port,
+        createdAt = createdAt,
+        lastUsedAt = lastUsedAt,
+    )

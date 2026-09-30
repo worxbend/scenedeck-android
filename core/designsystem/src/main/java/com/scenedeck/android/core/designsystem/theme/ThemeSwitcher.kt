@@ -37,26 +37,29 @@ import com.scenedeck.android.core.designsystem.preview.DesignSystemPreview
 import com.scenedeck.android.core.designsystem.theme.families.colorSchemeFor
 import com.scenedeck.android.core.designsystem.theme.families.displayName
 
-private val CheckIcon: ImageVector = ImageVector.Builder(
-    name = "Check",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f,
-).apply {
-    addPath(
-        pathData = addPathNodes("M20,6 L9,17 L4,12"),
-        fill = null,
-        stroke = SolidColor(Color.Black),
-        strokeLineWidth = 2f,
-        strokeLineCap = StrokeCap.Round,
-        strokeLineJoin = StrokeJoin.Round,
-    )
-}.build()
+private val CheckIcon: ImageVector =
+    ImageVector.Builder(
+            name = "Check",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        )
+        .apply {
+            addPath(
+                pathData = addPathNodes("M20,6 L9,17 L4,12"),
+                fill = null,
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }
+        .build()
 
 /**
- * Vertical picker listing every [ThemeFamily] with a light + dark swatch preview
- * per family and a check on the selected entry. Used by the settings/app shell.
+ * Vertical picker listing every [ThemeFamily] with a light + dark swatch preview per family and a
+ * check on the selected entry. Used by the settings/app shell.
  */
 @Composable
 fun ThemeSwitcher(
@@ -88,16 +91,15 @@ private fun ThemeFamilyRow(
     Surface(
         color = containerColor,
         shape = MaterialTheme.shapes.medium,
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(role = Role.RadioButton, onClick = onClick)
-            .semantics { this.selected = selected },
+        modifier =
+            modifier
+                .clip(MaterialTheme.shapes.medium)
+                .clickable(role = Role.RadioButton, onClick = onClick)
+                .semantics { this.selected = selected },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             FamilySwatch(family = family, darkTheme = false)
             Spacer(Modifier.width(4.dp))
@@ -128,11 +130,12 @@ private fun FamilySwatch(family: ThemeFamily, darkTheme: Boolean, modifier: Modi
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clip(shape)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-            .background(scheme.surface)
-            .padding(horizontal = 4.dp, vertical = 5.dp),
+        modifier =
+            modifier
+                .clip(shape)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                .background(scheme.surface)
+                .padding(horizontal = 4.dp, vertical = 5.dp),
     ) {
         SwatchDot(scheme.primary)
         SwatchDot(scheme.secondary)

@@ -3,7 +3,9 @@ package com.scenedeck.android.core.data
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import java.io.File
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -75,11 +77,32 @@ class SettingsRepositoryTest {
         assertEquals(DarkMode.SYSTEM, SettingsRepository(store).settings.first().darkMode)
     }
 
+    @Test
+    fun concurrentTransformsPreserveEveryLock(): Unit = runBlocking {
+        coroutineScope {
+            repeat(40) { index ->
+                launch {
+                    repository.update { it.copy(lockedInputs = it.lockedInputs + "Input $index") }
+                }
+            }
+        }
+        assertEquals(40, repository.settings.first().lockedInputs.size)
+    }
+
+    @Test
+    fun concurrentLockCommandsPreserveEveryInput(): Unit = runBlocking {
+        coroutineScope {
+            repeat(40) { index -> launch { repository.setInputLocked("Input $index", true) } }
+        }
+        assertEquals(40, repository.settings.first().lockedInputs.size)
+    }
+
     internal companion object {
-        fun newIsolatedStore(): SceneDeckSettingsStore = SceneDeckSettingsStore.forTesting(
-            PreferenceDataStoreFactory.create(
-                produceFile = { File.createTempFile("settings_test", ".preferences_pb") },
-            ),
-        )
+        fun newIsolatedStore(): SceneDeckSettingsStore =
+            SceneDeckSettingsStore.forTesting(
+                PreferenceDataStoreFactory.create(
+                    produceFile = { File.createTempFile("settings_test", ".preferences_pb") }
+                )
+            )
     }
 }

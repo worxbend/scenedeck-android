@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Upgrade suggestions are tracked against TECH_STACK.md pins, not automatic code changes. -->
+    <issue id="GradleDependency,NewerVersionAvailable,AndroidGradlePluginVersion,OldTargetApi">
+        <ignore path="gradle/libs.versions.toml" />
+        <ignore path="gradle/wrapper/gradle-wrapper.properties" />
+        <ignore path="app/build.gradle.kts" />
+    </issue>
+    <!-- AAPT requires the adaptive-icon API qualifier with this pinned AGP toolchain. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="app/src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

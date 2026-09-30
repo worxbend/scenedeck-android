@@ -27,9 +27,10 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SceneSwitcherTest {
 
-    private val ready = ConnectionState.Ready(
-        ObsVersionInfo(obsVersion = "31.0.0", obsWebSocketVersion = "5.5.2", rpcVersion = 1),
-    )
+    private val ready =
+        ConnectionState.Ready(
+            ObsVersionInfo(obsVersion = "31.0.0", obsWebSocketVersion = "5.5.2", rpcVersion = 1)
+        )
 
     private lateinit var connectionFlow: MutableStateFlow<ConnectionState>
     private val client = mockk<ObsClient>()
@@ -98,9 +99,10 @@ class SceneSwitcherTest {
     @Test
     fun `terminal connection failure returns NotConnected`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 1L))
-        every { sessionHolder.connect(1L) } answers {
-            connectionFlow.value = ConnectionState.Failed(ConnectionError.Unreachable())
-        }
+        every { sessionHolder.connect(1L) } answers
+            {
+                connectionFlow.value = ConnectionState.Failed(ConnectionError.Unreachable())
+            }
 
         val result = switcher.switchTo("Screen")
 
@@ -119,11 +121,12 @@ class SceneSwitcherTest {
         assertEquals(SceneSwitchResult.RequestFailed, result)
     }
 
-    private fun profile(id: Long) = ConnectionProfile(
-        id = id,
-        name = "Living room",
-        host = "10.0.2.2",
-        port = 4455,
-        createdAt = 1L,
-    )
+    private fun profile(id: Long) =
+        ConnectionProfile(
+            id = id,
+            name = "Living room",
+            host = "10.0.2.2",
+            port = 4455,
+            createdAt = 1L,
+        )
 }

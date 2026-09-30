@@ -13,4 +13,3 @@ data class MixerCallbacks(
     val onMediaPlayPause: (String) -> Unit = {},
     val onMediaRestart: (String) -> Unit = {},
 )
-

@@ -84,8 +84,8 @@ one module owns the wire protocol.**
 ## Navigation
 
 Navigation 3 with app-owned back stack. Top-level destinations mirror the desktop
-sidebar: **Live, Mixer, Stats, Inventory, Graph, Doctor, Settings** (+ Connections,
-Onboarding/Help). On tablets/foldables use `material3-adaptive` list-detail for
+workflow: **Scenes, Mixer, Stats**, plus **More** for Inventory, Graph, Doctor,
+Connections, Settings and Help. The internal Live route remains serialization-compatible. On tablets/foldables use `material3-adaptive` list-detail for
 Inventory/Settings; Live page reflows grid columns.
 
 ## Error & offline UX
@@ -93,3 +93,25 @@ Inventory/Settings; Live page reflows grid columns.
 Every feature screen takes `ConnectionState` as input and renders a designed
 disconnected placeholder (illustration + reconnect CTA) instead of crashing or
 showing stale controls — same contract as the desktop app's placeholder pages.
+
+## Reliability and secret handling
+
+Cancellation propagates through best-effort OBS operations. Settings transformations
+and lock changes are atomic DataStore transactions; StateFlow reducers use atomic
+updates. Mixer selection cancels obsolete discovery and only publishes the latest
+selection. Doctor refresh replaces previous checks; failed reads retain prior results
+rather than classifying every entry as stale. Disconnection clears studio metadata.
+
+Password drafts stay in memory, outside saved-state Bundles, and secret-bearing
+models redact their diagnostic strings. Keystore writes verify synchronous persistence
+on IO. Pending OBS connect and socket/client resources close when their owning job is
+cancelled. QR camera dismissal releases only its owned camera use cases.
+
+Widget input counts are bounded before allocation; updates serialize, reread current
+state and isolate removed-widget failures. Foreground-service work is confined to Main;
+failed foreground startup cannot reconnect, and Android15 dataSync timeouts disconnect.
+
+Profile metadata/credential writes use a coordinated persistence boundary with
+best-effort noncancellable rollback. Recoverable save/delete errors are sanitized,
+observable UI state; failed saves retain the form draft and duplicate writes are
+gated. Testing an edited profile reuses its stored credential when the draft is blank.

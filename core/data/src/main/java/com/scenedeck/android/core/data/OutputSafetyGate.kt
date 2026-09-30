@@ -8,12 +8,13 @@ data class OutputSafety(
     val confirmStopRecord: Boolean = true,
 )
 
-internal fun UserSettings.outputSafety() = OutputSafety(
-    confirmStartStream = confirmStartStream,
-    confirmStopStream = confirmStopStream,
-    confirmStartRecord = confirmStartRecord,
-    confirmStopRecord = confirmStopRecord,
-)
+internal fun UserSettings.outputSafety() =
+    OutputSafety(
+        confirmStartStream = confirmStartStream,
+        confirmStopStream = confirmStopStream,
+        confirmStartRecord = confirmStartRecord,
+        confirmStopRecord = confirmStopRecord,
+    )
 
 /** What should happen when the user taps a transport button. */
 enum class OutputAction {
