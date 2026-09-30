@@ -12,6 +12,7 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -138,3 +139,13 @@ private fun stream(active: Boolean) =
 private fun record(active: Boolean) = RecordStatus(active, false, "00:04:18.000", 258000, 0)
 
 private val ready = ConnectionState.Ready(ObsVersionInfo("31.0", "5.6", 1, "test"))
+
+class StatusStripMappingTest {
+    @Test
+    fun droppedFramesUseStreamOutput() {
+        val state =
+            Telemetry(connection = ready, stream = stream(true).copy(skippedFrames = 7))
+                .toStatusStripState()
+        assertEquals(7, state.droppedFrames)
+    }
+}

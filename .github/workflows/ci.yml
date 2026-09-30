@@ -51,13 +51,7 @@ jobs:
 
       - name: Collect detekt SARIF
         if: always()
-        run: |
-          mkdir -p build/sarif/detekt
-          while IFS= read -r -d '' report; do
-            module_path="${report#./}"
-            report_name="${module_path//\//-}"
-            cp "$report" "build/sarif/detekt/$report_name"
-          done < <(find . -path '*/build/reports/detekt/detekt.sarif' -print0)
+        run: python3 scripts/collect-detekt-sarif.py
 
       - name: Upload detekt SARIF to code scanning
         if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)

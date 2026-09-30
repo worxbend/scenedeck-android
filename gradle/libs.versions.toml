@@ -1,6 +1,11 @@
 # Version catalog — single source of truth, keep in sync with docs/TECH_STACK.md.
 # Verified against Maven Central / Google Maven on 2026-09-28.
 [versions]
+# Minimum patched versions for AGP's build-tool classpath (not Android runtime).
+bouncycastle-security = "1.85"
+jose4j-security = "0.9.6"
+jdom2-security = "2.0.6.1"
+commons-lang3-security = "3.18.0"
 ktfmt = "0.64"
 concurrent-futures = "1.2.0"
 errorprone-annotations = "2.30.0"

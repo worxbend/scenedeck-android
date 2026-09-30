@@ -32,7 +32,7 @@ internal fun Telemetry.toStatusStripState(): StatusStripState {
     return StatusStripState(
         connection = connection,
         fps = stats?.activeFps ?: 0.0,
-        droppedFrames = stats?.outputSkippedFrames ?: 0,
+        droppedFrames = stream?.skippedFrames ?: 0,
         cpuPercent = stats?.cpuUsage ?: 0.0,
         bitrateKbps = bitrateKbps,
         stream = stream,

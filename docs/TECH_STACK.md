@@ -135,3 +135,35 @@ robolectric = "4.17"
 - Gitleaks8.30.1: checksum-verified Linux scanner for working tree and Git history.
 - Hosted CodeQL Kotlin/Java security-extended checks use a manual build; Dependabot proposes weekly updates.
 - Reviewed lint upgrade advisories remain tied to the pinned stack; see HARDENING.md.
+
+
+### Build-tool dependency security minimums
+
+The seven Dependabot alerts reported on 2026-09-30 came from AGP 9.4.1's
+transitive **Gradle buildscript classpath**, recorded under `settings.gradle.kts` by
+GitHub's dependency graph. None of the alerted modules is present on
+`:app:debugRuntimeClasspath`; Android's Keystore encryption does not use these jars.
+Robolectric 4.17's separate unit-test classpath already selects Bouncy Castle 1.85.
+
+`build.gradle.kts` adds narrowly scoped minimum-version constraints to `classpath`.
+Their versions live in `gradle/libs.versions.toml`; no dependencies are added to the
+Android runtime and no global version force is applied. Newer upstream versions
+remain eligible. Bouncy Castle provider, PKIX, and utility modules are upgraded
+together to keep the resolved build-tool family consistent.
+
+| Catalog version | Minimum | Origin and addressed issue |
+|---|---|---|
+| `bouncycastle-security` | 1.85 | AGP SDK/signing tools: certificate name-constraint bypass and ASN.1 recursion guards; also covers earlier provider/PKIX alerts |
+| `jose4j-security` | 0.9.6 | AGP tooling: compressed JWE denial of service (CVE-2024-29371) |
+| `jdom2-security` | 2.0.6.1 | Jetifier: XML entity processing (CVE-2021-33813) |
+| `commons-lang3-security` | 3.18.0 | SDK repository / Commons Compress: recursive class-name parsing (CVE-2025-48924) |
+
+Primary release evidence: [Bouncy Castle 1.85 security fixes](https://www.bouncycastle.org/resources/new-release-bouncy-castle-java-1-85/),
+[JOSE4J release tags](https://bitbucket.org/b_c/jose4j/downloads/?iframe=true&spa=0&tab=tags),
+[JDOM 2.0.6.1 release](https://www.jdom.org/news/), and
+[Apache Commons Lang 3.18.0 changes](https://github.com/apache/commons-lang/blob/rel/commons-lang-3.18.0/src/changes/changes.xml).
+
+Verify the actual selection with `./gradlew buildEnvironment`; `:app:assembleDebug`
+exercises the patched AGP tooling and debug signing. Existing UI and JVM tests must
+still pass before merging. These minima address the reported advisories; dependency
+review and Dependabot must continue checking future upstream security fixes.

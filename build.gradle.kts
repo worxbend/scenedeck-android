@@ -1,5 +1,30 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 
+// Patch AGP's transitive build tools without changing Android runtime dependencies.
+// Version constraints are minimums: newer compatible plugin dependencies can win.
+buildscript {
+    val securityCatalog = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
+    dependencies {
+        constraints {
+            val bouncyCastleVersion = securityCatalog.findVersion("bouncycastle-security").get().requiredVersion
+            listOf("bcprov-jdk18on", "bcpkix-jdk18on", "bcutil-jdk18on").forEach { artifact ->
+                add("classpath", "org.bouncycastle:$artifact:$bouncyCastleVersion") {
+                    because("Align Bouncy Castle build tools with patched certificate/ASN.1 processing")
+                }
+            }
+            add("classpath", "org.bitbucket.b_c:jose4j:${securityCatalog.findVersion("jose4j-security").get().requiredVersion}") {
+                because("CVE-2024-29371: bound compressed JWE decompression")
+            }
+            add("classpath", "org.jdom:jdom2:${securityCatalog.findVersion("jdom2-security").get().requiredVersion}") {
+                because("CVE-2021-33813: patched XML processing in Jetifier")
+            }
+            add("classpath", "org.apache.commons:commons-lang3:${securityCatalog.findVersion("commons-lang3-security").get().requiredVersion}") {
+                because("CVE-2025-48924: avoid uncontrolled recursion")
+            }
+        }
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false

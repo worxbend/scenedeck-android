@@ -81,3 +81,8 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Persistent status bar shows OFF AIR / LIVE with stream time / REC with record time on all main tabs; disconnected output state is unknown, never assumed idle.
 - Persistent performance metrics appear only while streaming, never in standby or recording-only mode.
+
+- AGP build-tool security minimums are constrained on the root buildscript `classpath`,
+  with catalog versions documented in TECH_STACK.md; avoid forcing those jars into
+  Android runtime configurations. Recheck `buildEnvironment` and debug signing after
+  changing them.

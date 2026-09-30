@@ -121,3 +121,8 @@ session, telemetry, interaction and CI fixes accompanying the persistent status 
 Persistent-bar and review verification: **378 tests, zero failures**, debug assembly,
 Android Lint, formatting, Detekt complexity checks, strict Semgrep and Gitleaks all
 passed. Updated app/design-system/mixer previews rendered successfully.
+
+Final dependency/report follow-up: **379 tests, zero failures** and the complete
+local quality pipeline passed with patched AGP build-tool dependencies. Detekt SARIF
+runs have distinct module categories. The persistent DROP counter uses stream
+output drops rather than render/encoder skipped frames.
