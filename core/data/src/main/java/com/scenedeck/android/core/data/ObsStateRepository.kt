@@ -161,7 +161,8 @@ constructor(
 
                     is ObsEvent.SceneListChanged -> {
                         sceneList.value = event.scenes
-                        registry.deleteStale(event.scenes.map { it.name })
+                        // Retain local curation across hosts/collections; Doctor offers explicit
+                        // cleanup.
                     }
 
                     else -> Unit
@@ -175,7 +176,7 @@ constructor(
             val list = client.getSceneList()
             sceneList.value = list.scenes
             programScene.value = list.currentProgramScene
-            registry.deleteStale(list.scenes.map { it.name })
+            // Scene absence on this connection must not delete another host/collection's curation.
             refreshStudio()
         }
     }

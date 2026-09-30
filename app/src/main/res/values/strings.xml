@@ -11,4 +11,7 @@
     <string name="connections_description">Pair with OBS and manage studio profiles</string>
     <string name="settings_description">Appearance, feedback and output safety</string>
     <string name="help_description">Connection guide and getting started</string>
+    <string name="output_status_unknown">Output status unknown</string>
+    <string name="output_status_checking">Checking outputs…</string>
+    <string name="output_status_off_air">OFF AIR</string>
 </resources>

@@ -53,7 +53,11 @@ jobs:
         if: always()
         run: |
           mkdir -p build/sarif/detekt
-          find . -path '*/build/reports/detekt/detekt.sarif' -exec cp {} build/sarif/detekt/ \;
+          while IFS= read -r -d '' report; do
+            module_path="${report#./}"
+            report_name="${module_path//\//-}"
+            cp "$report" "build/sarif/detekt/$report_name"
+          done < <(find . -path '*/build/reports/detekt/detekt.sarif' -print0)
 
       - name: Upload detekt SARIF to code scanning
         if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -224,7 +228,7 @@ jobs:
     name: Quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [wrapper-validation, quality, test, build, security]
+    needs: [wrapper-validation, quality, test, build, security, dependency-review]
     if: always()
     steps:
       - name: Evaluate job results
@@ -235,7 +239,8 @@ jobs:
             "${{ needs.quality.result }}" \
             "${{ needs.test.result }}" \
             "${{ needs.build.result }}" \
-            "${{ needs.security.result }}"; do
+            "${{ needs.security.result }}" \
+            "${{ needs.dependency-review.result }}"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               failed=1
             fi

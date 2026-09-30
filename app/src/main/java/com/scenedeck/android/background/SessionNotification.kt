@@ -19,7 +19,8 @@ object SessionNotification {
     /** Pure text mapping (unit-tested): title stays the app name; text carries state. */
     fun textFor(state: ConnectionState, programScene: String?): String =
         when (state) {
-            is ConnectionState.Ready -> programScene?.let { "On air · $it" } ?: "Connected to OBS"
+            is ConnectionState.Ready ->
+                programScene?.let { "Connected · $it" } ?: "Connected to OBS"
 
             is ConnectionState.Connecting,
             is ConnectionState.Identifying -> "Connecting to OBS…"

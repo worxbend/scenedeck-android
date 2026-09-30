@@ -11,9 +11,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,17 +28,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.R
+import com.scenedeck.android.core.designsystem.components.BroadcastStatus
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 
 /**
  * Persistent bottom strip (sits above the navigation bar): tappable connection indicator (real
- * [ConnectionState]), FPS, dropped frames, CPU and bitrate. Long-pressing the connection indicator
- * opens the app-level Background sheet.
+ * [ConnectionState]) and output status, with FPS, dropped frames, CPU and bitrate only while
+ * streaming. Long-pressing the connection indicator opens the app-level Background sheet.
  */
 @Composable
 fun StatusStrip(
@@ -51,10 +56,9 @@ fun StatusStrip(
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        BoxWithConstraints {
-            val availableWidth = maxWidth
+        Column(Modifier.padding(horizontal = 16.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -64,13 +68,70 @@ fun StatusStrip(
                     onClick = onConnectionClick,
                     onLongClick = onConnectionLongClick,
                 )
-                MonoStat(value = "%.1f".format(state.fps), label = "FPS")
-                MonoStat(value = state.droppedFrames.toString(), label = "DROP")
-                if (availableWidth >= 400.dp)
-                    MonoStat(value = "%.1f%%".format(state.cpuPercent), label = "CPU")
-                if (availableWidth >= 360.dp)
-                    MonoStat(value = formatBitrate(state.bitrateKbps), label = "")
+                OutputIndicator(state, animateConnection)
             }
+            if (state.connection is ConnectionState.Ready && state.stream?.active == true) {
+                StatusMetrics(state)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OutputIndicator(state: StatusStripState, pulse: Boolean) {
+    if (state.connection !is ConnectionState.Ready) {
+        Text(
+            stringResource(R.string.output_status_unknown),
+            style = MaterialTheme.typography.labelSmall,
+        )
+    } else if (state.stream?.active == true || state.record?.active == true) {
+        Column(horizontalAlignment = Alignment.End) {
+            if (state.stream?.active == false) {
+                Text(
+                    stringResource(R.string.output_status_off_air),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            BroadcastStatus(
+                streaming = state.stream?.active == true,
+                recording = state.record?.active == true,
+                streamElapsed = state.stream?.timecode?.take(8) ?: "00:00:00",
+                recordElapsed = state.record?.timecode?.take(8) ?: "00:00:00",
+                streamReconnecting = state.stream?.reconnecting == true,
+                recordPaused = state.record?.paused == true,
+                pulse = pulse,
+            )
+        }
+    } else {
+        val label =
+            if (state.stream != null && state.record != null) {
+                R.string.output_status_off_air
+            } else {
+                R.string.output_status_checking
+            }
+        Text(
+            stringResource(label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun StatusMetrics(state: StatusStripState) {
+    BoxWithConstraints {
+        val availableWidth = maxWidth
+        Row(
+            modifier = Modifier.fillMaxWidth().height(28.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            MonoStat(value = "%.1f".format(state.fps), label = "FPS")
+            MonoStat(value = state.droppedFrames.toString(), label = "DROP")
+            if (availableWidth >= 320.dp)
+                MonoStat(value = "%.1f%%".format(state.cpuPercent), label = "CPU")
+            MonoStat(value = formatBitrate(state.bitrateKbps), label = "")
         }
     }
 }

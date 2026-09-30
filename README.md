@@ -28,6 +28,8 @@ rebuilt with Kotlin and Jetpack Compose.
   timers and yellow recording timers in the header keep output state easy to read.
 - **VCam:** a direct virtual-camera action alongside Stream and Record.
 - **Mixer:** vertical faders, live audio meters, direct mute, channel locks and audio settings.
+- **Always visible:** OFF AIR or LIVE with an elapsed timer on every main tab.
+  The bottom performance readings appear only while streaming.
 - **Stats:** FPS, bitrate, frame drops, CPU and render time, with gauges and rolling trends.
 - **Studio mode:** preview scenes and transition controls, ready for your next cue.
 - **Your vibe:** dark/light themes, multiple palettes, dynamic color and reduced-motion options.
@@ -53,6 +55,10 @@ Curation lives on your device. SceneDeck preserves your OBS scene collection.
 | Scene switched | Stream + record | Light recording |
 |:--:|:--:|:--:|
 | ![Scene switched to Screen](assets/readme/scene-switching.png) | ![Streaming and recording together](assets/readme/stream-and-record.png) | ![Recording in the light theme](assets/readme/recording-light.png) |
+
+| Standby: metrics hidden | Streaming + recording | Recording only |
+|:--:|:--:|:--:|
+| ![Connected and off air](assets/readme/status-standby.png) | ![Live timers and stream metrics](assets/readme/status-live.png) | ![Recording without stream metrics](assets/readme/status-recording.png) |
 
 *These are rendered application UI previews with representative OBS data. The GIF
 cycles through the app’s states; it does not start a real broadcast.*

@@ -94,27 +94,61 @@ class SceneGraphBuilder(private val client: ObsClient) {
     }
 }
 
-/** Returns the set of node names participating in at least one cycle (DFS 3-color). */
+/** Finds all cycle members via strongly connected components, including overlapping cycles. */
 internal fun findCycleMembers(nodes: Set<String>, edges: List<SceneGraphEdge>): Set<String> {
-    val adjacency = edges.groupBy { it.from }.mapValues { e -> e.value.map { it.to } }
+    val adjacency = edges.groupBy { it.from }.mapValues { (_, list) -> list.map { it.to } }
+    val reverse = edges.groupBy { it.to }.mapValues { (_, list) -> list.map { it.from } }
+    val names = nodes + edges.flatMap { listOf(it.from, it.to) }
+    val assigned = mutableSetOf<String>()
     val cycles = mutableSetOf<String>()
-    val visiting = LinkedHashSet<String>()
-    val finished = mutableSetOf<String>()
-
-    fun dfs(node: String) {
-        if (node in finished) return
-        if (node in visiting) {
-            // Back edge: every stack member from `node` onward is on a cycle.
-            cycles += visiting.dropWhile { it != node }
-            cycles += node
-            return
-        }
-        visiting += node
-        adjacency[node].orEmpty().forEach(::dfs)
-        visiting -= node
-        finished += node
+    for (node in finishOrder(names, adjacency).asReversed()) {
+        if (node in assigned) continue
+        val component = collectComponent(node, reverse, assigned)
+        if (component.size > 1 || node in adjacency[node].orEmpty()) cycles += component
     }
-
-    nodes.forEach(::dfs)
     return cycles
+}
+
+/** Iterative DFS avoids stack overflow on large scene collections. */
+private fun finishOrder(nodes: Set<String>, adjacency: Map<String, List<String>>): List<String> {
+    val visited = mutableSetOf<String>()
+    val ordered = mutableListOf<String>()
+    nodes.forEach { appendFinishOrder(it, adjacency, visited, ordered) }
+    return ordered
+}
+
+private fun appendFinishOrder(
+    start: String,
+    adjacency: Map<String, List<String>>,
+    visited: MutableSet<String>,
+    ordered: MutableList<String>,
+) {
+    val stack = ArrayDeque<Pair<String, Boolean>>()
+    stack.addLast(start to false)
+    while (stack.isNotEmpty()) {
+        val (current, finished) = stack.removeLast()
+        if (finished) {
+            ordered += current
+        } else if (visited.add(current)) {
+            stack.addLast(current to true)
+            adjacency[current].orEmpty().forEach { stack.addLast(it to false) }
+        }
+    }
+}
+
+private fun collectComponent(
+    start: String,
+    adjacency: Map<String, List<String>>,
+    assigned: MutableSet<String>,
+): Set<String> {
+    val component = mutableSetOf<String>()
+    val stack = ArrayDeque<String>()
+    stack.addLast(start)
+    while (stack.isNotEmpty()) {
+        val node = stack.removeLast()
+        if (!assigned.add(node)) continue
+        component += node
+        adjacency[node].orEmpty().forEach { stack.addLast(it) }
+    }
+    return component
 }

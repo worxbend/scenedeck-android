@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     implementation(project(":core:designsystem"))
+    implementation(project(":core:common"))
     implementation(project(":core:data"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -69,6 +70,8 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    testImplementation(project(":core:datastore"))
+    testImplementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.roborazzi)

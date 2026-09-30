@@ -15,7 +15,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -56,19 +55,19 @@ class SceneSwitcherTest {
         val result = switcher.switchTo("Cam 1")
 
         assertEquals(SceneSwitchResult.Success, result)
-        verify(exactly = 0) { sessionHolder.connect(any()) }
+        coVerify(exactly = 0) { sessionHolder.connectAndAwait(any()) }
         coVerify { deck.setCurrentProgramScene("Cam 1") }
     }
 
     @Test
     fun `disconnected connects to last used profile then switches`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 7L))
-        every { sessionHolder.connect(7L) } answers { connectionFlow.value = ready }
+        coEvery { sessionHolder.connectAndAwait(7L) } returns ready
 
         val result = switcher.switchTo("Screen")
 
         assertEquals(SceneSwitchResult.Success, result)
-        verify { sessionHolder.connect(7L) }
+        coVerify { sessionHolder.connectAndAwait(7L) }
         coVerify { deck.setCurrentProgramScene("Screen") }
     }
 
@@ -76,12 +75,12 @@ class SceneSwitcherTest {
     fun `falls back to most recently used profile when setting is absent`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = null))
         coEvery { profiles.lastUsed() } returns profile(id = 3L)
-        every { sessionHolder.connect(3L) } answers { connectionFlow.value = ready }
+        coEvery { sessionHolder.connectAndAwait(3L) } returns ready
 
         val result = switcher.switchTo("Screen")
 
         assertEquals(SceneSwitchResult.Success, result)
-        verify { sessionHolder.connect(3L) }
+        coVerify { sessionHolder.connectAndAwait(3L) }
     }
 
     @Test
@@ -92,17 +91,15 @@ class SceneSwitcherTest {
         val result = switcher.switchTo("Screen")
 
         assertEquals(SceneSwitchResult.NoProfile, result)
-        verify(exactly = 0) { sessionHolder.connect(any()) }
+        coVerify(exactly = 0) { sessionHolder.connectAndAwait(any()) }
         coVerify(exactly = 0) { deck.setCurrentProgramScene(any()) }
     }
 
     @Test
     fun `terminal connection failure returns NotConnected`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 1L))
-        every { sessionHolder.connect(1L) } answers
-            {
-                connectionFlow.value = ConnectionState.Failed(ConnectionError.Unreachable())
-            }
+        coEvery { sessionHolder.connectAndAwait(1L) } returns
+            ConnectionState.Failed(ConnectionError.Unreachable())
 
         val result = switcher.switchTo("Screen")
 
@@ -119,6 +116,15 @@ class SceneSwitcherTest {
         val result = switcher.switchTo("Ghost")
 
         assertEquals(SceneSwitchResult.RequestFailed, result)
+    }
+
+    @Test
+    fun `retry ignores previous failed connection state`() = runTest {
+        connectionFlow.value = ConnectionState.Failed(ConnectionError.Auth())
+        every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 7L))
+        coEvery { sessionHolder.connectAndAwait(7L) } returns ready
+        assertEquals(SceneSwitchResult.Success, switcher.switchTo("Screen"))
+        coVerify { deck.setCurrentProgramScene("Screen") }
     }
 
     private fun profile(id: Long) =

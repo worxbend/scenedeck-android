@@ -8,7 +8,9 @@ import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.SpecialInputs
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -105,6 +107,34 @@ class MixerRepositoryTest {
                 s.inputs.single { it.name == "Music" }.volumeMul == 1.0
             }
         assertEquals(1.0, reverted.inputs.single { it.name == "Music" }.volumeMul, 0.0)
+    }
+
+    @Test
+    fun delayedFailedVolumeWriteCannotUndoNewerSuccessfulWrite() = runTest {
+        val failureGate = CompletableDeferred<Unit>()
+        val client =
+            object : MediaClient() {
+                override suspend fun setInputVolume(inputName: String, volumeMul: Double) {
+                    if (volumeMul == 0.25) {
+                        failureGate.await()
+                        throw IOException("old write failed")
+                    }
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
+        val older = async { runCatching { repository.setInputVolume("Music", 0.25) } }
+        runCurrent()
+        repository.setInputVolume("Music", 0.75)
+        failureGate.complete(Unit)
+        assertTrue(older.await().isFailure)
+        runCurrent()
+        assertEquals(
+            0.75,
+            repository.mixerState.value.inputs.single { it.name == "Music" }.volumeMul,
+            0.0,
+        )
     }
 
     @Test

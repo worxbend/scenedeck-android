@@ -78,6 +78,7 @@ fun InventoryScreen(
         }
 
     val importPreview by viewModel.importPreview.collectAsStateWithLifecycle()
+    val importing by viewModel.transfer.importing.collectAsStateWithLifecycle()
 
     when (val connection = uiState.connection) {
         is ConnectionState.Ready ->
@@ -114,10 +115,14 @@ fun InventoryScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = viewModel.transfer::confirmImport) { Text("Import") }
+                TextButton(onClick = viewModel.transfer::confirmImport, enabled = !importing) {
+                    Text("Import")
+                }
             },
             dismissButton = {
-                TextButton(onClick = viewModel.transfer::dismissPreview) { Text("Cancel") }
+                TextButton(onClick = viewModel.transfer::dismissPreview, enabled = !importing) {
+                    Text("Cancel")
+                }
             },
         )
     }

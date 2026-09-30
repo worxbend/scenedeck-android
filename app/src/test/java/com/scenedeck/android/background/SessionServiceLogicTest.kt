@@ -78,7 +78,7 @@ class SessionServiceLogicTest {
     @Test
     fun `notification text mapping`() {
         assertEquals(
-            "On air · Cam 1",
+            "Connected · Cam 1",
             SessionNotification.textFor(ready, "Cam 1"),
         )
         assertEquals("Connected to OBS", SessionNotification.textFor(ready, null))

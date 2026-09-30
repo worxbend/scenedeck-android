@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -105,15 +104,13 @@ class ObsStateRepositoryTest {
     }
 
     @Test
-    fun sceneListChangedEventUpdatesDeckAndCleansStale(): Unit = runBlocking {
+    fun sceneListChangedEventUpdatesDeckAndPreservesCuration(): Unit = runBlocking {
         registryDao.upsert(SceneRegistryEntity(sceneName = "Ghost", role = "PRIMARY"))
         client.setReady()
         awaitDeck { it.scenes.size == 3 }
 
-        // Refresh removes registry entries whose scene vanished from OBS.
-        withTimeout(2_000) {
-            while (registryDao.byName("Ghost") != null) delay(25)
-        }
+        // A different host/collection may still contain this locally curated scene.
+        assertEquals("PRIMARY", registryDao.byName("Ghost")?.role)
 
         client.emit(
             ObsEvent.SceneListChanged(
@@ -150,11 +147,25 @@ class ObsStateRepositoryTest {
         )
     }
 
+    @Test
+    fun sceneListRefreshDoesNotRunDestructiveCleanupOrStopProgramEvents(): Unit = runBlocking {
+        client.setReady()
+        awaitDeck { it.scenes.isNotEmpty() }
+        registryDao.failCleanup = true
+        client.emit(
+            ObsEvent.SceneListChanged(listOf(SceneSummary("Scene", 0), SceneSummary("Cam 1", 1)))
+        )
+        awaitDeck { it.allScenes.size == 2 }
+        client.emit(ObsEvent.CurrentProgramSceneChanged("Cam 1"))
+        assertEquals("Cam 1", awaitDeck { it.currentProgramScene == "Cam 1" }.currentProgramScene)
+    }
+
     private suspend fun awaitDeck(condition: (DeckState) -> Boolean): DeckState =
         withTimeout(5_000) { repository.deckState.first(condition) }
 
     /** In-memory DAO fake with observable state. */
     private class FakeRegistryDao : SceneRegistryDao {
+        var failCleanup = false
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
         override fun observeAll(): Flow<List<SceneRegistryEntity>> = entities.map { map ->
@@ -173,6 +184,7 @@ class ObsStateRepositoryTest {
         }
 
         override suspend fun deleteStale(validSceneNames: List<String>) {
+            check(!failCleanup)
             entities.update { current -> current.filterKeys { it in validSceneNames } }
         }
 

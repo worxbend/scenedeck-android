@@ -121,7 +121,8 @@ fun VolumeMeter(
         val zoneAlpha = 0.12f
         drawRect(
             color = zoneGreen.copy(alpha = zoneAlpha),
-            size = Size(size.width, yFor(YELLOW_DB)),
+            topLeft = Offset(0f, yFor(YELLOW_DB)),
+            size = Size(size.width, size.height - yFor(YELLOW_DB)),
         )
         drawRect(
             color = zoneYellow.copy(alpha = zoneAlpha),

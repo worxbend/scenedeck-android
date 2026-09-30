@@ -18,6 +18,7 @@ import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ScreenshotRequest
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -42,6 +43,7 @@ import org.junit.Test
 
 class InventoryViewModelTest {
 
+    private lateinit var dao: FakeRegistryDao
     private lateinit var registry: RegistryRepository
     private lateinit var client: FakeObsClient
     private lateinit var viewModel: InventoryViewModel
@@ -49,7 +51,8 @@ class InventoryViewModelTest {
 
     @Before
     fun setUp() {
-        registry = RegistryRepository(FakeRegistryDao())
+        dao = FakeRegistryDao()
+        registry = RegistryRepository(dao)
         client = FakeObsClient()
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val settings =
@@ -146,11 +149,23 @@ class InventoryViewModelTest {
         assertTrue(withTimeout(5_000) { received.await() }.startsWith("Import failed"))
     }
 
+    @Test
+    fun storageFailureShowsSanitizedMessage(): Unit = runBlocking {
+        dao.failure = IllegalStateException("sensitive/file/path")
+        val message = async(start = CoroutineStart.UNDISPATCHED) { viewModel.messages.first() }
+        viewModel.setRole("Cam 1", SceneRole.ARCHIVE)
+        assertEquals(
+            "Couldn't save scene curation. Please try again.",
+            withTimeout(5_000) { message.await() },
+        )
+    }
+
     private suspend fun awaitState(condition: (InventoryUiState) -> Boolean): InventoryUiState =
         withTimeout(5_000) { viewModel.uiState.first(condition) }
 
     /** Map-backed registry DAO (fixtures can't cross module boundaries). */
     private class FakeRegistryDao : SceneRegistryDao {
+        var failure: Exception? = null
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
         override fun observeAll(): Flow<List<SceneRegistryEntity>> = entities.map { map ->
@@ -161,6 +176,7 @@ class InventoryViewModelTest {
             entities.value[sceneName]
 
         override suspend fun upsert(entity: SceneRegistryEntity) {
+            failure?.let { throw it }
             entities.update { it + (entity.sceneName to entity) }
         }
 

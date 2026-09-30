@@ -9,10 +9,12 @@ import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.ui.components.StatusStripState
+import com.scenedeck.android.ui.components.toStatusStripState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -35,14 +37,8 @@ constructor(
     /** StatusStrip feed: live telemetry from the 1 Hz poll + connection state. */
     val stripState: StateFlow<StatusStripState> =
         statsRepository.telemetry
-            .map { telemetry ->
-                StatusStripState(
-                    connection = telemetry.connection,
-                    fps = telemetry.stats?.activeFps ?: 0.0,
-                    droppedFrames = telemetry.stats?.outputSkippedFrames ?: 0,
-                    cpuPercent = telemetry.stats?.cpuUsage ?: 0.0,
-                    bitrateKbps = telemetry.bitrateKbps,
-                )
+            .combine(connectionState) { telemetry, connection ->
+                telemetry.copy(connection = connection).toStatusStripState()
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatusStripState())
 

@@ -19,4 +19,6 @@
     <string name="broadcast_recording">REC</string>
     <string name="broadcast_standby">Standby</string>
     <string name="broadcast_status_description">%1$s, elapsed %2$s</string>
+    <string name="broadcast_reconnecting">RETRYING</string>
+    <string name="broadcast_recording_paused">REC PAUSED</string>
 </resources>

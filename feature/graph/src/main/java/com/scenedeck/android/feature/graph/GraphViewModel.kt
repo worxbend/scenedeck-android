@@ -6,6 +6,7 @@ import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneGraph
 import com.scenedeck.android.core.data.SceneGraphBuilder
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 
@@ -38,7 +41,10 @@ constructor(
         combine(
                 client.connectionState,
                 registry.entries,
-            ) { connection, entries ->
+                client.events.filter(::affectsSceneGraph).onStart {
+                    emit(ObsEvent.SceneListChanged(emptyList()))
+                },
+            ) { connection, entries, _ ->
                 connection to entries
             }
             .transformLatest { (connection, entries) ->
@@ -64,3 +70,17 @@ constructor(
     fun childrenOf(name: String): List<String> =
         uiState.value.graph?.edges?.filter { it.from == name }?.map { it.to }.orEmpty()
 }
+
+private fun affectsSceneGraph(event: ObsEvent): Boolean =
+    when (event) {
+        is ObsEvent.SceneCreated,
+        is ObsEvent.SceneRemoved,
+        is ObsEvent.SceneNameChanged,
+        is ObsEvent.SceneListChanged,
+        is ObsEvent.SceneItemEnableStateChanged,
+        is ObsEvent.CurrentSceneCollectionChanged,
+        is ObsEvent.InputCreated,
+        is ObsEvent.InputRemoved,
+        is ObsEvent.InputNameChanged -> true
+        else -> false
+    }

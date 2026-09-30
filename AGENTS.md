@@ -78,3 +78,6 @@ must pass, and Compose preview(s) for changed screens must render.
 - Scenes header owns status/timers (Standby, LIVE, REC); simultaneous outputs show both. Direct row: Stream, Record, VCam.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
+
+- Persistent status bar shows OFF AIR / LIVE with stream time / REC with record time on all main tabs; disconnected output state is unknown, never assumed idle.
+- Persistent performance metrics appear only while streaming, never in standby or recording-only mode.

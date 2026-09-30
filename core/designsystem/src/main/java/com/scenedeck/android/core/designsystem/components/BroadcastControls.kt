@@ -109,7 +109,21 @@ fun BroadcastStatus(
     recordElapsed: String,
     pulse: Boolean,
     modifier: Modifier = Modifier,
+    streamReconnecting: Boolean = false,
+    recordPaused: Boolean = false,
 ) {
+    val streamLabel =
+        if (streamReconnecting) {
+            com.scenedeck.android.core.designsystem.R.string.broadcast_reconnecting
+        } else {
+            com.scenedeck.android.core.designsystem.R.string.broadcast_live
+        }
+    val recordLabel =
+        if (recordPaused) {
+            com.scenedeck.android.core.designsystem.R.string.broadcast_recording_paused
+        } else {
+            com.scenedeck.android.core.designsystem.R.string.broadcast_recording
+        }
     androidx.compose.foundation.layout.Column(
         modifier = modifier,
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
@@ -117,20 +131,14 @@ fun BroadcastStatus(
     ) {
         if (streaming)
             BroadcastStatusRow(
-                label =
-                    androidx.compose.ui.res.stringResource(
-                        com.scenedeck.android.core.designsystem.R.string.broadcast_live
-                    ),
+                label = androidx.compose.ui.res.stringResource(streamLabel),
                 elapsed = streamElapsed,
                 recording = false,
                 pulse = pulse,
             )
         if (recording)
             BroadcastStatusRow(
-                label =
-                    androidx.compose.ui.res.stringResource(
-                        com.scenedeck.android.core.designsystem.R.string.broadcast_recording
-                    ),
+                label = androidx.compose.ui.res.stringResource(recordLabel),
                 elapsed = recordElapsed,
                 recording = true,
                 pulse = pulse,

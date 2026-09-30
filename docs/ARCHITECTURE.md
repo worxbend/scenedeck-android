@@ -115,3 +115,9 @@ Profile metadata/credential writes use a coordinated persistence boundary with
 best-effort noncancellable rollback. Recoverable save/delete errors are sanitized,
 observable UI state; failed saves retain the form draft and duplicate writes are
 gated. Testing an edited profile reuses its stored credential when the draft is blank.
+
+The persistent status bar consumes the shared session telemetry at app-shell scope,
+so changing tabs never resets output state. Output events update the feed promptly;
+poll responses are merged only if no newer event superseded the request. Failed
+readings become unknown independently. Connection consumers await their own
+request outcome rather than accepting a previous terminal connection state.

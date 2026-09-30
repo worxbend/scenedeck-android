@@ -55,4 +55,22 @@ class SceneGraphCycleTest {
             )
         assertEquals(setOf("A", "B"), result)
     }
+
+    @Test
+    fun overlappingCyclesIncludePreviouslyFinishedBranch() {
+        val result =
+            findCycleMembers(
+                setOf("A", "B", "C"),
+                edges("A" to "B", "B" to "A", "A" to "C", "C" to "B"),
+            )
+        assertEquals(setOf("A", "B", "C"), result)
+    }
+
+    @Test
+    fun largeDependencyChainDoesNotOverflowCallStack() {
+        val nodes = (0..10000).map { "Scene$it" }.toSet()
+        val edges =
+            (0 until 10000).map { SceneGraphEdge("Scene$it", "Scene${it + 1}", EdgeVerdict.OK) }
+        assertTrue(findCycleMembers(nodes, edges).isEmpty())
+    }
 }

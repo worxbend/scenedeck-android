@@ -99,6 +99,7 @@ constructor(
     val pendingScene: StateFlow<String?> = _pendingScene.asStateFlow()
     private var pendingWatch: Job? = null
 
+    private val confirmationSession = OutputConfirmationSession()
     private val _confirmation = MutableStateFlow<TransportConfirmation?>(null)
     val confirmation: StateFlow<TransportConfirmation?> = _confirmation.asStateFlow()
 
@@ -251,52 +252,73 @@ constructor(
 
     // ── Transport (Output Safety, FEATURE_SPEC §4) ──────────────────────────
 
+    private fun currentOutputSession(): ConnectionState.Ready? =
+        (client.connectionState.value as? ConnectionState.Ready)?.takeIf {
+            telemetry.value.connection === it
+        }
+
     fun onStreamClick() {
-        val active = telemetry.value.stream?.active == true
+        val session = currentOutputSession() ?: return
+        val active = telemetry.value.stream?.active ?: return
         when (OutputSafetyGate.streamAction(active, outputSafety.value)) {
-            OutputAction.PERFORM -> toggleStream(active)
-            OutputAction.REQUIRE_CONFIRMATION ->
+            OutputAction.PERFORM -> toggleStream(active, session)
+            OutputAction.REQUIRE_CONFIRMATION -> {
+                confirmationSession.bind(session)
                 _confirmation.value =
                     if (active) TransportConfirmation.STOP_STREAM
                     else TransportConfirmation.START_STREAM
+            }
         }
     }
 
     fun onRecordClick() {
-        val active = telemetry.value.record?.active == true
+        val session = currentOutputSession() ?: return
+        val active = telemetry.value.record?.active ?: return
         when (OutputSafetyGate.recordAction(active, outputSafety.value)) {
-            OutputAction.PERFORM -> toggleRecord(active)
-            OutputAction.REQUIRE_CONFIRMATION ->
+            OutputAction.PERFORM -> toggleRecord(active, session)
+            OutputAction.REQUIRE_CONFIRMATION -> {
+                confirmationSession.bind(session)
                 _confirmation.value =
                     if (active) TransportConfirmation.STOP_RECORD
                     else TransportConfirmation.START_RECORD
+            }
         }
     }
 
     fun confirmPending() {
-        when (confirmation.value) {
-            TransportConfirmation.START_STREAM -> toggleStream(false)
-            TransportConfirmation.STOP_STREAM -> toggleStream(true)
-            TransportConfirmation.START_RECORD -> toggleRecord(false)
-            TransportConfirmation.STOP_RECORD -> toggleRecord(true)
+        val session = client.connectionState.value
+        if (!confirmationSession.matches(session) || session !is ConnectionState.Ready) {
+            dismissConfirmation()
+            return
+        }
+        val action = confirmation.value
+        dismissConfirmation()
+        when (action) {
+            TransportConfirmation.START_STREAM -> toggleStream(false, session)
+            TransportConfirmation.STOP_STREAM -> toggleStream(true, session)
+            TransportConfirmation.START_RECORD -> toggleRecord(false, session)
+            TransportConfirmation.STOP_RECORD -> toggleRecord(true, session)
             null -> Unit
         }
         _confirmation.value = null
     }
 
     fun dismissConfirmation() {
+        confirmationSession.clear()
         _confirmation.value = null
     }
 
-    private fun toggleStream(active: Boolean) {
+    private fun toggleStream(active: Boolean, session: ConnectionState.Ready) {
         viewModelScope.launch {
+            if (client.connectionState.value !== session) return@launch
             coroutineResult { if (active) client.stopStream() else client.startStream() }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("stream")) }
         }
     }
 
-    private fun toggleRecord(active: Boolean) {
+    private fun toggleRecord(active: Boolean, session: ConnectionState.Ready) {
         viewModelScope.launch {
+            if (client.connectionState.value !== session) return@launch
             coroutineResult { if (active) client.stopRecord() else client.startRecord() }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("recording")) }
         }
@@ -310,6 +332,11 @@ constructor(
         }
 
     init {
+        viewModelScope.launch {
+            client.connectionState.collect { connection ->
+                if (!confirmationSession.matches(connection)) dismissConfirmation()
+            }
+        }
         viewModelScope.launch {
             client.events.collect { event ->
                 if (

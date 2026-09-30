@@ -23,8 +23,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -108,6 +110,9 @@ constructor(
     /** Media playback status per media-kind input (polled in the repository). */
     val mediaStatus = mixer.mediaStatus
 
+    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val errors: SharedFlow<String> = _errors.asSharedFlow()
+
     private val mode = MutableStateFlow(MixerMode.ACTIVE)
     private val grouping = MutableStateFlow(MixerGrouping.SCOPE)
     private val selectedScene = MutableStateFlow<String?>(null)
@@ -120,7 +125,7 @@ constructor(
 
     private val batcher =
         FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS) { name, mul ->
-            mixer.setInputVolume(name, mul)
+            performAction { mixer.setInputVolume(name, mul) }
         }
 
     val uiState: StateFlow<MixerUiState> =
@@ -196,7 +201,7 @@ constructor(
                     is ObsEvent.SceneNameChanged -> {
                         if (selectedScene.value == event.oldSceneName) {
                             selectedScene.value = event.sceneName
-                            viewModelScope.launch {
+                            launchAction {
                                 settings.setMixerSelectedScene(event.sceneName)
                             }
                         }
@@ -210,7 +215,7 @@ constructor(
         viewModelScope.launch {
             selectedRefresh.debounce(REFRESH_DEBOUNCE_MS).collectLatest {
                 val scene = selectedScene.value ?: return@collectLatest
-                discoverSelectedScene(scene, selectionVersion)
+                performAction { discoverSelectedScene(scene, selectionVersion) }
             }
         }
         viewModelScope.launch {
@@ -233,7 +238,7 @@ constructor(
             selectScene(uiState.value.activeScene ?: uiState.value.sceneNames.firstOrNull())
         }
         mode.value = newMode
-        viewModelScope.launch { settings.setMixerMode(newMode.name) }
+        launchAction { settings.setMixerMode(newMode.name) }
     }
 
     fun selectScene(sceneName: String?, persist: Boolean = true) {
@@ -243,8 +248,10 @@ constructor(
         selectedScene.value = sceneName
         selectedInputs.value = emptyList()
         selectionJob = viewModelScope.launch {
-            if (persist) settings.setMixerSelectedScene(sceneName)
-            discoverSelectedScene(sceneName, version)
+            performAction {
+                if (persist) settings.setMixerSelectedScene(sceneName)
+                discoverSelectedScene(sceneName, version)
+            }
         }
     }
 
@@ -258,7 +265,7 @@ constructor(
 
     fun setGrouping(newGrouping: MixerGrouping) {
         grouping.value = newGrouping
-        viewModelScope.launch { settings.setMixerGrouping(newGrouping.name) }
+        launchAction { settings.setMixerGrouping(newGrouping.name) }
     }
 
     fun setSearch(query: String) {
@@ -274,18 +281,18 @@ constructor(
     }
 
     fun toggleMute(inputName: String, muted: Boolean) {
-        viewModelScope.launch { mixer.setInputMute(inputName, muted) }
+        launchAction { mixer.setInputMute(inputName, muted) }
     }
 
     fun toggleLock(inputName: String, locked: Boolean) {
-        viewModelScope.launch { mixer.setLocked(inputName, locked) }
+        launchAction { mixer.setLocked(inputName, locked) }
     }
 
     // ── Media controls (M7) ─────────────────────────────────────────────────
 
     fun mediaPlayPause(inputName: String) {
         val state = mediaStatus.value[inputName]?.state
-        viewModelScope.launch {
+        launchAction {
             mixer.triggerMediaInputAction(
                 inputName,
                 if (state == MediaStateKind.PLAYING) MediaActionKind.PAUSE
@@ -295,7 +302,7 @@ constructor(
     }
 
     fun mediaRestart(inputName: String) {
-        viewModelScope.launch { mixer.triggerMediaInputAction(inputName, MediaActionKind.RESTART) }
+        launchAction { mixer.triggerMediaInputAction(inputName, MediaActionKind.RESTART) }
     }
 
     // ── Audio extras (M7) ───────────────────────────────────────────────────
@@ -313,7 +320,11 @@ constructor(
     private val extrasBatchers = mutableMapOf<String, FaderWriteBatcher>()
 
     private fun extrasBatcher(key: String, send: suspend (String, Double) -> Unit) =
-        extrasBatchers.getOrPut(key) { FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS, send) }
+        extrasBatchers.getOrPut(key) {
+            FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS) { name, value ->
+                performAction { send(name, value) }
+            }
+        }
 
     fun setAudioBalance(inputName: String, balance: Double) {
         extrasBatcher("balance") { name, value -> mixer.setInputAudioBalance(name, value) }
@@ -328,7 +339,7 @@ constructor(
     }
 
     fun setAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) {
-        viewModelScope.launch { mixer.setInputAudioMonitorType(inputName, monitorType) }
+        launchAction { mixer.setInputAudioMonitorType(inputName, monitorType) }
     }
 
     private inline fun patchPinned(name: String, transform: (MixerInputState) -> MixerInputState) {
@@ -355,6 +366,20 @@ constructor(
             locked = name in locks,
             inputKind = inputKind,
         )
+
+    private fun launchAction(action: suspend () -> Unit) {
+        viewModelScope.launch { performAction(action) }
+    }
+
+    private suspend fun performAction(action: suspend () -> Unit) {
+        coroutineResult { action() }
+            .onFailure {
+                // OBS and storage exceptions can contain endpoint or credential details.
+                _errors.emit(
+                    "Couldn't update this channel. Check the OBS connection and try again."
+                )
+            }
+    }
 
     private companion object {
         const val FADER_DEBOUNCE_MS = 120L

@@ -8,6 +8,7 @@ import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +66,9 @@ constructor(
 ) {
     private val discovery = AudioDiscovery(client)
     private val discoveryMutex = Mutex()
+    private val volumeMutationLock = Any()
+    private val volumeRevision = AtomicLong()
+    private val volumeVersions = mutableMapOf<String, Long>()
 
     private val discovered = MutableStateFlow<List<DiscoveredInput>>(emptyList())
     private val activeScene = MutableStateFlow<String?>(null)
@@ -142,9 +146,7 @@ constructor(
                         }
 
                     is ObsEvent.InputVolumeChanged ->
-                        updateInput(event.inputName) {
-                            it.copy(volumeMul = event.volumeMul)
-                        }
+                        previewInputVolume(event.inputName, event.volumeMul)
 
                     else -> Unit
                 }
@@ -198,7 +200,11 @@ constructor(
         if (client.connectionState.value !is ConnectionState.Ready) return@withLock
         activeScene.value = list.currentProgramScene
         _sceneNames.value = list.scenes.map { it.name }
-        discovered.value = inputs
+        synchronized(volumeMutationLock) {
+            volumeVersions
+                .clear() // New discovery is authoritative; old writes cannot roll it back.
+            discovered.value = inputs
+        }
     }
 
     /** Runs discovery for an arbitrary scene (mixer SELECTED mode). */
@@ -206,21 +212,33 @@ constructor(
         discovery.discover(sceneName, settings.settings.first().audioAllowList)
 
     suspend fun setInputVolume(inputName: String, volumeMul: Double) {
-        val previous = discovered.value.firstOrNull { it.name == inputName }?.volumeMul
-        updateInput(inputName) { it.copy(volumeMul = volumeMul) }
-        requestResult { client.setInputVolume(inputName, volumeMul) }
-            .onFailure {
-                // Roll back the optimistic patch; OBS events will re-sync the true value later.
-                if (previous != null) {
-                    updateInput(inputName) { input -> input.copy(volumeMul = previous) }
-                }
+        val (previous, revision) =
+            synchronized(volumeMutationLock) {
+                val previous = discovered.value.firstOrNull { it.name == inputName }?.volumeMul
+                val revision = volumeRevision.incrementAndGet()
+                volumeVersions[inputName] = revision
+                updateInput(inputName) { it.copy(volumeMul = volumeMul) }
+                previous to revision
             }
+        requestResult { client.setInputVolume(inputName, volumeMul) }
+            .onFailure { rollbackVolume(inputName, previous, revision) }
             .getOrThrow()
     }
 
-    /** Local-only fader preview while dragging (OBS write happens on commit). */
+    private fun rollbackVolume(inputName: String, previous: Double?, revision: Long) {
+        synchronized(volumeMutationLock) {
+            if (previous != null && volumeVersions[inputName] == revision) {
+                updateInput(inputName) { it.copy(volumeMul = previous) }
+            }
+        }
+    }
+
+    /** Local preview or OBS event supersedes any older optimistic write. */
     fun previewInputVolume(inputName: String, volumeMul: Double) {
-        updateInput(inputName) { it.copy(volumeMul = volumeMul) }
+        synchronized(volumeMutationLock) {
+            volumeVersions[inputName] = volumeRevision.incrementAndGet()
+            updateInput(inputName) { it.copy(volumeMul = volumeMul) }
+        }
     }
 
     suspend fun setInputMute(inputName: String, muted: Boolean) {

@@ -18,7 +18,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Connect-step state for the first-run wizard. */
@@ -67,13 +66,7 @@ constructor(
         val profileId = profiles.add(name.trim().ifBlank { "My OBS" }, host, port)
         if (!password.isNullOrBlank()) secrets.setPassword(profileId, password)
 
-        sessionHolder.connect(profileId)
-        when (
-            val terminal =
-                sessionHolder.connectionState.first {
-                    it is ConnectionState.Ready || it is ConnectionState.Failed
-                }
-        ) {
+        when (val terminal = sessionHolder.connectAndAwait(profileId)) {
             is ConnectionState.Ready -> {
                 val sceneCount = coroutineResult {
                     client.getSceneList().scenes.size

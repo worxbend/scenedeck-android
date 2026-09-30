@@ -38,6 +38,9 @@ class RegistryTransfer(
     private val _importPreview = MutableStateFlow<ImportPreview?>(null)
     val importPreview: StateFlow<ImportPreview?> = _importPreview.asStateFlow()
 
+    private val _importing = MutableStateFlow(false)
+    val importing: StateFlow<Boolean> = _importing.asStateFlow()
+
     suspend fun encode(): String = RegistryExportCodec.encode(registry.snapshot())
 
     /** Writes the encoded registry to a user-picked document. */
@@ -51,7 +54,9 @@ class RegistryTransfer(
                 }
             }
                 .onSuccess { messages.emit("Registry exported") }
-                .onFailure { messages.emit("Export failed: ${it.message}") }
+                .onFailure {
+                    messages.emit("Export failed. Check the selected document and try again.")
+                }
         }
     }
 
@@ -61,36 +66,54 @@ class RegistryTransfer(
             coroutineResult {
                 withContext(Dispatchers.IO) {
                     resolver.openInputStream(uri)?.use { input ->
-                        input.readBytes().decodeToString()
+                        readRegistryDocument(input)
                     } ?: error("Cannot open registry")
                 }
             }
                 .onSuccess { stage(it) }
-                .onFailure { messages.emit("Import failed: ${it.message}") }
+                .onFailure {
+                    messages.emit("Import failed. Choose a valid SceneDeck registry document.")
+                }
         }
     }
 
     /** Parses the file and stages a preview; malformed files surface as a message. */
     suspend fun stage(payload: String) {
-        coroutineResult { RegistryExportCodec.decode(payload) }
+        coroutineResult {
+            require(payload.length <= MAX_REGISTRY_DOCUMENT_BYTES)
+            RegistryExportCodec.decode(payload)
+        }
             .onSuccess { decoded ->
                 val known = knownSceneNames()
                 val newCount = decoded.count { it.sceneName !in known }
                 _importPreview.value = ImportPreview(decoded, newCount, decoded.size - newCount)
             }
-            .onFailure { messages.emit("Import failed: ${it.message}") }
+            .onFailure {
+                messages.emit("Import failed. Choose a valid SceneDeck registry document.")
+            }
     }
 
     fun dismissPreview() {
+        if (_importing.value) return
         _importPreview.value = null
     }
 
     fun confirmImport() {
         val preview = _importPreview.value ?: return
+        if (!_importing.compareAndSet(false, true)) return
         scope.launch {
-            val (inserted, updated) = registry.importMerge(preview.entries)
-            messages.emit("Imported $inserted new, updated $updated entries")
-            _importPreview.value = null
+            try {
+                coroutineResult { registry.importMerge(preview.entries) }
+                    .onSuccess { (inserted, updated) ->
+                        if (_importPreview.value === preview) _importPreview.value = null
+                        messages.emit("Imported $inserted new, updated $updated entries")
+                    }
+                    .onFailure {
+                        messages.emit("Import failed. Your preview is kept; try again.")
+                    }
+            } finally {
+                _importing.value = false
+            }
         }
     }
 }

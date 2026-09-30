@@ -1,6 +1,7 @@
 package com.scenedeck.android.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,12 +19,16 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,26 +78,33 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val outputSafety by viewModel.outputSafety.collectAsStateWithLifecycle()
-    SettingsContent(
-        currentTheme = currentTheme,
-        onThemeSelect = onThemeSelect,
-        darkMode = darkMode,
-        onDarkModeChange = onDarkModeChange,
-        motionLevel = motionLevel,
-        onMotionLevelChange = onMotionLevelChange,
-        dynamicColor = dynamicColor,
-        onDynamicColorChange = onDynamicColorChange,
-        haptics = haptics,
-        onHapticsChange = onHapticsChange,
-        keepScreenOn = keepScreenOn,
-        onKeepScreenOnChange = onKeepScreenOnChange,
-        outputSafety = outputSafety,
-        onConfirmStartStreamChange = viewModel::setConfirmStartStream,
-        onConfirmStopStreamChange = viewModel::setConfirmStopStream,
-        onConfirmStartRecordChange = viewModel::setConfirmStartRecord,
-        onConfirmStopRecordChange = viewModel::setConfirmStopRecord,
-        modifier = modifier,
-    )
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
+    }
+    Box(modifier.fillMaxSize()) {
+        SettingsContent(
+            currentTheme = currentTheme,
+            onThemeSelect = onThemeSelect,
+            darkMode = darkMode,
+            onDarkModeChange = onDarkModeChange,
+            motionLevel = motionLevel,
+            onMotionLevelChange = onMotionLevelChange,
+            dynamicColor = dynamicColor,
+            onDynamicColorChange = onDynamicColorChange,
+            haptics = haptics,
+            onHapticsChange = onHapticsChange,
+            keepScreenOn = keepScreenOn,
+            onKeepScreenOnChange = onKeepScreenOnChange,
+            outputSafety = outputSafety,
+            onConfirmStartStreamChange = viewModel::setConfirmStartStream,
+            onConfirmStopStreamChange = viewModel::setConfirmStopStream,
+            onConfirmStartRecordChange = viewModel::setConfirmStartRecord,
+            onConfirmStopRecordChange = viewModel::setConfirmStopRecord,
+            modifier = Modifier,
+        )
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

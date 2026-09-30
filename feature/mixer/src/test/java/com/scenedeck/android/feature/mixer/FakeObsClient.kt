@@ -27,6 +27,7 @@ internal class FakeObsClient(
     var specialInputs = SpecialInputs(desktop1 = "Desktop Audio", mic1 = "Mic/Aux")
     var sceneItems: Map<String, List<SceneItemInfo>> = emptyMap()
     var beforeSceneItems: suspend (String) -> Unit = {}
+    var actionFailure: Exception? = null
     var mutedInputs = mutableSetOf<String>()
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -54,12 +55,29 @@ internal class FakeObsClient(
     override suspend fun getInputMute(inputName: String): Boolean = inputName in mutedInputs
 
     override suspend fun setInputMute(inputName: String, muted: Boolean) {
+        actionFailure?.let { throw it }
         if (muted) mutedInputs += inputName else mutedInputs -= inputName
     }
 
     override suspend fun getInputVolume(inputName: String): Double = 1.0
 
-    override suspend fun setInputVolume(inputName: String, volumeMul: Double) = Unit
+    override suspend fun setInputVolume(inputName: String, volumeMul: Double) {
+        actionFailure?.let { throw it }
+    }
+
+    override suspend fun setInputAudioMonitorType(
+        inputName: String,
+        monitorType: com.scenedeck.android.core.model.MonitorTypeKind,
+    ) {
+        actionFailure?.let { throw it }
+    }
+
+    override suspend fun triggerMediaInputAction(
+        inputName: String,
+        action: com.scenedeck.android.core.model.MediaActionKind,
+    ) {
+        actionFailure?.let { throw it }
+    }
 
     override suspend fun getStats(): ObsStats = error("not needed")
 

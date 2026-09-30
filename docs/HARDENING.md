@@ -114,3 +114,10 @@ Roborazzi previews. Hosted CodeQL results are reported separately by GitHub Acti
 Replay Buffer was removed from Android scope: controls, actions, telemetry polling,
 protocol methods/events and fixtures. A menu regression check verifies that replay
 actions are absent; virtual camera protocol coverage remains.
+
+The subsequent [codebase review](REVIEW_2026-09-30.md) documents additional
+session, telemetry, interaction and CI fixes accompanying the persistent status bar.
+
+Persistent-bar and review verification: **378 tests, zero failures**, debug assembly,
+Android Lint, formatting, Detekt complexity checks, strict Semgrep and Gitleaks all
+passed. Updated app/design-system/mixer previews rendered successfully.

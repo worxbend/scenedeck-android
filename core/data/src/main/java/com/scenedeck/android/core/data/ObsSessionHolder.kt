@@ -10,7 +10,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,15 +41,17 @@ constructor(
     @ApplicationScope private val appScope: CoroutineScope,
 ) {
     private val failure = MutableStateFlow<ConnectionState.Failed?>(null)
+    private val preparing = MutableStateFlow(false)
     private val commandLock = Any()
+    private var commandGeneration = 0L
     private var commandJob: Job? = null
 
     /** Gates the one-shot auto-connect in init (explicit connect/disconnect also count). */
     private val autoConnectAttempted = AtomicBoolean(false)
 
     val connectionState: StateFlow<ConnectionState> =
-        combine(client.connectionState, failure) { state, error ->
-                error ?: state
+        combine(client.connectionState, failure, preparing) { state, error, pending ->
+                if (pending) ConnectionState.Connecting else error ?: state
             }
             .stateIn(appScope, SharingStarted.Eagerly, client.connectionState.value)
 
@@ -85,30 +89,67 @@ constructor(
         enqueueConnect(profileId)
     }
 
-    private fun enqueueConnect(profileId: Long) = enqueue {
-        val profile = profiles.byId(profileId) ?: error("Saved profile no longer exists")
-        val password = secrets.passwordFor(profile.id)
-        profiles.markUsed(profile.id)
-        settings.setLastUsedProfileId(profile.id)
-        currentCoroutineContext().ensureActive()
-        client.connect(profile.host, profile.port, password)
+    /** Awaits this request's terminal state, never a stale state from an earlier attempt. */
+    suspend fun connectAndAwait(profileId: Long): ConnectionState {
+        autoConnectAttempted.set(true)
+        val request = enqueueConnect(profileId)
+        return try {
+            request.await()
+        } catch (cancelled: CancellationException) {
+            request.cancel()
+            throw cancelled
+        }
     }
+
+    private fun enqueueConnect(profileId: Long) =
+        enqueue(connecting = true) {
+            val profile = profiles.byId(profileId) ?: error("Saved profile no longer exists")
+            val password = secrets.passwordFor(profile.id)
+            profiles.markUsed(profile.id)
+            settings.setLastUsedProfileId(profile.id)
+            currentCoroutineContext().ensureActive()
+            client.connect(profile.host, profile.port, password)
+        }
 
     fun disconnect() {
         autoConnectAttempted.set(true)
         enqueue { client.disconnect() }
     }
 
-    private fun enqueue(operation: suspend () -> Unit) {
+    private fun enqueue(
+        connecting: Boolean = false,
+        operation: suspend () -> Unit,
+    ): Deferred<ConnectionState> =
         synchronized(commandLock) {
             val previous = commandJob
             previous?.cancel()
-            commandJob = appScope.launch {
-                previous?.join()
-                failure.value = null
-                requestResult { operation() }.onFailure { reportFailure(it) }
-            }
+            val generation = ++commandGeneration
+            preparing.value = connecting
+            failure.value = null
+            appScope
+                .async {
+                    try {
+                        previous?.join()
+                        currentCoroutineContext().ensureActive()
+                        performOperation(operation)
+                    } finally {
+                        synchronized(commandLock) {
+                            if (commandGeneration == generation) preparing.value = false
+                        }
+                    }
+                }
+                .also { commandJob = it }
         }
+
+    private suspend fun performOperation(operation: suspend () -> Unit): ConnectionState {
+        val result = requestResult { operation() }
+        result.exceptionOrNull()?.let { error ->
+            // Failed preparation must not leave an old Ready session behind a Failed overlay.
+            requestResult { client.disconnect() }
+            reportFailure(error)
+        }
+        currentCoroutineContext().ensureActive()
+        return failure.value ?: client.connectionState.value
     }
 
     private fun reportFailure(error: Throwable? = null) {

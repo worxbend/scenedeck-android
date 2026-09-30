@@ -63,12 +63,9 @@ constructor(
     private suspend fun connectToLastUsed(): SceneSwitchResult? {
         val profileId = settings.settings.first().lastUsedProfileId ?: profiles.lastUsed()?.id
         if (profileId == null) return SceneSwitchResult.NoProfile
-        sessionHolder.connect(profileId)
         val terminal =
             withTimeoutOrNull(CONNECT_TIMEOUT_MS) {
-                client.connectionState.first {
-                    it is ConnectionState.Ready || it is ConnectionState.Failed
-                }
+                sessionHolder.connectAndAwait(profileId)
             }
         return if (terminal is ConnectionState.Ready) null else SceneSwitchResult.NotConnected
     }

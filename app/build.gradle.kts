@@ -115,6 +115,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.roborazzi)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.glance.appwidget.testing)
     testImplementation(libs.androidx.glance.testing)
 

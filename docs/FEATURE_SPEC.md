@@ -157,3 +157,13 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 - Profile/credential operations attempt rollback on storage failure; edited connection tests reuse saved passwords when blank.
 - Scenes header shows output status and separate elapsed timers; simultaneous stream/record shows both.
 - Stream, Record and VCam are direct controls; Replay Buffer is excluded.
+
+### Persistent broadcast status
+
+The bottom status bar follows the session on every main tab. OBS connection and
+broadcast state are separate: OFF AIR when outputs are idle, LIVE with green
+elapsed stream time, REC with amber recording time (both when simultaneous).
+Stream reconnecting and paused recording have explicit labels. Before the first
+output poll it says Checking outputs; a lost connection makes output state unknown.
+Performance readings appear on a compact second row only while streaming;
+standby and recording-only states hide them.

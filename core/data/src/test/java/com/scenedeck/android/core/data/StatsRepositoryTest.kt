@@ -1,9 +1,11 @@
 package com.scenedeck.android.core.data
 
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -101,6 +103,85 @@ class StatsRepositoryTest {
         client.setDisconnected()
         testScheduler.runCurrent()
         assertTrue(repository.samples.value.isEmpty())
+    }
+
+    @Test
+    fun failedRequestClearsOnlyItsReadingAndOtherOutputsStillRefresh() = runTest {
+        var failStats = false
+        var failRecord = false
+        val client =
+            object : FakeObsClient(statsResponse = statsResponse()) {
+                override suspend fun getStats(): ObsStats {
+                    check(!failStats)
+                    return super.getStats()
+                }
+
+                override suspend fun getRecordStatus(): RecordStatus {
+                    check(!failRecord)
+                    return super.getRecordStatus()
+                }
+            }
+        client.streamStatusResponse = streamStatus()
+        client.recordStatusResponse = RecordStatus(true, false, "00:00:01.000", 1000, 42)
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        assertEquals(true, repository.telemetry.value.record?.active)
+        failStats = true
+        failRecord = true
+        client.streamStatusResponse = streamStatus().copy(active = false)
+        advanceTimeBy(1100)
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.stats)
+        assertEquals(null, repository.telemetry.value.record)
+        assertEquals(false, repository.telemetry.value.stream?.active)
+    }
+
+    @Test
+    fun outputEventUpdatesImmediatelyAndWinsAgainstOlderInflightPoll() = runTest {
+        val response = CompletableDeferred<StreamStatus>()
+        val client =
+            object : FakeObsClient() {
+                override suspend fun getStreamStatus(): StreamStatus = response.await()
+            }
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        client.emit(ObsEvent.StreamStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED"))
+        client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED", null))
+        runCurrent()
+        assertEquals(true, repository.telemetry.value.stream?.active)
+        assertEquals(true, repository.telemetry.value.record?.active)
+        response.complete(streamStatus().copy(active = false))
+        runCurrent()
+        assertEquals(true, repository.telemetry.value.stream?.active)
+        client.setDisconnected()
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.stream)
+        client.emit(ObsEvent.StreamStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED"))
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.stream)
+    }
+
+    @Test
+    fun startEventsResetPreviousOutputTimerAndRecordPauseIsImmediate() = runTest {
+        val client = FakeObsClient()
+        client.streamStatusResponse = streamStatus().copy(active = false)
+        client.recordStatusResponse = RecordStatus(false, false, "00:00:20.000", 20000, 1234)
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        client.emit(ObsEvent.StreamStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED"))
+        client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED", null))
+        runCurrent()
+        assertEquals(0L, repository.telemetry.value.stream?.durationMs)
+        assertEquals("00:00:00.000", repository.telemetry.value.record?.timecode)
+        client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_PAUSED", null))
+        runCurrent()
+        assertEquals(true, repository.telemetry.value.record?.paused)
+        client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_RESUMED", null))
+        runCurrent()
+        assertEquals(false, repository.telemetry.value.record?.paused)
     }
 
     private fun statsResponse() =

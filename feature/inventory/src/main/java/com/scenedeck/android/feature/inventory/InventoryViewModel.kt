@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.inventory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRegistryEntry
@@ -93,14 +94,14 @@ constructor(
         get() = transfer.importPreview
 
     fun setRole(sceneName: String, role: SceneRole) {
-        viewModelScope.launch {
+        launchAction {
             val existing = registry.byName(sceneName)
             registry.update(sceneName, role, existing?.accentColorArgb, existing?.iconName)
         }
     }
 
     fun setAccent(sceneName: String, accentArgb: Long?) {
-        viewModelScope.launch {
+        launchAction {
             val existing = registry.byName(sceneName)
             registry.update(
                 sceneName,
@@ -112,7 +113,7 @@ constructor(
     }
 
     fun setIcon(sceneName: String, iconName: String?) {
-        viewModelScope.launch {
+        launchAction {
             val existing = registry.byName(sceneName)
             registry.update(
                 sceneName,
@@ -124,22 +125,31 @@ constructor(
     }
 
     fun removeStale(sceneName: String) {
-        viewModelScope.launch {
+        launchAction {
             registry.remove(sceneName)
             _messages.emit("Removed stale entry “$sceneName”")
         }
     }
 
     fun reorder(orderedSceneNames: List<String>) {
-        viewModelScope.launch { registry.reorder(orderedSceneNames) }
+        launchAction { registry.reorder(orderedSceneNames) }
     }
 
     fun bulkAssignUnassigned() {
-        viewModelScope.launch {
+        launchAction {
             val names =
                 uiState.value.scenes.filter { it.entry == null && !it.stale }.map { it.name }
             registry.assignRoleToUnassigned(names, SceneRole.SECONDARY)
             _messages.emit("Assigned ${names.size} scenes to Secondary")
+        }
+    }
+
+    private fun launchAction(action: suspend () -> Unit) {
+        viewModelScope.launch {
+            coroutineResult { action() }
+                .onFailure {
+                    _messages.emit("Couldn't save scene curation. Please try again.")
+                }
         }
     }
 }

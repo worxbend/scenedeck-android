@@ -1,6 +1,7 @@
 package com.scenedeck.android.feature.mixer
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,9 +26,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,38 +77,49 @@ fun MixerScreen(
     val mediaStatus by viewModel.mediaStatus.collectAsStateWithLifecycle()
     var extrasFor by remember { mutableStateOf<String?>(null) }
 
-    when (val connection = uiState.connection) {
-        is ConnectionState.Ready ->
-            MixerContent(
-                uiState = uiState,
-                levelsStore = viewModel.levelsStore,
-                motionLevel = motionLevel,
-                hapticsEnabled = hapticsEnabled,
-                callbacks =
-                    MixerCallbacks(
-                        onModeChange = viewModel::setMode,
-                        onSelectScene = { viewModel.selectScene(it) },
-                        onGroupingChange = viewModel::setGrouping,
-                        onSearchChange = viewModel::setSearch,
-                        onVolumePreview = viewModel::onVolumePreview,
-                        onVolumeCommit = viewModel::onVolumeCommit,
-                        onToggleMute = viewModel::toggleMute,
-                        onToggleLock = viewModel::toggleLock,
-                        onMediaPlayPause = viewModel::mediaPlayPause,
-                        onMediaRestart = viewModel::mediaRestart,
-                    ),
-                mediaStatus = mediaStatus,
-                onExtrasClick = { extrasFor = it },
-                modifier = modifier,
-            )
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
+    }
+    Box(modifier.fillMaxSize()) {
+        when (val connection = uiState.connection) {
+            is ConnectionState.Ready ->
+                MixerContent(
+                    uiState = uiState,
+                    levelsStore = viewModel.levelsStore,
+                    motionLevel = motionLevel,
+                    hapticsEnabled = hapticsEnabled,
+                    callbacks =
+                        MixerCallbacks(
+                            onModeChange = viewModel::setMode,
+                            onSelectScene = { viewModel.selectScene(it) },
+                            onGroupingChange = viewModel::setGrouping,
+                            onSearchChange = viewModel::setSearch,
+                            onVolumePreview = viewModel::onVolumePreview,
+                            onVolumeCommit = viewModel::onVolumeCommit,
+                            onToggleMute = viewModel::toggleMute,
+                            onToggleLock = viewModel::toggleLock,
+                            onMediaPlayPause = viewModel::mediaPlayPause,
+                            onMediaRestart = viewModel::mediaRestart,
+                        ),
+                    mediaStatus = mediaStatus,
+                    onExtrasClick = { extrasFor = it },
+                    modifier = Modifier,
+                )
 
-        else ->
-            DisconnectedPlaceholder(
-                connectionState = connection,
-                onConnect = onNavigateToConnections,
-            )
+            else ->
+                DisconnectedPlaceholder(
+                    connectionState = connection,
+                    onConnect = onNavigateToConnections,
+                )
+        }
+
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
+    LaunchedEffect(uiState.connection) {
+        if (uiState.connection !is ConnectionState.Ready) extrasFor = null
+    }
     extrasFor?.let { inputName ->
         AudioExtrasSheet(
             inputName = inputName,

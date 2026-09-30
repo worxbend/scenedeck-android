@@ -1,6 +1,7 @@
 package com.scenedeck.android.core.designsystem.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -47,10 +48,8 @@ fun TBar(
         animateFloatAsState(
             targetValue = if (dragging) dragFraction else 0f,
             animationSpec =
-                spring(
-                    dampingRatio = if (motionLevel == MotionLevel.OFF) 1f else 0.6f,
-                    stiffness = if (motionLevel == MotionLevel.OFF) 10_000f else 400f,
-                ),
+                if (motionLevel == MotionLevel.OFF) snap()
+                else spring(dampingRatio = 0.6f, stiffness = 400f),
             label = "tbarThumb",
         )
     val armed = displayed >= TRIGGER_THRESHOLD

@@ -72,6 +72,23 @@ class GraphViewModelTest {
         assertEquals(emptyList<String>(), viewModel.parentsOf("Show"))
     }
 
+    @Test
+    fun sceneEventsRefreshGraphWithoutRegistryEdits(): Unit = runBlocking {
+        val client = FakeObsClient()
+        client.setReady()
+        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        withTimeout(5_000) { viewModel.uiState.first { it.graph != null } }
+        client.extraScene = "New scene"
+        client.events.emit(ObsEvent.SceneCreated("New scene", false))
+        val refreshed =
+            withTimeout(5_000) {
+                viewModel.uiState.first {
+                    it.graph?.nodes?.any { node -> node.name == "New scene" } == true
+                }
+            }
+        assertTrue(refreshed.graph!!.nodes.any { it.name == "New scene" })
+    }
+
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 
@@ -101,10 +118,11 @@ class GraphViewModelTest {
 
     @Suppress("TooManyFunctions")
     private class FakeObsClient : ObsClient {
+        var extraScene: String? = null
         private val _connectionState =
             MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
-        override val events: SharedFlow<ObsEvent> = MutableSharedFlow(extraBufferCapacity = 4)
+        override val events = MutableSharedFlow<ObsEvent>(extraBufferCapacity = 4)
         override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = MutableSharedFlow()
 
         fun setReady() {
@@ -125,7 +143,7 @@ class GraphViewModelTest {
                         SceneSummary("Cam 1", 1),
                         SceneSummary("LowerThird", 2),
                         SceneSummary("Scratch", 3),
-                    ),
+                    ) + listOfNotNull(extraScene?.let { SceneSummary(it, 4) }),
             )
 
         override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> =

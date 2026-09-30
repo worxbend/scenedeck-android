@@ -188,3 +188,8 @@ Standby when idle, LIVE with green stream time and REC with amber recording time
 Simultaneous outputs show both rows; status dots pulse only with Full motion.
 The direct control row contains Stream, Record and VCam. Keep system insets and
 accessible status descriptions. Replay Buffer is excluded from Android.
+
+The persistent bottom bar separates connection/output state from performance
+metrics into two compact rows while streaming; standby and recording-only states
+hide performance metrics. It reuses broadcast tally colors and timer pills
+across all main tabs, with explicit OFF AIR, retrying, paused and unknown states.

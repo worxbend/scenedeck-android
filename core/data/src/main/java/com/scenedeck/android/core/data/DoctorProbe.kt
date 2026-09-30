@@ -16,7 +16,7 @@ suspend fun probeBrokenAudioInputs(
 ): Map<String, List<String>> {
     val broken = mutableMapOf<String, List<String>>()
     for (scene in primaryScenes) {
-        val items = requestResult { client.getSceneItemList(scene) }.getOrNull() ?: continue
+        val items = client.getSceneItemList(scene)
         val failures =
             items
                 .filter { it.inputKind != null && it.enabled }

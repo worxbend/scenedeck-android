@@ -167,6 +167,43 @@ class ObsSessionHolderTest {
         assertEquals(0, client.connectCalls.size)
     }
 
+    @Test
+    fun failedProfileSwitchClosesPreviousSessionBeforePublishingFailure(): Unit = runBlocking {
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Ready } }
+        secrets.readFailure = IllegalStateException("private credential error")
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Failed } }
+        assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+        assertTrue(client.disconnectCalled)
+        assertEquals(1, client.connectCalls.size)
+    }
+
+    @Test
+    fun awaitConnectReturnsItsOwnOutcomeAfterEarlierFailure(): Unit = runBlocking {
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        assertTrue(holder.connectAndAwait(-1) is ConnectionState.Failed)
+        assertTrue(holder.connectAndAwait(FakeProfileDao.PROFILE_ID) is ConnectionState.Ready)
+    }
+
+    @Test
+    fun replacementConnectMasksTransientClientDisconnection(): Unit = runBlocking {
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connectAndAwait(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Ready } }
+        val gate = CompletableDeferred<Unit>()
+        client.connectGate = gate
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { client.connectionState.first { it is ConnectionState.Disconnected } }
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Connecting } }
+        assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+        assertEquals(ConnectionState.Connecting, holder.connectionState.value)
+        gate.complete(Unit)
+        withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Ready } }
+        assertEquals(2, client.connectCalls.size)
+    }
+
     // ── Fakes ───────────────────────────────────────────────────────────────
 
     private class FailingDataStore : DataStore<Preferences> {
@@ -230,6 +267,7 @@ class ObsSessionHolderTest {
         data class ConnectCall(val host: String, val port: Int, val password: String?)
 
         val connectCalls = mutableListOf<ConnectCall>()
+        @Volatile var connectGate: CompletableDeferred<Unit>? = null
 
         @Volatile var disconnectCalled = false
 
@@ -241,6 +279,10 @@ class ObsSessionHolderTest {
 
         override suspend fun connect(host: String, port: Int, password: String?) {
             connectCalls += ConnectCall(host, port, password)
+            connectGate?.let { gate ->
+                _connectionState.value = ConnectionState.Disconnected
+                gate.await()
+            }
             _connectionState.value =
                 ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test"))
         }

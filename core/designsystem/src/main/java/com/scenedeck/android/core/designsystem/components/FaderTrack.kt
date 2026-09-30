@@ -61,6 +61,7 @@ internal fun FaderTrack(
         if (dragFraction.isNaN()) dbToFraction(mulToDb(volumeMul)) else dragFraction
     val dragging = !dragFraction.isNaN()
     val currentFraction by rememberUpdatedState(displayFraction)
+    val currentVolume by rememberUpdatedState(volumeMul)
     val currentPreview by rememberUpdatedState(onPreview)
     val currentCommit by rememberUpdatedState(onCommit)
 
@@ -104,6 +105,7 @@ internal fun FaderTrack(
                         enabled,
                         FaderGestureCallbacks(
                             { currentFraction },
+                            { currentVolume },
                             { dragFraction },
                             { dragFraction = it },
                             { currentPreview(it) },
@@ -238,6 +240,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFaderThumb(
 
 private class FaderGestureCallbacks(
     val currentFraction: () -> Float,
+    val currentVolume: () -> Double,
     val dragFraction: () -> Float,
     val setDragFraction: (Float) -> Unit,
     val currentPreview: (Double) -> Unit,
@@ -248,8 +251,12 @@ private fun Modifier.faderDrag(enabled: Boolean, callbacks: FaderGestureCallback
     this.pointerInput(enabled) {
         if (!enabled) return@pointerInput
         var startFraction = callbacks.currentFraction()
+        var startVolume = callbacks.currentVolume()
         detectVerticalDragGestures(
-            onDragStart = { startFraction = callbacks.currentFraction() },
+            onDragStart = {
+                startFraction = callbacks.currentFraction()
+                startVolume = callbacks.currentVolume()
+            },
             onDragEnd = {
                 val final = callbacks.dragFraction()
                 if (!final.isNaN()) {
@@ -257,7 +264,10 @@ private fun Modifier.faderDrag(enabled: Boolean, callbacks: FaderGestureCallback
                     callbacks.setDragFraction(Float.NaN)
                 }
             },
-            onDragCancel = { callbacks.setDragFraction(Float.NaN) },
+            onDragCancel = {
+                if (!callbacks.dragFraction().isNaN()) callbacks.currentCommit(startVolume)
+                callbacks.setDragFraction(Float.NaN)
+            },
         ) { change, dragAmount ->
             change.consume()
             val base =
