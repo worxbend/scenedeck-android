@@ -86,3 +86,10 @@ must pass, and Compose preview(s) for changed screens must render.
   with catalog versions documented in TECH_STACK.md; avoid forcing those jars into
   Android runtime configurations. Recheck `buildEnvironment` and debug signing after
   changing them.
+
+## Delivery contract
+
+- `.github/workflows/release.yml` gates APK/AAB builds on quality checks.
+- Signing uses environment credentials; never commit upload keys or service-account JSON.
+- Play delivery defaults to internal/draft; setup is documented in `docs/RELEASING.md`.
+- Validate delivery changes with `python3 scripts/test_release_metadata.py` and `ruby fastlane/test_publish.rb`.

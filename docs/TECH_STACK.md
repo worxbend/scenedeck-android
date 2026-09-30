@@ -167,3 +167,7 @@ Verify the actual selection with `./gradlew buildEnvironment`; `:app:assembleDeb
 exercises the patched AGP tooling and debug signing. Existing UI and JVM tests must
 still pass before merging. These minima address the reported advisories; dependency
 review and Dependabot must continue checking future upstream security fixes.
+
+## Delivery tools
+
+GitHub Actions builds APK/AAB artifacts. Google Play uploads use Ruby 3.3, Bundler 2.5.22, and Fastlane 2.240.1, pinned in `Gemfile`/`Gemfile.lock`. See [RELEASING.md](RELEASING.md) for credentials and track controls.

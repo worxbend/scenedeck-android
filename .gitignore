@@ -13,3 +13,11 @@ local.properties
 
 **/__pycache__/
 *.pyc
+
+*.jks
+*.keystore
+.secrets/
+.bundle/
+vendor/bundle/
+fastlane/report.xml
+fastlane/README.md

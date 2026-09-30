@@ -1,0 +1,46 @@
+require "json"
+
+default_platform(:android)
+
+platform :android do
+  desc "Upload a signed Android App Bundle to an existing Google Play app"
+  lane :publish do
+    aab_path = ENV.fetch("AAB_PATH", "")
+    key_path = ENV.fetch("PLAY_JSON_KEY_PATH", "")
+    track = ENV.fetch("PLAY_TRACK", "internal")
+    release_status = ENV.fetch("PLAY_RELEASE_STATUS", "draft")
+    package_name = ENV.fetch("PACKAGE_NAME", "com.scenedeck.android")
+
+    UI.user_error!("AAB_PATH must point to an existing .aab file") unless
+      File.file?(aab_path) && File.extname(aab_path).downcase == ".aab"
+    UI.user_error!("PLAY_JSON_KEY_PATH must point to an existing credentials file") unless
+      File.file?(key_path)
+    UI.user_error!("PLAY_TRACK must be internal, beta, or production") unless
+      %w[internal beta production].include?(track)
+    UI.user_error!("PLAY_RELEASE_STATUS must be draft or completed") unless
+      %w[draft completed].include?(release_status)
+    UI.user_error!("PACKAGE_NAME must be a valid Android application ID") unless
+      /\A[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+\z/.match?(package_name)
+
+    begin
+      credentials = JSON.parse(File.read(key_path))
+    rescue JSON::ParserError
+      UI.user_error!("PLAY_JSON_KEY_PATH must contain valid JSON credentials")
+    end
+    UI.user_error!("PLAY_JSON_KEY_PATH must contain service-account credentials") unless
+      credentials.is_a?(Hash) && credentials["type"] == "service_account"
+
+    upload_to_play_store(
+      package_name: package_name,
+      json_key: File.expand_path(key_path),
+      aab: File.expand_path(aab_path),
+      track: track,
+      release_status: release_status,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

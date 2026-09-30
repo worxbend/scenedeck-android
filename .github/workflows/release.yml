@@ -1,0 +1,236 @@
+name: Build and publish Android
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Build type (release requires signing secrets)
+        type: choice
+        options: [debug, release]
+        default: debug
+      version_name:
+        description: Version name (X.Y.Z or X.Y.Z-prerelease)
+        type: string
+        default: '0.1.0'
+      version_code:
+        description: Play version code (blank uses 1000 + workflow run number)
+        type: string
+      publish_play:
+        description: Upload the signed bundle to Google Play
+        type: boolean
+        default: false
+      play_track:
+        description: Google Play track
+        type: choice
+        options: [internal, beta, production]
+        default: internal
+      play_release_status:
+        description: Draft saves for review; completed delivers to selected track
+        type: choice
+        options: [draft, completed]
+        default: draft
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-delivery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      variant: ${{ steps.metadata.outputs.variant }}
+      version_name: ${{ steps.metadata.outputs.version_name }}
+      version_code: ${{ steps.metadata.outputs.version_code }}
+      publish_play: ${{ steps.metadata.outputs.publish_play }}
+      tagged: ${{ steps.metadata.outputs.tagged }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: metadata
+        name: Validate release inputs
+        env:
+          INPUT_VARIANT: ${{ inputs.variant || 'debug' }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+          INPUT_PUBLISH_PLAY: ${{ inputs.publish_play || 'false' }}
+          PLAY_PUBLISH_ENABLED: ${{ vars.PLAY_PUBLISH_ENABLED || 'false' }}
+        run: python3 scripts/release-metadata.py
+
+  verify:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-37.0"
+      - uses: astral-sh/setup-uv@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Validate delivery contracts
+        run: |
+          python3 scripts/test_release_metadata.py
+          ruby fastlane/test_publish.rb
+      - name: Quality and security gate
+        run: scripts/check-quality.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: delivery-quality-reports
+          path: |
+            **/build/reports/detekt/**
+            **/build/reports/lint-results*.*
+            **/build/reports/tests/**
+            build/reports/security/**
+          retention-days: 14
+
+  build:
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BUILD_VARIANT: ${{ needs.prepare.outputs.variant }}
+      VERSION_NAME: ${{ needs.prepare.outputs.version_name }}
+      VERSION_CODE: ${{ needs.prepare.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-37.0"
+      - name: Prepare release upload key
+        if: env.BUILD_VARIANT == 'release'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          required = ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"]
+          if any(not os.environ.get(name) for name in required):
+              raise SystemExit("Configure all four Android signing secrets before building a release")
+          path = Path(os.environ["RUNNER_TEMP"]) / "scenedeck-release.keystore"
+          path.write_bytes(base64.b64decode("".join(os.environ["ANDROID_KEYSTORE_BASE64"].split()), validate=True))
+          path.chmod(0o600)
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"ANDROID_KEYSTORE_FILE={path}\n")
+          PY
+      - name: Build APK and app bundle
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ "$BUILD_VARIANT" == release ]]; then
+            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --no-configuration-cache \
+              -PreleaseVersionName="$VERSION_NAME" -PreleaseVersionCode="$VERSION_CODE"
+          else
+            ./gradlew :app:assembleDebug --no-daemon --no-configuration-cache \
+              -PreleaseVersionName="$VERSION_NAME" -PreleaseVersionCode="$VERSION_CODE"
+          fi
+      - name: Package downloadable artifacts
+        run: |
+          mkdir -p dist
+          cp "app/build/outputs/apk/$BUILD_VARIANT/app-$BUILD_VARIANT.apk" "dist/scenedeck-android-$BUILD_VARIANT.apk"
+          if [[ "$BUILD_VARIANT" == release ]]; then
+            cp app/build/outputs/bundle/release/app-release.aab dist/scenedeck-android-release.aab
+          fi
+          cd dist
+          shopt -s nullglob
+          sha256sum *.apk *.aab > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scenedeck-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.version_code }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Delete temporary upload key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/scenedeck-release.keystore"
+
+  github-release:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.tagged == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: scenedeck-release-${{ needs.prepare.outputs.version_code }}
+          path: dist
+      - name: Publish versioned APK and bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes "${flags[@]}"
+
+  google-play:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish_play == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: google-play
+    env:
+      FASTLANE_OPT_OUT_USAGE: true
+      FASTLANE_SKIP_UPDATE_CHECK: true
+      PLAY_TRACK: ${{ inputs.play_track || 'internal' }}
+      PLAY_RELEASE_STATUS: ${{ inputs.play_release_status || 'draft' }}
+      PACKAGE_NAME: com.scenedeck.android
+      AAB_PATH: ${{ github.workspace }}/dist/scenedeck-android-release.aab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: scenedeck-release-${{ needs.prepare.outputs.version_code }}
+          path: dist
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Prepare Google Play API credentials
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          credential = os.environ.get("PLAY_SERVICE_ACCOUNT_JSON", "")
+          if not credential:
+              raise SystemExit("Configure PLAY_SERVICE_ACCOUNT_JSON before publishing")
+          data = json.loads(credential)
+          if data.get("type") != "service_account" or not data.get("private_key") or not data.get("client_email"):
+              raise SystemExit("A Google service-account JSON key is required")
+          path = Path(os.environ["RUNNER_TEMP"]) / "scenedeck-play.json"
+          path.write_text(credential)
+          path.chmod(0o600)
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"PLAY_JSON_KEY_PATH={path}\n")
+          PY
+      - name: Upload bundle to Google Play
+        run: bundle exec fastlane android publish
+      - name: Delete temporary API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/scenedeck-play.json"

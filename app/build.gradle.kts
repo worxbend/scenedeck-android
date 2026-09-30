@@ -19,8 +19,23 @@ android {
         applicationId = "com.scenedeck.android"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.let { value ->
+            value.toIntOrNull()?.takeIf { it in 1..2_100_000_000 }
+                ?: error("releaseVersionCode must be an integer between 1 and 2100000000")
+        } ?: 1
+        versionName = providers.gradleProperty("releaseVersionName").getOrElse("0.1.0")
+    }
+
+    // CI credentials are ephemeral environment values, never committed Gradle properties.
+    val keyStorePath = providers.environmentVariable("ANDROID_KEYSTORE_FILE").orNull
+    if (!keyStorePath.isNullOrBlank()) {
+        signingConfigs.create("release") {
+            storeFile = file(keyStorePath)
+            storePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").get()
+            keyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").get()
+            keyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").get()
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
 
     buildFeatures {

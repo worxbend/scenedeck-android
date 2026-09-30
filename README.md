@@ -135,3 +135,7 @@ Project development skills are included in [`.kimi/skills`](.kimi/skills).
 **Built for the “one more scene switch” crowd. 🎬**
 
 </div>
+
+## 📦 Build & ship
+
+[Run the Android delivery workflow](https://github.com/worxbend/scenedeck-android/actions/workflows/release.yml) for a downloadable APK. Version tags build signed APK/AAB releases; Google Play delivery supports internal, beta, and production tracks. See [release setup](docs/RELEASING.md) for signing and Play credentials.
