@@ -36,8 +36,8 @@ import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
 /**
  * Studio-mode command bar (FEATURE_SPEC §2/§8): a prominent TRANSITION button (preview → program
- * with the current transition), a CUT button (instant swap), and the current-transition chip
- * opening the picker sheet.
+ * with the current transition), a CUT button (instant swap), and a transition-options gear that
+ * opens the picker sheet. The T-Bar is an advanced control toggled from the deck options menu.
  */
 @Composable
 fun StudioModeBar(
@@ -48,9 +48,9 @@ fun StudioModeBar(
     onTransitionDurationChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     motionLevel: MotionLevel = MotionLevel.FULL,
+    tBarOpen: Boolean = false,
 ) {
     var pickerOpen by remember { mutableStateOf(false) }
-    var advancedOpen by remember { mutableStateOf(false) }
     val colors = SceneDeckTheme.colors
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -97,17 +97,12 @@ fun StudioModeBar(
         ) {
             Text(stringResource(R.string.cut_button))
         }
-        IconButton(
-            onClick = {
-                advancedOpen = !advancedOpen
-                pickerOpen = true
-            }
-        ) {
+        IconButton(onClick = { pickerOpen = true }) {
             Icon(SceneDeckIcons.Settings, stringResource(R.string.transition_options))
         }
     }
 
-    if (advancedOpen) {
+    if (tBarOpen) {
         TBar(
             motionLevel = motionLevel,
             onTrigger = onTransitionClick,

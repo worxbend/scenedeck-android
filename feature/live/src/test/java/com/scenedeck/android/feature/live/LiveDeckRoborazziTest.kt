@@ -2,7 +2,10 @@ package com.scenedeck.android.feature.live
 
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -172,6 +175,45 @@ class LiveDeckRoborazziTest {
     @Test
     fun liveDeckDark() =
         capture(ThemeFamily.SCENEDECK, darkTheme = true, name = "live_deck_dark.png")
+
+    @Test
+    fun reorderEnabledInAllScenes() {
+        filterFixture()
+        composeRule.onNodeWithContentDescription("Scene options").performClick()
+        composeRule.onNodeWithText("Reorder scenes").assertIsEnabled()
+    }
+
+    @Test
+    fun reorderDisabledWhileDeckFilterActive() {
+        filterFixture()
+        composeRule.onNodeWithText("Deck").performClick()
+        composeRule.onNodeWithContentDescription("Scene options").performClick()
+        composeRule.onNodeWithText("Reorder scenes").assertIsNotEnabled()
+    }
+
+    private fun filterFixture() {
+        val deck =
+            DeckState(
+                connectionState =
+                    ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux")),
+                currentProgramScene = "Scene",
+                scenes =
+                    listOf(
+                        SceneCardState("Scene", SceneRole.PRIMARY, null, null, 0, isActive = true)
+                    ),
+            )
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    OutputDeckFixture(
+                        deck = deck,
+                        telemetry = Telemetry(connection = deck.connectionState),
+                        motion = MotionLevel.OFF,
+                    )
+                }
+            }
+        }
+    }
 
     @Test
     fun liveDeckObsDark() =

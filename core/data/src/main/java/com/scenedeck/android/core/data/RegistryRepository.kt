@@ -7,10 +7,18 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Local scene registry (curation metadata) backed by Room (FEATURE_SPEC §6). */
 @Singleton
 class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) {
+    /**
+     * Serializes compound read-modify-write mutations so interleaved calls can't silently lose
+     * updates (this singleton is the only writer of the registry table).
+     */
+    private val mutationMutex = Mutex()
+
     val entries: Flow<List<SceneRegistryEntry>> =
         dao.observeAll().map { list -> list.map { it.toDomain() } }
 
@@ -18,6 +26,15 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
 
     /** Upserts curation metadata for a scene (quick-edit). */
     suspend fun update(
+        sceneName: String,
+        role: SceneRole,
+        accentColorArgb: Long?,
+        iconName: String?,
+    ) = mutationMutex.withLock {
+        updateLocked(sceneName, role, accentColorArgb, iconName)
+    }
+
+    private suspend fun updateLocked(
         sceneName: String,
         role: SceneRole,
         accentColorArgb: Long?,
@@ -36,7 +53,7 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     }
 
     /** Persists a deck order: [orderedSceneNames] get sortOrder 0..n, others keep theirs. */
-    suspend fun reorder(orderedSceneNames: List<String>) {
+    suspend fun reorder(orderedSceneNames: List<String>) = mutationMutex.withLock {
         val entities = orderedSceneNames.mapIndexed { index, name ->
             val existing = dao.byName(name)
             SceneRegistryEntity(
@@ -63,36 +80,38 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     suspend fun snapshot(): List<SceneRegistryEntry> = entries.first()
 
     /** Bulk-assigns a role to scenes that have NO entry yet (fast curation). */
-    suspend fun assignRoleToUnassigned(obsSceneNames: List<String>, role: SceneRole) {
-        val existing = dao.observeAll().first().map { it.sceneName }.toSet()
-        obsSceneNames
-            .filter { it !in existing }
-            .forEach { name ->
-                update(name, role, accentColorArgb = null, iconName = null)
-            }
-    }
+    suspend fun assignRoleToUnassigned(obsSceneNames: List<String>, role: SceneRole) =
+        mutationMutex.withLock {
+            val existing = dao.observeAll().first().map { it.sceneName }.toSet()
+            obsSceneNames
+                .filter { it !in existing }
+                .forEach { name ->
+                    updateLocked(name, role, accentColorArgb = null, iconName = null)
+                }
+        }
 
     /**
      * Merge-import: entries matched by sceneName are updated field-by-field; new names are inserted
      * keeping their imported order when free. Returns (inserted, updated) counts for the
      * confirmation summary.
      */
-    suspend fun importMerge(imported: List<SceneRegistryEntry>): Pair<Int, Int> {
-        var inserted = 0
-        var updated = 0
-        imported.forEach { entry ->
-            val existing = dao.byName(entry.sceneName)
-            if (existing == null) inserted++ else updated++
-            dao.upsert(
-                SceneRegistryEntity(
-                    sceneName = entry.sceneName,
-                    role = entry.role.name,
-                    accentColorArgb = entry.accentColorArgb ?: existing?.accentColorArgb,
-                    iconName = entry.iconName ?: existing?.iconName,
-                    sortOrder = existing?.sortOrder ?: entry.sortOrder,
+    suspend fun importMerge(imported: List<SceneRegistryEntry>): Pair<Int, Int> =
+        mutationMutex.withLock {
+            var inserted = 0
+            var updated = 0
+            imported.forEach { entry ->
+                val existing = dao.byName(entry.sceneName)
+                if (existing == null) inserted++ else updated++
+                dao.upsert(
+                    SceneRegistryEntity(
+                        sceneName = entry.sceneName,
+                        role = entry.role.name,
+                        accentColorArgb = entry.accentColorArgb ?: existing?.accentColorArgb,
+                        iconName = entry.iconName ?: existing?.iconName,
+                        sortOrder = existing?.sortOrder ?: entry.sortOrder,
+                    )
                 )
-            )
+            }
+            inserted to updated
         }
-        return inserted to updated
-    }
 }

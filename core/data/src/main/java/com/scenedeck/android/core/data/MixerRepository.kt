@@ -101,7 +101,10 @@ constructor(
 
     private val _mediaStatus = MutableStateFlow<Map<String, MediaStatus>>(emptyMap())
 
-    /** Playback status per media-kind input, polled at ~2 s while mixer is visible. */
+    /**
+     * Playback status per media-kind input, polled at ~2 s only while connected AND a collector is
+     * subscribed (i.e. the mixer UI is actually visible).
+     */
     val mediaStatus: StateFlow<Map<String, MediaStatus>> = _mediaStatus.asStateFlow()
 
     init {
@@ -155,16 +158,22 @@ constructor(
                 .collectLatest { refreshDiscovery() }
         }
         scope.launch {
-            // Media status polling tracks connection + visibility like the mixer itself.
-            client.connectionState.collectLatest { state ->
-                when (state) {
-                    is ConnectionState.Ready -> {
-                        mixerState.collectLatest { pollMediaLoop() }
-                    }
-
-                    else -> _mediaStatus.value = emptyMap()
+            // Poll only while connected AND subscribed; mixerState emissions (e.g. per-frame
+            // fader previews) must not restart the loop.
+            combine(
+                    client.connectionState,
+                    _mediaStatus.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
+                ) { state, subscribed ->
+                    state is ConnectionState.Ready && subscribed
                 }
-            }
+                .distinctUntilChanged()
+                .collectLatest { active ->
+                    if (active) {
+                        pollMediaLoop()
+                    } else {
+                        _mediaStatus.value = emptyMap()
+                    }
+                }
         }
         scope.launch {
             client.events.collect { event ->
@@ -197,8 +206,16 @@ constructor(
         discovery.discover(sceneName, settings.settings.first().audioAllowList)
 
     suspend fun setInputVolume(inputName: String, volumeMul: Double) {
+        val previous = discovered.value.firstOrNull { it.name == inputName }?.volumeMul
         updateInput(inputName) { it.copy(volumeMul = volumeMul) }
-        client.setInputVolume(inputName, volumeMul)
+        requestResult { client.setInputVolume(inputName, volumeMul) }
+            .onFailure {
+                // Roll back the optimistic patch; OBS events will re-sync the true value later.
+                if (previous != null) {
+                    updateInput(inputName) { input -> input.copy(volumeMul = previous) }
+                }
+            }
+            .getOrThrow()
     }
 
     /** Local-only fader preview while dragging (OBS write happens on commit). */
@@ -207,8 +224,16 @@ constructor(
     }
 
     suspend fun setInputMute(inputName: String, muted: Boolean) {
+        val previous = discovered.value.firstOrNull { it.name == inputName }?.muted
         updateInput(inputName) { it.copy(muted = muted) }
-        client.setInputMute(inputName, muted)
+        requestResult { client.setInputMute(inputName, muted) }
+            .onFailure {
+                // Roll back the optimistic patch; OBS events will re-sync the true value later.
+                if (previous != null) {
+                    updateInput(inputName) { input -> input.copy(muted = previous) }
+                }
+            }
+            .getOrThrow()
     }
 
     suspend fun setLocked(inputName: String, locked: Boolean) {
@@ -234,7 +259,10 @@ constructor(
 
     private suspend fun pollMediaLoop() {
         while (currentCoroutineContext().isActive) {
-            val mediaInputs = mixerState.value.inputs.filter { it.inputKind in MEDIA_INPUT_KINDS }
+            val mediaInputs = discovered.value.filter { it.inputKind in MEDIA_INPUT_KINDS }
+            val liveNames = mediaInputs.mapTo(mutableSetOf()) { it.name }
+            // Prune inputs removed mid-session so stale statuses can't linger.
+            _mediaStatus.update { statuses -> statuses.filterKeys { it in liveNames } }
             mediaInputs.forEach { input -> refreshMediaStatus(input.name) }
             delay(MEDIA_POLL_MS)
         }
@@ -267,6 +295,8 @@ constructor(
 
     private companion object {
         val MEDIA_INPUT_KINDS = setOf("ffmpeg_source", "vlc_source")
+
+        /** Media-status poll cadence; mirrored in MixerRepositoryTest. */
         const val MEDIA_POLL_MS = 2_000L
     }
 }

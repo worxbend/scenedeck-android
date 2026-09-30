@@ -1,6 +1,8 @@
 package com.scenedeck.android.core.data
 
 import com.scenedeck.android.core.model.SceneItemInfo
+import com.scenedeck.android.core.obs.ObsNotConnectedException
+import com.scenedeck.android.core.obs.ObsRequestFailedException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -21,7 +23,13 @@ class RepositoryReliabilityTest {
                     )
 
                 override suspend fun getInputVolume(inputName: String): Double {
-                    if (inputName == "Broken") error("missing input")
+                    if (inputName == "Broken") {
+                        throw ObsRequestFailedException(
+                            "GetInputVolume",
+                            "ResourceNotFound",
+                            "missing input",
+                        )
+                    }
                     return 1.0
                 }
             }
@@ -29,6 +37,42 @@ class RepositoryReliabilityTest {
             mapOf("Main" to listOf("Broken")),
             probeBrokenAudioInputs(client, listOf("Main")),
         )
+    }
+
+    @Test
+    fun doctorAbortsOnTransportFailureInsteadOfReportingBroken() = runTest {
+        val disconnect = ObsNotConnectedException()
+        val client =
+            object : FakeObsClient() {
+                override suspend fun getSceneItemList(sceneName: String) =
+                    listOf(SceneItemInfo(1, 0, "Mic", true, false, "audio"))
+
+                override suspend fun getInputVolume(inputName: String): Double = throw disconnect
+            }
+        try {
+            probeBrokenAudioInputs(client, listOf("Main"))
+            error("Expected the transport failure to abort the probe")
+        } catch (actual: ObsNotConnectedException) {
+            assertSame(disconnect, actual)
+        }
+    }
+
+    @Test
+    fun doctorProbePropagatesCancellation() = runTest {
+        val cancelled = CancellationException("scan replaced")
+        val client =
+            object : FakeObsClient() {
+                override suspend fun getSceneItemList(sceneName: String) =
+                    listOf(SceneItemInfo(1, 0, "Mic", true, false, "audio"))
+
+                override suspend fun getInputVolume(inputName: String): Double = throw cancelled
+            }
+        try {
+            probeBrokenAudioInputs(client, listOf("Main"))
+            error("Expected cancellation")
+        } catch (actual: CancellationException) {
+            assertSame(cancelled, actual)
+        }
     }
 
     @Test

@@ -1,13 +1,19 @@
 package com.scenedeck.android.core.data
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.scenedeck.android.core.database.ConnectionProfileDao
 import com.scenedeck.android.core.database.ConnectionProfileEntity
+import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
+import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ScreenshotRequest
+import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +27,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -134,7 +141,41 @@ class ObsSessionHolderTest {
         assertEquals(ConnectionState.Disconnected, holder.connectionState.value)
     }
 
+    @Test
+    fun undecryptableSavedPasswordBecomesAuthFailure(): Unit = runBlocking {
+        secrets.readFailure = SecretsDecryptException(IllegalStateException("tag mismatch"))
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        val failed =
+            withTimeout(5_000) {
+                holder.connectionState.first { it is ConnectionState.Failed }
+            }
+        assertTrue(failed is ConnectionState.Failed)
+        assertTrue((failed as ConnectionState.Failed).error is ConnectionError.Auth)
+        assertTrue(!failed.toString().contains("tag mismatch"))
+        assertEquals(0, client.connectCalls.size)
+    }
+
+    @Test
+    fun settingsReadFailureSkipsAutoConnectWithoutConnectionFailure(): Unit = runBlocking {
+        val failingSettings =
+            SettingsRepository(SceneDeckSettingsStore.forTesting(FailingDataStore()))
+        val holder = ObsSessionHolder(client, profiles, secrets, failingSettings, holderScope)
+        delay(500)
+        assertEquals(false, holder.onboardingCompleted.value)
+        assertTrue(holder.connectionState.value !is ConnectionState.Failed)
+        assertEquals(0, client.connectCalls.size)
+    }
+
     // ── Fakes ───────────────────────────────────────────────────────────────
+
+    private class FailingDataStore : DataStore<Preferences> {
+        override val data: Flow<Preferences> = flow { throw IOException("disk hiccup") }
+
+        override suspend fun updateData(
+            transform: suspend (Preferences) -> Preferences
+        ): Preferences = throw IOException("disk hiccup")
+    }
 
     private class FakeSecretsStore : SecretsStore {
         var readFailure: Exception? = null
@@ -273,12 +314,6 @@ class ObsSessionHolderTest {
 
         override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
 
-        override suspend fun getSourceScreenshot(
-            sourceName: String,
-            format: String,
-            compressionQuality: Int,
-            width: Int?,
-            height: Int?,
-        ): ByteArray = unused()
+        override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray = unused()
     }
 }

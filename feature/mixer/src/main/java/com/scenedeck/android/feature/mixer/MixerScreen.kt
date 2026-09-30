@@ -298,10 +298,7 @@ private fun MixerStripRow(
             Column {
                 if (uiState.grouping == MixerGrouping.SCENE_PATH) {
                     Text(
-                        text =
-                            if (uiState.grouping == MixerGrouping.SCENE_PATH)
-                                input.scopePath ?: scopeGroupLabel(input.scope)
-                            else scopeGroupLabel(input.scope),
+                        text = input.scopePath ?: scopeGroupLabel(input.scope),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(120.dp).padding(start = 4.dp, bottom = 8.dp),
@@ -312,8 +309,9 @@ private fun MixerStripRow(
                 MixerStrip(
                     name = input.name,
                     scope = input.scope,
-                    scopePath =
-                        input.scopePath.takeUnless { uiState.grouping == MixerGrouping.SCENE_PATH },
+                    // SCOPE keeps the path on the strip badge; NONE is fully flat (no
+                    // headers, badge shows the scope only) and SCENE_PATH moves it to the header.
+                    scopePath = input.scopePath.takeIf { uiState.grouping == MixerGrouping.SCOPE },
                     volumeMul = input.volumeMul,
                     muted = input.muted,
                     locked = input.locked,

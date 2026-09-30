@@ -4,9 +4,11 @@ import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -39,7 +41,9 @@ constructor(
     private val failure = MutableStateFlow<ConnectionState.Failed?>(null)
     private val commandLock = Any()
     private var commandJob: Job? = null
-    private val sessionRequested = AtomicBoolean(false)
+
+    /** Gates the one-shot auto-connect in init (explicit connect/disconnect also count). */
+    private val autoConnectAttempted = AtomicBoolean(false)
 
     val connectionState: StateFlow<ConnectionState> =
         combine(client.connectionState, failure) { state, error ->
@@ -51,8 +55,10 @@ constructor(
     val onboardingCompleted: StateFlow<Boolean> =
         settings.settings
             .map { it.onboardingCompleted }
-            .catch {
-                reportFailure()
+            .catch { error ->
+                if (error is CancellationException) throw error
+                // Local settings-read hiccup: skip auto-connect, but don't masquerade a disk
+                // error as an OBS connection failure.
                 emit(false)
             }
             .stateIn(appScope, SharingStarted.Eagerly, false)
@@ -63,16 +69,19 @@ constructor(
             requestResult {
                 val snapshot = settings.settings.first { it.onboardingCompleted }
                 val profileId = snapshot.lastUsedProfileId
-                if (profileId != null && sessionRequested.compareAndSet(false, true))
+                if (profileId != null && autoConnectAttempted.compareAndSet(false, true))
                     enqueueConnect(profileId)
             }
-                .onFailure { reportFailure() }
+                .onFailure { error ->
+                    // A settings-read (disk) failure is not an OBS connection failure.
+                    if (error !is IOException) reportFailure()
+                }
         }
     }
 
     /** New commands cancel and join previous preparation/handshake before running. */
     fun connect(profileId: Long) {
-        sessionRequested.set(true)
+        autoConnectAttempted.set(true)
         enqueueConnect(profileId)
     }
 
@@ -86,7 +95,7 @@ constructor(
     }
 
     fun disconnect() {
-        sessionRequested.set(true)
+        autoConnectAttempted.set(true)
         enqueue { client.disconnect() }
     }
 
@@ -97,17 +106,26 @@ constructor(
             commandJob = appScope.launch {
                 previous?.join()
                 failure.value = null
-                requestResult { operation() }.onFailure { reportFailure() }
+                requestResult { operation() }.onFailure { reportFailure(it) }
             }
         }
     }
 
-    private fun reportFailure() {
+    private fun reportFailure(error: Throwable? = null) {
         // Never expose raw credential/Keystore exception messages to UI or logs.
         failure.value =
             client.connectionState.value as? ConnectionState.Failed
                 ?: ConnectionState.Failed(
-                    ConnectionError.Protocol("Unable to open saved OBS session")
+                    when (error) {
+                        // The saved password is gone for good: an auth-style failure so the
+                        // UI prompts re-entry instead of retrying a dead credential.
+                        is SecretsDecryptException ->
+                            ConnectionError.Auth(
+                                "Saved OBS password is no longer readable — re-enter it"
+                            )
+
+                        else -> ConnectionError.Protocol("Unable to open saved OBS session")
+                    }
                 )
     }
 }

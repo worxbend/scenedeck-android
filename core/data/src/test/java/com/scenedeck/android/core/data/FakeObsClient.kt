@@ -11,6 +11,7 @@ import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ScreenshotRequest
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -93,14 +94,8 @@ internal open class FakeObsClient(
     val screenshotCalls = mutableListOf<String>()
     var screenshotBytes: ByteArray = ByteArray(0)
 
-    open override suspend fun getSourceScreenshot(
-        sourceName: String,
-        format: String,
-        compressionQuality: Int,
-        width: Int?,
-        height: Int?,
-    ): ByteArray {
-        screenshotCalls += sourceName
+    open override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray {
+        screenshotCalls += request.sourceName
         return screenshotBytes
     }
 

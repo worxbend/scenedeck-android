@@ -157,15 +157,18 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFader(
     labelStyle: androidx.compose.ui.text.TextStyle,
     displayFraction: Float,
 ) {
-    val trackColor = palette.trackColor
-    val fillColor = palette.fillColor
-    val tickColor = palette.tickColor
-    val gripColor = palette.gripColor
+    drawFaderTicks(palette.tickColor)
+    drawFaderLabels(textMeasurer, labelStyle)
+    drawFaderTrack(palette, displayFraction)
+    drawFaderThumb(palette, displayFraction)
+}
+
+// Tick ladder (0/−12/…/−60) left of the track.
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFaderTicks(
+    tickColor: androidx.compose.ui.graphics.Color
+) {
     val trackWidth = 6.dp.toPx()
     val trackX = size.width * 0.62f - trackWidth / 2
-    val corner = CornerRadius(3.dp.toPx())
-
-    // Tick ladder (0/−12/…/−60) left of the track + tiny mono labels.
     FADER_TICKS.forEach { tickDb ->
         val y = size.height * (1f - dbToFraction(tickDb))
         drawRect(
@@ -174,43 +177,56 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFader(
             size = Size(4.dp.toPx(), 1.dp.toPx()),
         )
     }
-    drawFaderLabels(textMeasurer, labelStyle)
+}
 
-    // Track + accent fill from the thumb down.
+// Track + accent fill from the thumb down, with the 0 dB top marker.
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFaderTrack(
+    palette: FaderPalette,
+    displayFraction: Float,
+) {
+    val trackWidth = 6.dp.toPx()
+    val trackX = size.width * 0.62f - trackWidth / 2
+    val corner = CornerRadius(3.dp.toPx())
+    val thumbY = size.height * (1f - displayFraction)
     drawRoundRect(
-        color = trackColor,
+        color = palette.trackColor,
         topLeft = Offset(trackX, 0f),
         size = Size(trackWidth, size.height),
         cornerRadius = corner,
     )
-    val thumbY = size.height * (1f - displayFraction)
     if (displayFraction > 0f) {
         drawRoundRect(
-            color = fillColor.copy(alpha = 0.55f),
+            color = palette.fillColor.copy(alpha = 0.55f),
             topLeft = Offset(trackX, thumbY),
             size = Size(trackWidth, size.height - thumbY),
             cornerRadius = corner,
         )
     }
-    // 0 dB top marker.
     drawRect(
-        color = fillColor,
+        color = palette.fillColor,
         topLeft = Offset(trackX - 2.dp.toPx(), 0f),
         size = Size(trackWidth + 4.dp.toPx(), 1.5.dp.toPx()),
     )
-    // Thumb pill with grip line.
+}
+
+// Thumb pill with grip line.
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFaderThumb(
+    palette: FaderPalette,
+    displayFraction: Float,
+) {
+    val thumbY = size.height * (1f - displayFraction)
     val thumbWidth = 32.dp.toPx()
     val thumbHeight = 8.dp.toPx()
     val thumbX = size.width * 0.62f - thumbWidth / 2
     drawRoundRect(
-        color = fillColor,
+        color = palette.fillColor,
         topLeft =
             Offset(thumbX, (thumbY - thumbHeight / 2).coerceIn(0f, size.height - thumbHeight)),
         size = Size(thumbWidth, thumbHeight),
         cornerRadius = CornerRadius(4.dp.toPx()),
     )
     drawRect(
-        color = gripColor.copy(alpha = 0.7f),
+        color = palette.gripColor.copy(alpha = 0.7f),
         topLeft =
             Offset(
                 thumbX + thumbWidth / 2 - 6.dp.toPx(),

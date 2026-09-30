@@ -112,13 +112,12 @@ private fun CameraPreview(onDetected: (ObswsTarget) -> Unit, onClose: () -> Unit
     val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
     val barcodeScanner = remember { BarcodeScanning.getClient() }
     val previewView = remember { PreviewView(context) }
-    val reported = remember { AtomicBoolean(false) }
+    val scanGuards = remember { ScanGuards() }
     val currentOnDetected by rememberUpdatedState(onDetected)
-    val disposed = remember { AtomicBoolean(false) }
 
     DisposableEffect(Unit) {
         onDispose {
-            disposed.set(true)
+            scanGuards.disposed.set(true)
             analyzerExecutor.shutdown()
             barcodeScanner.close()
         }
@@ -143,7 +142,7 @@ private fun CameraPreview(onDetected: (ObswsTarget) -> Unit, onClose: () -> Unit
                 .build()
 
         analysis.setAnalyzer(analyzerExecutor) { imageProxy ->
-            analyzePairingFrame(imageProxy, barcodeScanner, reported, disposed) {
+            analyzePairingFrame(imageProxy, barcodeScanner, scanGuards) {
                 currentOnDetected(it)
             }
         }
@@ -187,16 +186,21 @@ private fun CameraPreview(onDetected: (ObswsTarget) -> Unit, onClose: () -> Unit
     }
 }
 
+/** Liveness guards shared by the camera analyzer and the composable's disposal path. */
+private class ScanGuards {
+    val reported = AtomicBoolean(false)
+    val disposed = AtomicBoolean(false)
+}
+
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 private fun analyzePairingFrame(
     imageProxy: ImageProxy,
     scanner: BarcodeScanner,
-    reported: AtomicBoolean,
-    disposed: AtomicBoolean,
+    guards: ScanGuards,
     onDetected: (ObswsTarget) -> Unit,
 ) {
     val mediaImage = imageProxy.image
-    if (reported.get() || disposed.get() || mediaImage == null) {
+    if (guards.reported.get() || guards.disposed.get() || mediaImage == null) {
         imageProxy.close()
         return
     }
@@ -208,7 +212,11 @@ private fun analyzePairingFrame(
                 val payload = barcodes.firstNotNullOfOrNull { barcode ->
                     barcode.rawValue?.let(::parseObswsUri)
                 }
-                if (payload != null && !disposed.get() && reported.compareAndSet(false, true))
+                if (
+                    payload != null &&
+                        !guards.disposed.get() &&
+                        guards.reported.compareAndSet(false, true)
+                )
                     onDetected(payload)
             }
             .addOnCompleteListener { imageProxy.close() }

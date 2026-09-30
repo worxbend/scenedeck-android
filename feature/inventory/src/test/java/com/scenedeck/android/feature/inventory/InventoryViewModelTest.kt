@@ -15,10 +15,12 @@ import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ScreenshotRequest
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -113,14 +116,14 @@ class InventoryViewModelTest {
         registry.update("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA")
         registry.update("Quiet A", SceneRole.ARCHIVE, null, null)
 
-        val yaml = viewModel.exportRegistry()
+        val yaml = viewModel.transfer.encode()
         assertTrue(yaml.contains("Cam 1"))
 
         registry.remove("Cam 1")
         registry.remove("Quiet A")
-        viewModel.stageImport(yaml)
+        viewModel.transfer.stage(yaml)
         viewModel.importPreview.first { it != null }
-        viewModel.confirmImport()
+        viewModel.transfer.confirmImport()
         withTimeout(5_000) {
             while (registry.byName("Cam 1")?.role != SceneRole.PRIMARY) {
                 kotlinx.coroutines.delay(25)
@@ -131,6 +134,16 @@ class InventoryViewModelTest {
         assertEquals(0xFF7E57C2, registry.byName("Cam 1")?.accentColorArgb)
         assertEquals("CAMERA", registry.byName("Cam 1")?.iconName)
         assertEquals(SceneRole.ARCHIVE, registry.byName("Quiet A")?.role)
+    }
+
+    @Test
+    fun malformedImportEmitsFailureMessage(): Unit = runBlocking {
+        val received = async { viewModel.messages.first() }
+        yield()
+
+        viewModel.transfer.stage("not: [a registry")
+
+        assertTrue(withTimeout(5_000) { received.await() }.startsWith("Import failed"))
     }
 
     private suspend fun awaitState(condition: (InventoryUiState) -> Boolean): InventoryUiState =
@@ -211,13 +224,7 @@ class InventoryViewModelTest {
 
         override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
 
-        override suspend fun getSourceScreenshot(
-            sourceName: String,
-            format: String,
-            compressionQuality: Int,
-            width: Int?,
-            height: Int?,
-        ): ByteArray = unused()
+        override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray = unused()
 
         private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 

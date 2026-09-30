@@ -65,7 +65,7 @@ internal class StudioModeTest : ObsClientTestBase() {
             server.start()
             val client = connectedClient(server)
 
-            val bytes = client.getSourceScreenshot("Cam 1")
+            val bytes = client.getSourceScreenshot(ScreenshotRequest("Cam 1"))
             assertEquals(1, server.receivedCount("GetSourceScreenshot"))
             // base64 "/9j/4AAQSkZJRgABAQAAAQABAAD/2w==" → JPEG magic + tail.
             assertArrayEquals(

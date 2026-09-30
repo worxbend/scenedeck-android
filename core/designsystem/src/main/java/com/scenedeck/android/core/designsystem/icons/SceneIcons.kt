@@ -4,6 +4,8 @@
 
 package com.scenedeck.android.core.designsystem.icons
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -44,9 +46,12 @@ private fun lucideIcon(name: String, vararg elements: String): ImageVector =
 private fun circle(cx: Float, cy: Float, r: Float): String =
     "M${cx - r},$cy a$r,$r 0 1 0 ${2 * r},0 a$r,$r 0 1 0 ${-2 * r},0 z"
 
-private fun rect(x: Float, y: Float, w: Float, h: Float, r: Float): String {
-    val iw = w - 2 * r
-    val ih = h - 2 * r
+private fun rect(topLeft: Offset, size: Size, cornerRadius: Float): String {
+    val x = topLeft.x
+    val y = topLeft.y
+    val r = cornerRadius
+    val iw = size.width - 2 * r
+    val ih = size.height - 2 * r
     return "M${x + r},$y h$iw a$r,$r 0 0 1 $r,$r v$ih a$r,$r 0 0 1 ${-r},$r " +
         "h${-iw} a$r,$r 0 0 1 ${-r},${-r} v${-ih} a$r,$r 0 0 1 $r,${-r} z"
 }
@@ -63,7 +68,7 @@ private val MicIcon =
         "Mic",
         "M12,19v3",
         "M19,10v2a7,7 0 0 1 -14,0v-2",
-        rect(9f, 2f, 6f, 13f, 3f),
+        rect(Offset(9f, 2f), Size(6f, 13f), 3f),
     )
 
 private val MicOffIcon =
@@ -104,7 +109,7 @@ private val MusicIcon =
 private val MonitorIcon =
     lucideIcon(
         "Monitor",
-        rect(2f, 3f, 20f, 14f, 2f),
+        rect(Offset(2f, 3f), Size(20f, 14f), 2f),
         "M8,21h8",
         "M12,17v4",
     )
@@ -129,7 +134,7 @@ private val PresentationIcon =
 private val ImageIcon =
     lucideIcon(
         "Image",
-        rect(3f, 3f, 18f, 18f, 2f),
+        rect(Offset(3f, 3f), Size(18f, 18f), 2f),
         circle(9f, 9f, 2f),
         "M21,15 L17.914,11.914a2,2 0 0 0 -2.828,0L6,21",
     )
@@ -138,7 +143,7 @@ private val VideoIcon =
     lucideIcon(
         "Video",
         "M16,13 L21.223,16.482a0.5,0.5 0 0 0 0.777,-0.416V7.87a0.5,0.5 0 0 0 -0.752,-0.432L16,10.5",
-        rect(2f, 6f, 14f, 12f, 2f),
+        rect(Offset(2f, 6f), Size(14f, 12f), 2f),
     )
 
 private val GlobeIcon =
@@ -265,7 +270,7 @@ private val ScenesIcon =
 private val FilmIcon =
     lucideIcon(
         "Film",
-        rect(3f, 3f, 18f, 18f, 2f),
+        rect(Offset(3f, 3f), Size(18f, 18f), 2f),
         "M7,3v18",
         "M3,7.5h4",
         "M3,12h18",
@@ -309,14 +314,14 @@ private val CastIcon =
 private val LockIcon =
     lucideIcon(
         "Lock",
-        rect(3f, 11f, 18f, 11f, 2f),
+        rect(Offset(3f, 11f), Size(18f, 11f), 2f),
         "M7,11V7a5,5 0 0 1 10,0v4",
     )
 
 private val LockOpenIcon =
     lucideIcon(
         "LockOpen",
-        rect(3f, 11f, 18f, 11f, 2f),
+        rect(Offset(3f, 11f), Size(18f, 11f), 2f),
         "M7,11V7a5,5 0 0 1 9.9,-1",
     )
 

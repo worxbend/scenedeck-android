@@ -23,20 +23,23 @@ import kotlinx.coroutines.flow.drop
  * restoration layer); the source of truth is [SettingsRepository] (Preferences DataStore),
  * applied/written through by [rememberSceneDeckAppState].
  */
-class SceneDeckAppState(
-    initialThemeFamily: ThemeFamily = ThemeFamily.SCENEDECK,
-    initialDarkMode: DarkMode = DarkMode.SYSTEM,
-    initialDynamicColor: Boolean = false,
-    initialMotionLevel: MotionLevel = MotionLevel.FULL,
-    initialHaptics: Boolean = true,
-    initialKeepScreenOn: Boolean = false,
-) {
-    var themeFamily by mutableStateOf(initialThemeFamily)
-    var darkMode by mutableStateOf(initialDarkMode)
-    var dynamicColor by mutableStateOf(initialDynamicColor)
-    var motionLevel by mutableStateOf(initialMotionLevel)
-    var haptics by mutableStateOf(initialHaptics)
-    var keepScreenOn by mutableStateOf(initialKeepScreenOn)
+class SceneDeckAppState(initial: Initial = Initial()) {
+    /** Initial values, grouped to keep the [SceneDeckAppState] constructor small. */
+    data class Initial(
+        val themeFamily: ThemeFamily = ThemeFamily.SCENEDECK,
+        val darkMode: DarkMode = DarkMode.SYSTEM,
+        val dynamicColor: Boolean = false,
+        val motionLevel: MotionLevel = MotionLevel.FULL,
+        val haptics: Boolean = true,
+        val keepScreenOn: Boolean = false,
+    )
+
+    var themeFamily by mutableStateOf(initial.themeFamily)
+    var darkMode by mutableStateOf(initial.darkMode)
+    var dynamicColor by mutableStateOf(initial.dynamicColor)
+    var motionLevel by mutableStateOf(initial.motionLevel)
+    var haptics by mutableStateOf(initial.haptics)
+    var keepScreenOn by mutableStateOf(initial.keepScreenOn)
 
     /** Resolves the effective dark flag from the override and the system setting. */
     fun isDarkTheme(systemInDarkTheme: Boolean): Boolean =
@@ -78,21 +81,22 @@ class SceneDeckAppState(
         /** Restores a state from a map produced by [SceneDeckAppState.toSaveableMap]. */
         fun fromSaveableMap(map: Map<String, Any?>): SceneDeckAppState =
             SceneDeckAppState(
-                initialThemeFamily =
-                    enumValueOrDefault(
-                        map[KEY_THEME_FAMILY] as? String,
-                        ThemeFamily.SCENEDECK,
-                    ),
-                initialDarkMode =
-                    enumValueOrDefault(map[KEY_DARK_MODE] as? String, DarkMode.SYSTEM),
-                initialDynamicColor = map[KEY_DYNAMIC_COLOR] as? Boolean ?: false,
-                initialMotionLevel =
-                    enumValueOrDefault(
-                        map[KEY_MOTION_LEVEL] as? String,
-                        MotionLevel.FULL,
-                    ),
-                initialHaptics = map[KEY_HAPTICS] as? Boolean ?: true,
-                initialKeepScreenOn = map[KEY_KEEP_SCREEN_ON] as? Boolean ?: false,
+                Initial(
+                    themeFamily =
+                        enumValueOrDefault(
+                            map[KEY_THEME_FAMILY] as? String,
+                            ThemeFamily.SCENEDECK,
+                        ),
+                    darkMode = enumValueOrDefault(map[KEY_DARK_MODE] as? String, DarkMode.SYSTEM),
+                    dynamicColor = map[KEY_DYNAMIC_COLOR] as? Boolean ?: false,
+                    motionLevel =
+                        enumValueOrDefault(
+                            map[KEY_MOTION_LEVEL] as? String,
+                            MotionLevel.FULL,
+                        ),
+                    haptics = map[KEY_HAPTICS] as? Boolean ?: true,
+                    keepScreenOn = map[KEY_KEEP_SCREEN_ON] as? Boolean ?: false,
+                )
             )
 
         val Saver =

@@ -83,25 +83,29 @@ fun TBar(
                     }
                 }
     ) {
-        drawTBar(armed, displayed, trackBase, thumbBase, colors.preview)
+        drawTBar(armed, displayed, TBarColors(trackBase, thumbBase, colors.preview))
     }
 }
+
+private data class TBarColors(
+    val trackBase: androidx.compose.ui.graphics.Color,
+    val thumbBase: androidx.compose.ui.graphics.Color,
+    val previewColor: androidx.compose.ui.graphics.Color,
+)
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTBar(
     armed: Boolean,
     displayed: Float,
-    trackBase: androidx.compose.ui.graphics.Color,
-    thumbBase: androidx.compose.ui.graphics.Color,
-    previewColor: androidx.compose.ui.graphics.Color,
+    colors: TBarColors,
 ) {
     val corner = CornerRadius(8.dp.toPx())
-    val trackColor = if (armed) previewColor.copy(alpha = 0.5f) else trackBase
+    val trackColor = if (armed) colors.previewColor.copy(alpha = 0.5f) else colors.trackBase
     drawRoundRect(color = trackColor, size = size, cornerRadius = corner)
 
     // Armed marker line at the trigger threshold.
     val thresholdY = size.height * TRIGGER_THRESHOLD
     drawRect(
-        color = previewColor,
+        color = colors.previewColor,
         topLeft = Offset(0f, thresholdY - 1.dp.toPx()),
         size = Size(size.width, 2.dp.toPx()),
     )
@@ -110,7 +114,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTBar(
     val thumbHeight = 14.dp.toPx()
     val thumbY = size.height * displayed - thumbHeight / 2
     drawRoundRect(
-        color = if (armed) previewColor else thumbBase,
+        color = if (armed) colors.previewColor else colors.thumbBase,
         topLeft =
             Offset(
                 3.dp.toPx(),

@@ -3,7 +3,6 @@ package com.scenedeck.android
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.background.KeepAliveController
-import com.scenedeck.android.background.SceneSwitchResult
 import com.scenedeck.android.background.SceneSwitcher
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.SettingsRepository
@@ -12,8 +11,6 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.ui.components.StatusStripState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -55,10 +52,6 @@ constructor(
             .map { it.onboardingCompleted }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** One-shot results of deep-link scene switches (true = switched). */
-    private val _sceneSwitchResults = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-    val sceneSwitchResults: SharedFlow<Boolean> = _sceneSwitchResults
-
     init {
         // Foreground launch re-arms the keep-alive service if the user enabled it
         // (covers force-stop / system kills that STICKY restart did not survive).
@@ -73,9 +66,6 @@ constructor(
 
     /** `scenedeck://scene/{name}` automation entry point (connects first if needed). */
     fun onSceneLink(sceneName: String) {
-        viewModelScope.launch {
-            val result = sceneSwitcher.switchTo(sceneName)
-            _sceneSwitchResults.tryEmit(result == SceneSwitchResult.Success)
-        }
+        viewModelScope.launch { sceneSwitcher.switchTo(sceneName) }
     }
 }

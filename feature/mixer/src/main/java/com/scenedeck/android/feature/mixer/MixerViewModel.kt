@@ -38,9 +38,15 @@ enum class MixerMode {
     PINNED,
 }
 
+/** How the mixer strip row surfaces where each channel comes from. */
 enum class MixerGrouping {
+    /** Flat row; each strip's scope badge includes the source path. */
     SCOPE,
+
+    /** Per-strip header shows the scene path; the scope badge drops it. */
     SCENE_PATH,
+
+    /** Fully flat: no headers and the scope badge shows the scope only. */
     NONE,
 }
 

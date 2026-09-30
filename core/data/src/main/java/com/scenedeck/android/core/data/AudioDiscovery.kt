@@ -48,12 +48,13 @@ internal class AudioDiscovery(private val client: ObsClient) {
 
         // 2. Active-scene inputs, recursing into enabled nested scenes/groups.
         if (activeScene != null) {
-            walkScene(
-                sceneName = activeScene,
-                path = activeScene,
-                scopeForItems = MixerScope.SCENE,
-                walk = Walk(result, visitedScenes),
-                depth = 0,
+            val walk = SceneWalk(result, visitedScenes)
+            walk.scene(
+                SceneFrame(
+                    sceneName = activeScene,
+                    path = activeScene,
+                    scopeForItems = MixerScope.SCENE,
+                )
             )
         }
 
@@ -63,66 +64,63 @@ internal class AudioDiscovery(private val client: ObsClient) {
         }
     }
 
-    private suspend fun walkScene(
-        sceneName: String,
-        path: String,
-        scopeForItems: MixerScope,
-        walk: Walk,
-        depth: Int,
+    /** One recursion frame: the scene being walked, its display path, item scope, and depth. */
+    private data class SceneFrame(
+        val sceneName: String,
+        val path: String,
+        val scopeForItems: MixerScope,
+        val depth: Int = 0,
     ) {
-        if (depth >= MAX_DEPTH || !walk.visitedScenes.add(sceneName)) return
-        val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
-        for (item in items) {
-            if (!item.enabled) continue // prune disabled nested scenes/groups/items
-            when {
-                // Groups are scenes in OBS: recurse with GROUP scope.
-                item.isGroup ->
-                    walkScene(
-                        sceneName = item.sourceName,
-                        path = "$path › ${item.sourceName}",
-                        scopeForItems = MixerScope.GROUP,
-                        walk = walk,
-                        depth = depth + 1,
-                    )
-
-                item.inputKind != null -> addInput(item, path, scopeForItems, walk.result)
-
-                // Scene source: recurse (only enabled ones reach here).
-                else ->
-                    walkScene(
-                        sceneName = item.sourceName,
-                        path = "$path › ${item.sourceName}",
-                        scopeForItems = MixerScope.NESTED,
-                        walk = walk,
-                        depth = depth + 1,
-                    )
-            }
-        }
+        fun child(sourceName: String, scope: MixerScope) =
+            SceneFrame(
+                sceneName = sourceName,
+                path = "$path › $sourceName",
+                scopeForItems = scope,
+                depth = depth + 1,
+            )
     }
 
-    /** Per-discovery-call traversal state (result map + recursion guard). */
-    private class Walk(
+    /**
+     * Per-discovery-call traversal state (result map + recursion guard) together with the walker
+     * itself; keeps the recursion parameters to just the current [SceneFrame].
+     */
+    private inner class SceneWalk(
         val result: LinkedHashMap<String, DiscoveredInput>,
         val visitedScenes: MutableSet<String>,
-    )
-
-    private suspend fun addInput(
-        item: SceneItemInfo,
-        path: String,
-        scope: MixerScope,
-        result: LinkedHashMap<String, DiscoveredInput>,
     ) {
-        if (result.containsKey(item.sourceName)) return // dedupe by input name
-        probe(item.sourceName)?.let { (mul, muted) ->
-            result[item.sourceName] =
-                DiscoveredInput(
-                    name = item.sourceName,
-                    scope = scope,
-                    scopePath = if (scope == MixerScope.SCENE) null else path,
-                    volumeMul = mul,
-                    muted = muted,
-                    inputKind = item.inputKind,
-                )
+
+        suspend fun scene(frame: SceneFrame) {
+            if (frame.depth >= MAX_DEPTH || !visitedScenes.add(frame.sceneName)) return
+            val items =
+                requestResult { client.getSceneItemList(frame.sceneName) }.getOrNull() ?: return
+            for (item in items) {
+                if (!item.enabled) continue // prune disabled nested scenes/groups/items
+                when {
+                    // Groups are scenes in OBS: recurse with GROUP scope.
+                    item.isGroup -> scene(frame.child(item.sourceName, MixerScope.GROUP))
+
+                    item.inputKind != null -> addInput(item, frame)
+
+                    // Scene source: recurse (only enabled ones reach here).
+                    else -> scene(frame.child(item.sourceName, MixerScope.NESTED))
+                }
+            }
+        }
+
+        private suspend fun addInput(item: SceneItemInfo, frame: SceneFrame) {
+            if (result.containsKey(item.sourceName)) return // dedupe by input name
+            probe(item.sourceName)?.let { (mul, muted) ->
+                result[item.sourceName] =
+                    DiscoveredInput(
+                        name = item.sourceName,
+                        scope = frame.scopeForItems,
+                        scopePath =
+                            if (frame.scopeForItems == MixerScope.SCENE) null else frame.path,
+                        volumeMul = mul,
+                        muted = muted,
+                        inputKind = item.inputKind,
+                    )
+            }
         }
     }
 

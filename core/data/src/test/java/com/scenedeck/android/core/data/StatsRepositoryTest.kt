@@ -17,33 +17,8 @@ class StatsRepositoryTest {
 
     @Test
     fun pollsAt1HzWhileReadyAndComputesRollingBitrate() = runTest {
-        var bytes = 0L
-        val client =
-            FakeObsClient(
-                statsResponse =
-                    ObsStats(
-                        cpuUsage = 12.5,
-                        memoryUsageMb = 512.0,
-                        availableDiskSpaceMb = 1000.0,
-                        activeFps = 59.94,
-                        averageFrameRenderTimeMs = 1.2,
-                        renderSkippedFrames = 2,
-                        renderTotalFrames = 10000,
-                        outputSkippedFrames = 7,
-                        outputTotalFrames = 9000,
-                    )
-            )
-        client.streamStatusResponse =
-            StreamStatus(
-                active = true,
-                reconnecting = false,
-                timecode = "00:00:10.000",
-                durationMs = 10_000,
-                bytes = 0,
-                congestion = 0.1,
-                skippedFrames = 1,
-                totalFrames = 500,
-            )
+        val client = FakeObsClient(statsResponse = statsResponse())
+        client.streamStatusResponse = streamStatus()
         client.setReady()
         var virtualNow = 0L
         val repository =
@@ -62,8 +37,7 @@ class StatsRepositoryTest {
         assertEquals(0, first.bitrateKbps)
 
         // +1 s of virtual time: OBS reports 750_000 more bytes → 750_000*8/1000 = 6000 kbit/s.
-        bytes = 750_000
-        client.streamStatusResponse = client.streamStatusResponse.copy(bytes = bytes)
+        client.streamStatusResponse = streamStatus(bytes = 750_000)
         advanceTimeBy(1_100)
         testScheduler.runCurrent()
 
@@ -112,21 +86,7 @@ class StatsRepositoryTest {
 
     @Test
     fun ringBufferAccumulatesWhileReadyAndClearsOnDisconnect() = runTest {
-        val client =
-            FakeObsClient(
-                statsResponse =
-                    ObsStats(
-                        cpuUsage = 12.5,
-                        memoryUsageMb = 512.0,
-                        availableDiskSpaceMb = 1000.0,
-                        activeFps = 59.94,
-                        averageFrameRenderTimeMs = 1.2,
-                        renderSkippedFrames = 2,
-                        renderTotalFrames = 10000,
-                        outputSkippedFrames = 7,
-                        outputTotalFrames = 9000,
-                    )
-            )
+        val client = FakeObsClient(statsResponse = statsResponse())
         client.setReady()
         val repository = StatsRepository(client, backgroundScope)
 
@@ -142,4 +102,29 @@ class StatsRepositoryTest {
         testScheduler.runCurrent()
         assertTrue(repository.samples.value.isEmpty())
     }
+
+    private fun statsResponse() =
+        ObsStats(
+            cpuUsage = 12.5,
+            memoryUsageMb = 512.0,
+            availableDiskSpaceMb = 1000.0,
+            activeFps = 59.94,
+            averageFrameRenderTimeMs = 1.2,
+            renderSkippedFrames = 2,
+            renderTotalFrames = 10000,
+            outputSkippedFrames = 7,
+            outputTotalFrames = 9000,
+        )
+
+    private fun streamStatus(bytes: Long = 0) =
+        StreamStatus(
+            active = true,
+            reconnecting = false,
+            timecode = "00:00:10.000",
+            durationMs = 10_000,
+            bytes = bytes,
+            congestion = 0.1,
+            skippedFrames = 1,
+            totalFrames = 500,
+        )
 }

@@ -37,8 +37,8 @@ fun BackgroundSettingsSheet(
     val keepAlive by viewModel.keepAlive.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val notificationPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-            viewModel.setKeepAlive(true)
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) viewModel.setKeepAlive(true)
         }
 
     BackgroundSettingsSheetContent(

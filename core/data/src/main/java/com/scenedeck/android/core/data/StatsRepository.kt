@@ -19,8 +19,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtual camera status
- * status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
+ * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtual camera
+ * status status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
  * StatusStrip, the TransportBar and the stats page; [StatsRepository.samples] keeps the rolling
  * 2-minute window for charts.
  */

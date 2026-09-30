@@ -38,11 +38,11 @@ class SceneGraphBuilder(private val client: ObsClient) {
             registryEntries.firstOrNull { it.sceneName == name }?.role ?: SceneRole.PRIMARY
         }
 
-        val edges = mutableListOf<SceneGraphEdge>()
-        val visited = mutableSetOf<String>()
+        val walk = EdgeWalk(roleOf)
         for (scene in scenes) {
-            collectEdges(scene.name, roleOf, edges, visited, depth = 0)
+            walk.collect(scene.name, depth = 0)
         }
+        val edges: List<SceneGraphEdge> = walk.edges
 
         val edgeTargets = edges.flatMap { listOf(it.from, it.to) }.toSet()
         val nodes =
@@ -63,25 +63,29 @@ class SceneGraphBuilder(private val client: ObsClient) {
         )
     }
 
-    private suspend fun collectEdges(
-        sceneName: String,
-        roleOf: (String) -> SceneRole,
-        edges: MutableList<SceneGraphEdge>,
-        visited: MutableSet<String>,
-        depth: Int,
-    ) {
-        if (depth >= MAX_DEPTH || !visited.add(sceneName)) return
-        val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
-        for (item in items) {
-            // Scene sources only (inputKind == null, not a group, enabled).
-            if (item.inputKind != null || item.isGroup || !item.enabled) continue
-            edges +=
-                SceneGraphEdge(
-                    from = sceneName,
-                    to = item.sourceName,
-                    verdict = RoleRules.classifyEdge(roleOf(sceneName), roleOf(item.sourceName)),
-                )
-            collectEdges(item.sourceName, roleOf, edges, visited, depth + 1)
+    /**
+     * Per-build traversal context: role lookup, collected edges, and the recursion guard. Keeping
+     * them as properties reduces the recursion to just (sceneName, depth).
+     */
+    private inner class EdgeWalk(private val roleOf: (String) -> SceneRole) {
+        val edges = mutableListOf<SceneGraphEdge>()
+        private val visited = mutableSetOf<String>()
+
+        suspend fun collect(sceneName: String, depth: Int) {
+            if (depth >= MAX_DEPTH || !visited.add(sceneName)) return
+            val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
+            for (item in items) {
+                // Scene sources only (inputKind == null, not a group, enabled).
+                if (item.inputKind != null || item.isGroup || !item.enabled) continue
+                edges +=
+                    SceneGraphEdge(
+                        from = sceneName,
+                        to = item.sourceName,
+                        verdict =
+                            RoleRules.classifyEdge(roleOf(sceneName), roleOf(item.sourceName)),
+                    )
+                collect(item.sourceName, depth + 1)
+            }
         }
     }
 

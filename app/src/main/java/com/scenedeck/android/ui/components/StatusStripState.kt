@@ -11,7 +11,7 @@ data class StatusStripState(
     val bitrateKbps: Int = 0,
 )
 
-// TODO(M3): replace the numeric fields with the live StatsRepository feed.
+/** Sample state for previews; production instances come from the live StatsRepository feed. */
 val mockStatusStripState =
     StatusStripState(
         connection = ConnectionState.Disconnected,

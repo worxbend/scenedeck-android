@@ -1,7 +1,9 @@
 package com.scenedeck.android.feature.mixer
 
 import androidx.compose.material3.Surface
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -80,6 +82,40 @@ class MixerScreenRoborazziTest {
     @Test
     fun mixerScreenSceneDeckLight() =
         capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "mixer_screen_scenedeck_light.png")
+
+    /** NONE is fully flat: no headers and the scope badge shows no source path. */
+    @Test
+    fun noGroupingHidesScopePaths() {
+        groupingFixture(MixerGrouping.NONE)
+        composeRule.onNodeWithText("Nested · Starting Soon › Nested Audio").assertDoesNotExist()
+        composeRule.onNodeWithText("Nested").assertIsDisplayed()
+    }
+
+    /** SCOPE keeps the source path on the strip badge. */
+    @Test
+    fun scopeGroupingShowsScopePaths() {
+        groupingFixture(MixerGrouping.SCOPE)
+        composeRule.onNodeWithText("Nested · Starting Soon › Nested Audio").assertIsDisplayed()
+    }
+
+    /** Single strip so the badge is on screen without scrolling the LazyRow. */
+    private fun groupingFixture(grouping: MixerGrouping) {
+        val state = previewMixerUiState()
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    MixerContent(
+                        uiState =
+                            state.copy(grouping = grouping, inputs = listOf(state.inputs.last())),
+                        levelsStore = MeterLevelsStore(),
+                        motionLevel = MotionLevel.OFF,
+                        hapticsEnabled = false,
+                        callbacks = MixerCallbacks(),
+                    )
+                }
+            }
+        }
+    }
 
     private fun previewMixerUiState(): MixerUiState =
         MixerUiState(

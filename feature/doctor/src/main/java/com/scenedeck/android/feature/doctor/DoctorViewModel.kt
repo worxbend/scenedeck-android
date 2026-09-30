@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DoctorChecks
 import com.scenedeck.android.core.data.DoctorIssue
-import com.scenedeck.android.core.data.DoctorSeverity
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneGraphBuilder
 import com.scenedeck.android.core.data.SceneRole
@@ -28,16 +27,7 @@ data class DoctorUiState(
     val running: Boolean = false,
     val issues: List<DoctorIssue> = emptyList(),
     val ranOnce: Boolean = false,
-) {
-    val errorCount: Int
-        get() = issues.count { it.severity == DoctorSeverity.ERROR }
-
-    val warningCount: Int
-        get() = issues.count { it.severity == DoctorSeverity.WARNING }
-
-    val infoCount: Int
-        get() = issues.count { it.severity == DoctorSeverity.INFO }
-}
+)
 
 @HiltViewModel
 class DoctorViewModel

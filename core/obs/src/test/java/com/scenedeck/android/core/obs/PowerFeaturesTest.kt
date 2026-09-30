@@ -86,6 +86,7 @@ internal class PowerFeaturesTest : ObsClientTestBase() {
     }
 
     @Test
+    @Suppress("LongMethod") // walks each power event through the dispatch table in one session
     fun powerEvents_dispatch(): Unit = runBlocking {
         FakeObsServer().use { server ->
             server.start()

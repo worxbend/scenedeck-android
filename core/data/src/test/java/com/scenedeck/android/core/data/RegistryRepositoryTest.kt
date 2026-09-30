@@ -4,6 +4,10 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.scenedeck.android.core.database.SceneDeckDatabase
+import com.scenedeck.android.core.database.SceneRegistryDao
+import com.scenedeck.android.core.database.SceneRegistryEntity
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,5 +98,54 @@ class RegistryRepositoryTest {
         repository.update("Scene", SceneRole.PRIMARY, null, null)
         repository.deleteStale(emptyList())
         assertEquals("Scene", repository.byName("Scene")?.sceneName)
+    }
+
+    @Test
+    fun interleavedMutationsCannotClobberEachOther(): Unit = runBlocking {
+        val gated = GatedRegistryDao(database.sceneRegistryDao())
+        val repo = RegistryRepository(gated)
+        repo.update("A", SceneRole.PRIMARY, null, null)
+
+        // reorder() reads "A" first; hold it mid-read, then queue update() behind it.
+        // Without serialization the update would land and then be overwritten by
+        // reorder()'s stale read.
+        gated.gateNextByName = true
+        val reorder = async { repo.reorder(listOf("A")) }
+        gated.byNameEntered.await()
+        val update = async { repo.update("A", SceneRole.SECONDARY, null, null) }
+        gated.releaseByName.complete(Unit)
+        reorder.await()
+        update.await()
+
+        assertEquals(SceneRole.SECONDARY, repo.byName("A")?.role)
+        assertEquals(0, repo.byName("A")?.sortOrder)
+    }
+
+    /** Lets a test freeze one byName() call mid-flight to force a read/write interleaving. */
+    private class GatedRegistryDao(private val delegate: SceneRegistryDao) : SceneRegistryDao {
+        val byNameEntered = CompletableDeferred<Unit>()
+        val releaseByName = CompletableDeferred<Unit>()
+        var gateNextByName = false
+
+        override fun observeAll() = delegate.observeAll()
+
+        override suspend fun byName(sceneName: String): SceneRegistryEntity? {
+            if (gateNextByName) {
+                gateNextByName = false
+                byNameEntered.complete(Unit)
+                releaseByName.await()
+            }
+            return delegate.byName(sceneName)
+        }
+
+        override suspend fun upsert(entity: SceneRegistryEntity) = delegate.upsert(entity)
+
+        override suspend fun upsertAll(entities: List<SceneRegistryEntity>) =
+            delegate.upsertAll(entities)
+
+        override suspend fun deleteStale(validSceneNames: List<String>) =
+            delegate.deleteStale(validSceneNames)
+
+        override suspend fun delete(sceneName: String) = delegate.delete(sceneName)
     }
 }

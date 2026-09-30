@@ -51,12 +51,13 @@ class MixerStripRoborazziTest {
         return holder
     }
 
+    private data class StripFlags(val muted: Boolean = false, val locked: Boolean = false)
+
     private fun capture(
         family: ThemeFamily,
         darkTheme: Boolean,
         name: String,
-        muted: Boolean = false,
-        locked: Boolean = false,
+        flags: StripFlags = StripFlags(),
     ) {
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
@@ -65,8 +66,8 @@ class MixerStripRoborazziTest {
                         name = "Test Tone 440",
                         scope = MixerScope.SCENE,
                         volumeMul = 0.7,
-                        muted = muted,
-                        locked = locked,
+                        muted = flags.muted,
+                        locked = flags.locked,
                         meterHolder = liveMeter(),
                         motionLevel = MotionLevel.OFF,
                         hapticsEnabled = false,
@@ -88,11 +89,16 @@ class MixerStripRoborazziTest {
 
     @Test
     fun stripLockedShowsLockGlyph() =
-        capture(ThemeFamily.SCENEDECK, true, "mixer_strip_locked_dark.png", locked = true)
+        capture(
+            ThemeFamily.SCENEDECK,
+            true,
+            "mixer_strip_locked_dark.png",
+            StripFlags(locked = true),
+        )
 
     @Test
     fun stripMutedDark() =
-        capture(ThemeFamily.SCENEDECK, true, "mixer_strip_muted_dark.png", muted = true)
+        capture(ThemeFamily.SCENEDECK, true, "mixer_strip_muted_dark.png", StripFlags(muted = true))
 
     @Test fun stripObsDark() = capture(ThemeFamily.OBS, true, "mixer_strip_obs_dark.png")
 

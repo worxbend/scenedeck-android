@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -32,45 +33,48 @@ class StatGaugeRoborazziTest {
     private fun golden(name: String, droppedPct: Float, congestionPct: Float, fps: Float) {
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
-                Surface {
-                    Row(Modifier.padding(8.dp)) {
-                        StatGauge(
-                            value = droppedPct,
-                            minValue = 0f,
-                            maxValue = 10f,
-                            warnThreshold = 1f,
-                            critThreshold = 5f,
-                            label = "Dropped",
-                            unit = "%",
-                            modifier = Modifier.size(96.dp).padding(4.dp),
-                        )
-                        StatGauge(
-                            value = congestionPct,
-                            minValue = 0f,
-                            maxValue = 100f,
-                            warnThreshold = 30f,
-                            critThreshold = 60f,
-                            label = "Congestion",
-                            unit = "%",
-                            valueText = "%.0f".format(congestionPct),
-                            modifier = Modifier.size(96.dp).padding(4.dp),
-                        )
-                        StatGauge(
-                            value = fps,
-                            minValue = 0f,
-                            maxValue = 60f,
-                            warnThreshold = 54f,
-                            critThreshold = 45f,
-                            label = "FPS",
-                            unit = "fps",
-                            direction = GaugeDirection.FALLING,
-                            modifier = Modifier.size(96.dp).padding(4.dp),
-                        )
-                    }
-                }
+                Surface { GaugeTrio(droppedPct, congestionPct, fps) }
             }
         }
         composeRule.onRoot().captureRoboImage(name)
+    }
+
+    @Composable
+    private fun GaugeTrio(droppedPct: Float, congestionPct: Float, fps: Float) {
+        Row(Modifier.padding(8.dp)) {
+            StatGauge(
+                value = droppedPct,
+                minValue = 0f,
+                maxValue = 10f,
+                warnThreshold = 1f,
+                critThreshold = 5f,
+                label = "Dropped",
+                unit = "%",
+                modifier = Modifier.size(96.dp).padding(4.dp),
+            )
+            StatGauge(
+                value = congestionPct,
+                minValue = 0f,
+                maxValue = 100f,
+                warnThreshold = 30f,
+                critThreshold = 60f,
+                label = "Congestion",
+                unit = "%",
+                valueText = "%.0f".format(congestionPct),
+                modifier = Modifier.size(96.dp).padding(4.dp),
+            )
+            StatGauge(
+                value = fps,
+                minValue = 0f,
+                maxValue = 60f,
+                warnThreshold = 54f,
+                critThreshold = 45f,
+                label = "FPS",
+                unit = "fps",
+                direction = GaugeDirection.FALLING,
+                modifier = Modifier.size(96.dp).padding(4.dp),
+            )
+        }
     }
 
     @Test

@@ -14,7 +14,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,10 +92,8 @@ fun AudioExtrasSheet(
                         style = MaterialTheme.typography.labelLarge,
                         fontFamily = FontFamily.Monospace,
                     )
-                    val sliderState = rememberSliderState(value = balance.toFloat())
-                    sliderState.value = balance.toFloat()
                     Slider(
-                        state = sliderState,
+                        value = balance.toFloat(),
                         onValueChange = {
                             balance = it.toDouble()
                             onBalanceChange(balance)

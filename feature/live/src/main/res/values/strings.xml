@@ -62,7 +62,9 @@
     <string name="stream_live_short">Live</string>
     <string name="record_short">Record</string>
     <string name="record_active_short">Recording</string>
-    <string name="transition_options">Transition settings and T-bar</string>
+    <string name="transition_options">Transition settings</string>
+    <string name="show_tbar">Show T-Bar</string>
+    <string name="hide_tbar">Hide T-Bar</string>
     <string name="find_scene">Find scene</string>
     <string name="close_search">Close search</string>
     <string name="search_scenes">Search scenes</string>

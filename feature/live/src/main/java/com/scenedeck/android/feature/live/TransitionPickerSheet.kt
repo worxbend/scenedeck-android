@@ -14,7 +14,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -102,19 +101,14 @@ fun TransitionPickerSheet(
                         style = MaterialTheme.typography.labelLarge,
                         fontFamily = FontFamily.Monospace,
                     )
-                    val sliderState =
-                        rememberSliderState(
-                            value = durationMs.toFloat(),
-                            steps = 19,
-                            trackRange = 0f..2_000f,
-                        )
-                    sliderState.value = durationMs.toFloat()
                     Slider(
-                        state = sliderState,
+                        value = durationMs.toFloat(),
                         onValueChange = {
                             durationMs = it.toInt()
                             onDurationChange(durationMs)
                         },
+                        steps = 19,
+                        valueRange = 0f..2_000f,
                     )
                 }
             }

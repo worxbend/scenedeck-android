@@ -29,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,9 +46,6 @@ import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
 import com.scenedeck.android.core.model.ConnectionState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -64,7 +60,6 @@ fun InventoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -75,40 +70,11 @@ fun InventoryScreen(
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/yaml")
         ) { uri ->
-            if (uri != null) {
-                scope.launch {
-                    coroutineResult {
-                        val yaml = viewModel.exportRegistry()
-                        withContext(Dispatchers.IO) {
-                            context.contentResolver.openOutputStream(uri)?.use { out ->
-                                out.write(yaml.toByteArray())
-                            } ?: error("cannot open target")
-                        }
-                    }
-                        .onSuccess { snackbarHostState.showSnackbar("Registry exported") }
-                        .onFailure {
-                            snackbarHostState.showSnackbar("Export failed: ${it.message}")
-                        }
-                }
-            }
+            uri?.let { viewModel.transfer.exportTo(it, context.contentResolver) }
         }
     val importLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                scope.launch {
-                    coroutineResult {
-                            withContext(Dispatchers.IO) {
-                                context.contentResolver.openInputStream(uri)?.use {
-                                    it.readBytes().decodeToString()
-                                } ?: error("Cannot open registry")
-                            }
-                        }
-                        .onSuccess(viewModel::stageImport)
-                        .onFailure {
-                            snackbarHostState.showSnackbar("Import failed: ${it.message}")
-                        }
-                }
-            }
+            uri?.let { viewModel.transfer.importFrom(it, context.contentResolver) }
         }
 
     val importPreview by viewModel.importPreview.collectAsStateWithLifecycle()
@@ -138,7 +104,7 @@ fun InventoryScreen(
 
     importPreview?.let { preview ->
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = viewModel::dismissImportPreview,
+            onDismissRequest = viewModel.transfer::dismissPreview,
             title = { Text("Import registry?") },
             text = {
                 Text(
@@ -148,10 +114,10 @@ fun InventoryScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = viewModel::confirmImport) { Text("Import") }
+                TextButton(onClick = viewModel.transfer::confirmImport) { Text("Import") }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissImportPreview) { Text("Cancel") }
+                TextButton(onClick = viewModel.transfer::dismissPreview) { Text("Cancel") }
             },
         )
     }
@@ -188,13 +154,7 @@ internal fun InventoryContent(
     LaunchedEffect(uiState.scenes, reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) orderedScenes = uiState.scenes
     }
-    var wasDragging by remember { mutableStateOf(false) }
-    LaunchedEffect(reorderableState.isAnyItemDragging) {
-        if (wasDragging && !reorderableState.isAnyItemDragging) {
-            onReorder(orderedScenes.map { it.name })
-        }
-        wasDragging = reorderableState.isAnyItemDragging
-    }
+    PersistSceneOrder(reorderableState.isAnyItemDragging, orderedScenes, onReorder)
 
     Column(modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(16.dp))
@@ -312,3 +272,21 @@ internal fun sceneIconForInventory(iconName: String?) =
         ?: SceneDeckIcons.Scenes
 
 internal fun argbToLong(color: Color): Long = color.toArgb().toLong() and 0xFFFFFFFFL
+
+/**
+ * Persists the dragged order once the drag ends. The list is captured as a parameter at composition
+ * time so the effect reads the post-drag order even after the reset effect above re-syncs
+ * `orderedScenes` from `uiState.scenes`.
+ */
+@Composable
+private fun PersistSceneOrder(
+    dragging: Boolean,
+    scenes: List<InventoryScene>,
+    onReorder: (List<String>) -> Unit,
+) {
+    var wasDragging by remember { mutableStateOf(false) }
+    LaunchedEffect(dragging) {
+        if (wasDragging && !dragging) onReorder(scenes.map { it.name })
+        wasDragging = dragging
+    }
+}

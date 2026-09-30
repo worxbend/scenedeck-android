@@ -108,34 +108,29 @@ interface ObsClient {
 
     suspend fun getStudioModeEnabled(): Boolean = error(NOT_IMPLEMENTED)
 
-    suspend fun setStudioModeEnabled(enabled: Boolean) = Unit
+    suspend fun setStudioModeEnabled(enabled: Boolean): Unit = error(NOT_IMPLEMENTED)
 
     suspend fun getCurrentPreviewScene(): String = error(NOT_IMPLEMENTED)
 
-    suspend fun setCurrentPreviewScene(sceneName: String) = Unit
+    suspend fun setCurrentPreviewScene(sceneName: String): Unit = error(NOT_IMPLEMENTED)
 
     /** Commits preview → program with the current transition. */
-    suspend fun triggerStudioModeTransition() = Unit
+    suspend fun triggerStudioModeTransition(): Unit = error(NOT_IMPLEMENTED)
 
     suspend fun getSceneTransitionList(): TransitionListSnapshot = error(NOT_IMPLEMENTED)
 
     suspend fun getCurrentSceneTransition(): CurrentTransition = error(NOT_IMPLEMENTED)
 
-    suspend fun setCurrentSceneTransition(transitionName: String) = Unit
+    suspend fun setCurrentSceneTransition(transitionName: String): Unit = error(NOT_IMPLEMENTED)
 
-    suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = Unit
+    suspend fun setCurrentSceneTransitionDuration(durationMs: Int): Unit = error(NOT_IMPLEMENTED)
 
     /**
-     * Scene screenshot (OBS `GetSourceScreenshot`) as encoded image bytes (JPEG when [format] is
-     * "jpeg"). Throws [ObsRequestFailedException] on sources that can't be captured.
+     * Scene screenshot (OBS `GetSourceScreenshot`) as encoded image bytes (JPEG when
+     * [ScreenshotRequest.format] is "jpeg"). Throws [ObsRequestFailedException] on sources that
+     * can't be captured.
      */
-    suspend fun getSourceScreenshot(
-        sourceName: String,
-        format: String = "jpeg",
-        compressionQuality: Int = 50,
-        width: Int? = 360,
-        height: Int? = null,
-    ): ByteArray = error(NOT_IMPLEMENTED)
+    suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray = error(NOT_IMPLEMENTED)
 
     // ── Power features (M7) — default bodies keep pre-M7 fakes compiling ──────
 
@@ -146,28 +141,34 @@ interface ObsClient {
 
     suspend fun getMediaInputStatus(inputName: String): MediaStatus = error(NOT_IMPLEMENTED)
 
-    suspend fun setMediaInputCursor(inputName: String, cursorMs: Long) = Unit
+    suspend fun setMediaInputCursor(inputName: String, cursorMs: Long): Unit =
+        error(NOT_IMPLEMENTED)
 
-    suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind) = Unit
+    suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind): Unit =
+        error(NOT_IMPLEMENTED)
 
     // ── Scene items ─────────────────────────────────────────────────────────
 
-    suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) = Unit
+    suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean): Unit =
+        error(NOT_IMPLEMENTED)
 
     // ── Audio extras ────────────────────────────────────────────────────────
 
     suspend fun getInputAudioBalance(inputName: String): Double = error(NOT_IMPLEMENTED)
 
-    suspend fun setInputAudioBalance(inputName: String, balance: Double) = Unit
+    suspend fun setInputAudioBalance(inputName: String, balance: Double): Unit =
+        error(NOT_IMPLEMENTED)
 
     suspend fun getInputAudioSyncOffset(inputName: String): Int = error(NOT_IMPLEMENTED)
 
-    suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) = Unit
+    suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int): Unit =
+        error(NOT_IMPLEMENTED)
 
     suspend fun getInputAudioMonitorType(inputName: String): MonitorTypeKind =
         error(NOT_IMPLEMENTED)
 
-    suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) = Unit
+    suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind): Unit =
+        error(NOT_IMPLEMENTED)
 
     // ── Config ──────────────────────────────────────────────────────────────
     suspend fun getProfileList(): ProfileListSnapshot
@@ -186,6 +187,18 @@ interface ObsClient {
 
 /** Thrown when a request is issued while the session is not [ConnectionState.Ready]. */
 class ObsNotConnectedException : IllegalStateException("Not connected to OBS")
+
+/**
+ * Parameters for [ObsClient.getSourceScreenshot] (OBS `GetSourceScreenshot`). Defaults capture a
+ * 360 px-wide JPEG at quality 50.
+ */
+data class ScreenshotRequest(
+    val sourceName: String,
+    val format: String = "jpeg",
+    val compressionQuality: Int = 50,
+    val width: Int? = 360,
+    val height: Int? = null,
+)
 
 /**
  * OBS answered a request with `result: false`. [statusCode] is the obs-websocket

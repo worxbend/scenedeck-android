@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ScreenshotRequest
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -52,7 +54,9 @@ constructor(
     /** Injectable sample clock (wall clock in production; virtual in tests). */
     internal var nowMs: () -> Long = System::currentTimeMillis
 
-    private val lastFetchMs = mutableMapOf<String, Long>()
+    // Restarted poll loops overlap briefly (the cancelled loop's forEach has no suspension
+    // point), so the throttle map must tolerate concurrent put/clear.
+    private val lastFetchMs = ConcurrentHashMap<String, Long>()
     private val semaphore = Semaphore(MAX_CONCURRENT)
 
     init {
@@ -102,10 +106,12 @@ constructor(
             runCatching {
                 val bytes =
                     client.getSourceScreenshot(
-                        sourceName = sceneName,
-                        format = "jpeg",
-                        compressionQuality = JPEG_QUALITY,
-                        width = WIDTH_PX,
+                        ScreenshotRequest(
+                            sourceName = sceneName,
+                            format = "jpeg",
+                            compressionQuality = JPEG_QUALITY,
+                            width = WIDTH_PX,
+                        )
                     )
                 // ApplicationScope uses Dispatchers.Default, keeping decoding off main.
                 val bitmap = decodeBitmap(bytes)?.takeUnless(::isBlankFrame) ?: return@runCatching

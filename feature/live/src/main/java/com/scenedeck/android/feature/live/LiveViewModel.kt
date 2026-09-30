@@ -5,8 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DeckState
-import com.scenedeck.android.core.data.MixerRepository
-import com.scenedeck.android.core.data.MixerState
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
@@ -16,7 +14,6 @@ import com.scenedeck.android.core.data.ScreenshotRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
-import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
@@ -47,26 +44,19 @@ enum class TransportConfirmation {
 }
 
 @HiltViewModel
-@Suppress("TooManyFunctions") // deck + transport + legacy mixer callbacks
+@Suppress("TooManyFunctions") // deck + transport + studio-mode intents
 class LiveViewModel
 @Inject
 constructor(
     private val obsState: ObsStateRepository,
     private val settings: SettingsRepository,
     private val client: ObsClient,
-    private val mixerRepository: MixerRepository,
     screenshots: ScreenshotRepository,
     stats: StatsRepository,
 ) : ViewModel() {
 
     /** Scene thumbnails for deck cards (throttled inside the repository). */
     val thumbnails: StateFlow<Map<String, Bitmap>> = screenshots.thumbnails
-
-    /** Embedded mixer row state (follows the program scene). */
-    val mixerState: StateFlow<MixerState> = mixerRepository.mixerState
-
-    /** Live meter levels for the embedded row (read by VolumeMeter in draw phase). */
-    val mixerLevels = MeterLevelsStore()
 
     val deckState: StateFlow<DeckState> = obsState.deckState
     val telemetry: StateFlow<Telemetry> = stats.telemetry
@@ -112,8 +102,12 @@ constructor(
     private val _confirmation = MutableStateFlow<TransportConfirmation?>(null)
     val confirmation: StateFlow<TransportConfirmation?> = _confirmation.asStateFlow()
 
-    /** One-shot user-facing errors (OBS request failures) for the snackbar. */
-    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    /**
+     * One-shot user-facing errors (OBS request failures) for the snackbar. Small replay so a
+     * failure emitted during collector teardown (e.g. rotation) or two failures in the same frame
+     * are not silently lost.
+     */
+    private val _errors = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 1)
     val errors: SharedFlow<String> = _errors.asSharedFlow()
 
     // ── Deck ────────────────────────────────────────────────────────────────
@@ -158,12 +152,15 @@ constructor(
         iconName: String?,
     ) {
         viewModelScope.launch {
-            obsState.updateSceneMeta(
-                sceneName = sceneName,
-                role = if (primary) SceneRole.PRIMARY else SceneRole.SECONDARY,
-                accentColorArgb = accentColorArgb,
-                iconName = iconName,
-            )
+            coroutineResult {
+                obsState.updateSceneMeta(
+                    sceneName = sceneName,
+                    role = if (primary) SceneRole.PRIMARY else SceneRole.SECONDARY,
+                    accentColorArgb = accentColorArgb,
+                    iconName = iconName,
+                )
+            }
+                .onFailure { _errors.tryEmit("Couldn't save scene details") }
         }
     }
 
@@ -194,19 +191,6 @@ constructor(
             coroutineResult { obsState.toggleVirtualCam() }
                 .onFailure { _errors.tryEmit("Couldn't toggle virtual cam") }
         }
-    }
-
-    fun toggleMixerMute(inputName: String, muted: Boolean) {
-        viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
-    }
-
-    /** Embedded-mixer fader: local preview while dragging, OBS write on commit. */
-    fun previewMixerVolume(inputName: String, volumeMul: Double) {
-        mixerRepository.previewInputVolume(inputName, volumeMul)
-    }
-
-    fun commitMixerVolume(inputName: String, volumeMul: Double) {
-        viewModelScope.launch { mixerRepository.setInputVolume(inputName, volumeMul) }
     }
 
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
@@ -259,7 +243,10 @@ constructor(
     }
 
     fun reorderDeck(orderedSceneNames: List<String>) {
-        viewModelScope.launch { obsState.reorderDeck(orderedSceneNames) }
+        viewModelScope.launch {
+            coroutineResult { obsState.reorderDeck(orderedSceneNames) }
+                .onFailure { _errors.tryEmit("Couldn't save the scene order") }
+        }
     }
 
     // ── Transport (Output Safety, FEATURE_SPEC §4) ──────────────────────────

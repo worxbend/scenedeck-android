@@ -207,8 +207,12 @@ internal fun LiveDeckContent(
     // Local order while dragging; re-syncs from the deck when not dragging.
     var deckOnly by rememberSaveable { mutableStateOf(false) }
     var reorderMode by rememberSaveable { mutableStateOf(false) }
+    var tBarOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Reorder corrupts the full scene order when only a subset is visible, so it is
+    // disabled while the Deck filter (or a search) narrows the list.
+    val reorderAllowed = !deckOnly && searchQuery.isBlank()
     val visibleScenes =
         filterScenes(if (deckOnly) deckState.scenes else deckState.allScenes, searchQuery)
     var orderedScenes by remember { mutableStateOf(visibleScenes) }
@@ -225,16 +229,6 @@ internal fun LiveDeckContent(
     }
     PersistSceneOrder(reorderableState.isAnyItemDragging, orderedScenes, onReorder)
 
-    val toggleSearch = {
-        searchOpen = !searchOpen
-        if (!searchOpen) searchQuery = ""
-    }
-    val emptyMessage =
-        when {
-            searchQuery.isNotBlank() -> R.string.no_matching_scenes
-            deckOnly -> R.string.empty_deck
-            else -> R.string.empty_scenes
-        }
     val streaming = telemetry.stream?.active == true
     val recording = telemetry.record?.active == true
 
@@ -247,11 +241,14 @@ internal fun LiveDeckContent(
             deckState,
             reorderMode,
             { reorderMode = !reorderMode },
+            reorderAllowed,
             previewsEnabled,
             onPreviewsToggle,
             onStudioToggle,
             telemetry,
             motionLevel,
+            tBarOpen,
+            { tBarOpen = !tBarOpen },
         )
         Spacer(Modifier.height(8.dp))
         TransportBar(
@@ -273,35 +270,27 @@ internal fun LiveDeckContent(
                 onTransitionSelect = onTransitionSelect,
                 onTransitionDurationChange = onTransitionDurationChange,
                 motionLevel = motionLevel,
+                tBarOpen = tBarOpen,
             )
         }
-        DeckFilters(
-            deckOnly,
-            { deckOnly = it },
-            deckState.allScenes.size,
-            searchOpen,
-            toggleSearch,
-            reorderMode,
-            { reorderMode = false },
+        DeckFilterSection(
+            deckOnly = deckOnly,
+            onDeckOnlyChange = {
+                deckOnly = it
+                if (it) reorderMode = false
+            },
+            sceneCount = deckState.allScenes.size,
+            searchOpen = searchOpen,
+            onSearchToggle = {
+                searchOpen = !searchOpen
+                if (!searchOpen) searchQuery = ""
+            },
+            searchQuery = searchQuery,
+            onSearchChange = { searchQuery = it },
+            reorderMode = reorderMode,
+            onFinishReordering = { reorderMode = false },
+            listEmpty = orderedScenes.isEmpty(),
         )
-        if (searchOpen) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text(stringResource(R.string.search_scenes)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                shape = MaterialTheme.shapes.large,
-            )
-        }
-        if (orderedScenes.isEmpty()) {
-            Text(
-                text = stringResource(emptyMessage),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 24.dp),
-            )
-        }
 
         LazyVerticalGrid(
             modifier = Modifier.weight(1f),
@@ -317,7 +306,7 @@ internal fun LiveDeckContent(
                         scene,
                         orderedScenes.indexOf(scene) + 1,
                         isDragging,
-                        reorderMode,
+                        reorderMode && reorderAllowed,
                         searchQuery.isBlank(),
                         motionLevel,
                         deckState.studioMode,
@@ -383,16 +372,20 @@ private fun DeckHeader(
     deckState: DeckState,
     reorderMode: Boolean,
     onReorderToggle: () -> Unit,
+    reorderAllowed: Boolean,
     previewsEnabled: Boolean,
     onPreviewsToggle: (Boolean) -> Unit,
     onStudioToggle: (Boolean) -> Unit,
     telemetry: Telemetry,
     motionLevel: MotionLevel,
+    tBarOpen: Boolean,
+    onTBarToggle: () -> Unit,
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
     val reorderLabel = if (reorderMode) R.string.finish_reordering else R.string.reorder_scenes
     val previewsLabel = if (previewsEnabled) R.string.hide_previews else R.string.show_previews
     val studioLabel = if (deckState.studioMode) R.string.disable_studio else R.string.enable_studio
+    val tBarLabel = if (tBarOpen) R.string.hide_tbar else R.string.show_tbar
     StudioPageHeader(
         title = stringResource(R.string.live_title),
         subtitle =
@@ -413,6 +406,7 @@ private fun DeckHeader(
                         onReorderToggle()
                         optionsOpen = false
                     },
+                    enabled = reorderAllowed,
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(previewsLabel)) },
@@ -428,6 +422,15 @@ private fun DeckHeader(
                         optionsOpen = false
                     },
                 )
+                if (deckState.studioMode) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(tBarLabel)) },
+                        onClick = {
+                            onTBarToggle()
+                            optionsOpen = false
+                        },
+                    )
+                }
             }
         }
     }
@@ -495,6 +498,55 @@ private fun DeckSceneTile(
                 modifier = Modifier.padding(10.dp).then(modifier),
             )
         }
+    }
+}
+
+/** Deck filter chips, the search field, and the empty-list hint (kept out of LiveDeckContent). */
+@Composable
+private fun DeckFilterSection(
+    deckOnly: Boolean,
+    onDeckOnlyChange: (Boolean) -> Unit,
+    sceneCount: Int,
+    searchOpen: Boolean,
+    onSearchToggle: () -> Unit,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    reorderMode: Boolean,
+    onFinishReordering: () -> Unit,
+    listEmpty: Boolean,
+) {
+    DeckFilters(
+        deckOnly,
+        onDeckOnlyChange,
+        sceneCount,
+        searchOpen,
+        onSearchToggle,
+        reorderMode,
+        onFinishReordering,
+    )
+    if (searchOpen) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            label = { Text(stringResource(R.string.search_scenes)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            shape = MaterialTheme.shapes.large,
+        )
+    }
+    if (listEmpty) {
+        val emptyMessage =
+            when {
+                searchQuery.isNotBlank() -> R.string.no_matching_scenes
+                deckOnly -> R.string.empty_deck
+                else -> R.string.empty_scenes
+            }
+        Text(
+            text = stringResource(emptyMessage),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 24.dp),
+        )
     }
 }
 

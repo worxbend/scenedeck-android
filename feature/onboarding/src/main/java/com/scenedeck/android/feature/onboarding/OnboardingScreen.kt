@@ -88,7 +88,10 @@ fun OnboardingScreen(
                         viewModel.connect(name, host, port, password)
                     },
                     onSuccess = { step = STEP_SUCCESS },
-                    onBack = { step = STEP_WELCOME },
+                    onBack = {
+                        viewModel.resetConnect()
+                        step = STEP_WELCOME
+                    },
                 )
 
             else ->

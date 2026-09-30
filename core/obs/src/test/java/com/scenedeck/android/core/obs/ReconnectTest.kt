@@ -51,6 +51,30 @@ internal class ReconnectTest : ObsClientTestBase() {
     }
 
     @Test
+    fun disconnectDuringConnect_failsAwaitingCaller(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            server.enqueueSession()
+            // Keep the handshake in flight: the GetVersion response arrives far too late.
+            server.responseDelayMs = { 30_000 }
+
+            val client = newClient()
+            // scope.async: a failed connect must not cancel the test coroutine.
+            val connectJob = scope.async { client.connect("127.0.0.1", server.port) }
+
+            withTimeout(10_000) {
+                while (server.receivedCount("GetVersion") < 1) delay(20)
+            }
+            client.disconnect()
+
+            // The suspended connect must not complete as if the handshake had succeeded.
+            val failure = runCatching { connectJob.await() }.exceptionOrNull()
+            assertIsInstance<ObsNotConnectedException>(failure)
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+        }
+    }
+
+    @Test
     fun concurrentRequests_boundedBySemaphore(): Unit = runBlocking {
         FakeObsServer().use { server ->
             server.start()

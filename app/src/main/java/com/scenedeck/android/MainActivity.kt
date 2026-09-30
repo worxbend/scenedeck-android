@@ -26,7 +26,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleSceneLink(intent)
+        // Only fresh launches deliver the link; recreation must not re-fire the scene switch.
+        if (savedInstanceState == null) handleSceneLink(intent)
         setContent {
             val appState = rememberSceneDeckAppState(settings = appViewModel.settingsRepository)
             val connectionState by appViewModel.connectionState.collectAsStateWithLifecycle()
@@ -63,6 +64,8 @@ class MainActivity : ComponentActivity() {
 
     /** `scenedeck://scene/{name}` (automation/Tasker): connect if needed, then switch. */
     private fun handleSceneLink(intent: Intent?) {
-        SceneLinkParser.sceneName(intent?.dataString)?.let(appViewModel::onSceneLink)
+        if (intent == null) return
+        SceneLinkParser.sceneName(intent.dataString)?.let(appViewModel::onSceneLink)
+        intent.data = null
     }
 }

@@ -3,6 +3,7 @@ package com.scenedeck.android.core.data
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +25,15 @@ class KeystoreSecretsStore(context: Context) : SecretsStore {
 
     override suspend fun passwordFor(profileId: Long): String? =
         withContext(Dispatchers.IO) {
-            val blob = prefs.getString(keyFor(profileId), null) ?: return@withContext null
-            runCatching { cipher.decrypt(blob) }.getOrNull()
+            val key = keyFor(profileId)
+            val blob = prefs.getString(key, null) ?: return@withContext null
+            try {
+                cipher.decrypt(blob)
+            } catch (failure: GeneralSecurityException) {
+                throw dropUndecryptable(key, failure)
+            } catch (failure: IllegalArgumentException) {
+                throw dropUndecryptable(key, failure)
+            }
         }
 
     override suspend fun setPassword(profileId: Long, password: String?) =
@@ -42,6 +50,16 @@ class KeystoreSecretsStore(context: Context) : SecretsStore {
         }
 
     private fun keyFor(profileId: Long) = "password_$profileId"
+
+    /**
+     * A blob that failed to decrypt once will never decrypt again (wrong/invalidated key or corrupt
+     * data) — delete it so the next read reports "no password" instead of retrying a dead
+     * credential, and surface a typed, sanitized failure.
+     */
+    private fun dropUndecryptable(key: String, cause: Exception): SecretsDecryptException {
+        prefs.edit().remove(key).apply()
+        return SecretsDecryptException(cause)
+    }
 
     private fun getOrCreateKey(): javax.crypto.SecretKey {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }

@@ -11,6 +11,7 @@ import com.scenedeck.android.core.model.SpecialInputs
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ScreenshotRequest
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -86,13 +87,7 @@ internal class FakeObsClient(
 
     override suspend fun setCurrentSceneTransitionDuration(durationMs: Int) = unused()
 
-    override suspend fun getSourceScreenshot(
-        sourceName: String,
-        format: String,
-        compressionQuality: Int,
-        width: Int?,
-        height: Int?,
-    ): ByteArray = unused()
+    override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray = unused()
 
     private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
 
