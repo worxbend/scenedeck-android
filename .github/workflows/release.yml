@@ -85,7 +85,7 @@ jobs:
           ruby fastlane/test_publish.rb
       - name: Quality and security gate
         run: scripts/check-quality.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: delivery-quality-reports
@@ -156,7 +156,7 @@ jobs:
           cd dist
           shopt -s nullglob
           sha256sum *.apk *.aab > SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: scenedeck-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.version_code }}
           path: dist/*
