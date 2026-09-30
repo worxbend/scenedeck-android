@@ -94,16 +94,21 @@ and Play Store distribution are separate steps.
 ## 🛠️ Keep the code crisp
 
 ```bash
+# One-time: pre-commit hook (ktfmt + detekt on staged Kotlin changes)
+scripts/install-git-hooks.sh
+
 # Full local gate: format check, complexity, lint, tests, build and security patterns
 # Requires JDK 21 and uv
 scripts/check-quality.sh
 
-# Apply the shared Kotlin formatting style
+# Apply the shared Kotlin formatting style (mirrored by .editorconfig)
 ./gradlew ktfmtFormat
 ```
 
-Cyclomatic and cognitive complexity checks cover Compose functions too. CI runs
-the gate, publishes reports and performs CodeQL analysis. Local security checks
+Cyclomatic and cognitive complexity checks cover Compose functions too. CI runs the
+same gate as parallel jobs — wrapper validation, static analysis, tests, APK build,
+Semgrep/Gitleaks security scans and PR dependency review — publishing reports and
+SARIF results to code scanning, plus separate CodeQL analysis. Local security checks
 cover project-specific patterns; passing scans does not guarantee absence of bugs.
 
 ## 🗺️ Under the hood

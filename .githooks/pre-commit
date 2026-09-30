@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Pre-commit gate: formatting + static analysis for staged Kotlin changes.
+# The full pipeline (lint, tests, build, semgrep, gitleaks) is scripts/check-quality.sh.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+if ! git diff --cached --name-only --diff-filter=ACM | grep -q '\.kts\?$'; then
+  exit 0
+fi
+
+java_major() { "$1/bin/java" -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p'; }
+
+# detekt's embedded Kotlin compiler requires a JDK 21 host.
+if [[ -z "${JAVA_HOME:-}" || "$(java_major "$JAVA_HOME")" != 21 ]]; then
+  for candidate in "$HOME/.sdkman/candidates/java"/21.*; do
+    if [[ -x "$candidate/bin/java" ]]; then
+      export JAVA_HOME="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "${JAVA_HOME:-}" || "$(java_major "$JAVA_HOME")" != 21 ]]; then
+  echo "pre-commit: JDK 21 required (install via 'sdk install java 21.0.8-tem')." >&2
+  exit 1
+fi
+
+./gradlew ktfmtCheck detekt --no-configuration-cache --quiet || {
+  echo "pre-commit: gate failed — run ./gradlew ktfmtFormat and fix detekt findings." >&2
+  exit 1
+}

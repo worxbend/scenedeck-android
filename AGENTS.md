@@ -40,6 +40,13 @@ If you change documented behavior, update the matching doc in `docs/` **and** th
 Before declaring work done: `./gradlew assembleDebug` must build, `./gradlew testDebugUnitTest`
 must pass, and Compose preview(s) for changed screens must render.
 
+## Dev tooling
+
+- `.editorconfig` mirrors the ktfmt kotlinlang style; keep IDE settings aligned.
+- `scripts/install-git-hooks.sh` installs the pre-commit hook (ktfmt + detekt on staged Kotlin).
+- `scripts/check-quality.sh` is the full local gate (JDK 21 + uv); CI runs the same checks as
+  parallel GitHub Actions jobs with SARIF code-scanning uploads.
+
 ## Current UX contract
 
 - Main tabs: Scenes, Mixer, Stats; Inventory and setup/diagnostic tools are under More.

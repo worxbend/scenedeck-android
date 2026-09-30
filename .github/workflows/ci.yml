@@ -4,17 +4,32 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  build:
+  wrapper-validation:
+    name: Gradle wrapper
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+
+  quality:
+    name: Static analysis (ktfmt, detekt, lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -31,20 +46,188 @@ jobs:
       - name: Install compile SDK
         run: sdkmanager "platforms;android-37.0"
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+      - name: Formatting, detekt and Android Lint
+        run: ./gradlew ktfmtCheck detekt lintDebug --no-configuration-cache
 
-      - name: Static checks, security, tests and build
-        run: scripts/check-quality.sh
+      - name: Collect detekt SARIF
+        if: always()
+        run: |
+          mkdir -p build/sarif/detekt
+          find . -path '*/build/reports/detekt/detekt.sarif' -exec cp {} build/sarif/detekt/ \;
 
-      - name: Upload quality reports
+      - name: Upload detekt SARIF to code scanning
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: build/sarif/detekt
+          category: detekt
+
+      - name: Upload analysis reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quality-reports
+          name: analysis-reports
           path: |
             **/build/reports/detekt/**
             **/build/reports/lint-results*.*
-            **/build/reports/tests/**
-            build/reports/security/**
           retention-days: 14
+
+  test:
+    name: Unit and golden tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+
+      - name: Run unit tests and verify Roborazzi goldens
+        run: ./gradlew testDebugUnitTest :core:model:test :core:common:test --no-configuration-cache
+
+      - name: Publish test results
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: Unit tests
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/**'
+          retention-days: 14
+
+  build:
+    name: Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write # dependency graph submission
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          dependency-graph: generate-and-submit
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --no-configuration-cache
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenedeck-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+  security:
+    name: Security scans (Semgrep, Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Semgrep scan
+        run: |
+          mkdir -p build/reports/security
+          uv tool run --from semgrep==1.156.0 semgrep scan \
+            --config config/semgrep/security.yml --metrics off --disable-version-check \
+            --error --strict --sarif --output build/reports/security/semgrep.sarif \
+            app/src core/*/src feature/*/src
+
+      - name: Gitleaks history and working-tree scans
+        run: scripts/check-secrets.sh
+
+      - name: Upload security SARIF to code scanning
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: build/reports/security
+          category: semgrep-gitleaks
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: build/reports/security/**
+          retention-days: 14
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [wrapper-validation, quality, test, build, security]
+    if: always()
+    steps:
+      - name: Evaluate job results
+        run: |
+          failed=0
+          for result in \
+            "${{ needs.wrapper-validation.result }}" \
+            "${{ needs.quality.result }}" \
+            "${{ needs.test.result }}" \
+            "${{ needs.build.result }}" \
+            "${{ needs.security.result }}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              failed=1
+            fi
+          done
+          if [[ "$failed" == 1 ]]; then
+            echo "One or more pipeline jobs did not succeed." >&2
+            exit 1
+          fi
+          echo "All pipeline jobs succeeded."

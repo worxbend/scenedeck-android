@@ -15,6 +15,10 @@ scripts/check-quality.sh
 `./gradlew ktfmtFormat` applies formatting. Reports appear in each module’s
 `build/reports`, with secret/security reports in root `build/reports/security`.
 
+Editor settings are shared via `.editorconfig` (mirrors the ktfmt kotlinlang style).
+`scripts/install-git-hooks.sh` points git at `.githooks/`, installing a pre-commit
+hook that runs `ktfmtCheck` and `detekt` when Kotlin sources are staged.
+
 | Check | Gate |
 |---|---|
 | ktfmt 0.64 | Kotlin-style source must be formatted |
@@ -26,6 +30,7 @@ scripts/check-quality.sh
 | Gitleaks 8.30.1 | Redacted working-tree and full Git-history scans |
 | GitHub CodeQL | Kotlin/Java security-extended analysis on push/PR and weekly |
 | Dependabot | Weekly Gradle and Actions update proposals |
+| CI pipeline | Parallel jobs: wrapper validation, static analysis, tests, APK build, security scans, PR dependency review; detekt/Semgrep/Gitleaks SARIF published to code scanning |
 
 The pipeline pins Detekt’s JVM target to 17 and runs on JDK 21, avoiding its embedded
 compiler’s incompatibility with JDK 25. Dependency constraints align application and
