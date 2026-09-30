@@ -54,8 +54,6 @@ class StudioModeRoborazziTest {
                         onStreamClick = {},
                         onRecordClick = {},
                         onToggleVirtualCam = {},
-                        onToggleReplayBuffer = {},
-                        onSaveReplay = {},
                         onQuickEditSave = { _, _, _, _ -> },
                         onReorder = {},
                         onStudioToggle = {},

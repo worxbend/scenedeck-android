@@ -17,8 +17,6 @@ internal fun OutputDeckFixture(deck: DeckState, telemetry: Telemetry, motion: Mo
         onStreamClick = {},
         onRecordClick = {},
         onToggleVirtualCam = {},
-        onToggleReplayBuffer = {},
-        onSaveReplay = {},
         onQuickEditSave = { _, _, _, _ -> },
         onReorder = {},
         onStudioToggle = {},

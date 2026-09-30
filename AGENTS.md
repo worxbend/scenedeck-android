@@ -68,4 +68,6 @@ must pass, and Compose preview(s) for changed screens must render.
 - Stream transport: blue idle Stream, red Stop while active; Full motion breathing halo only.
 - Timers remain visible; green stream, amber recording with readable light-theme contrast.
 - Connection operations expose sanitized failures, preserve failed-save drafts and gate duplicate writes; blank edit-test credentials reuse encrypted storage.
-- Scenes header owns status/timers (Standby, LIVE, REC); simultaneous outputs show both. Direct row: Stream, Record, VCam; replay in header overflow.
+- Scenes header owns status/timers (Standby, LIVE, REC); simultaneous outputs show both. Direct row: Stream, Record, VCam.
+
+- Replay Buffer is excluded from Android: no replay controls or background polling.

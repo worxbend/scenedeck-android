@@ -19,7 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtualcam/replay
+ * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtual camera status
  * status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
  * StatusStrip, the TransportBar and the stats page; [StatsRepository.samples] keeps the rolling
  * 2-minute window for charts.
@@ -32,7 +32,6 @@ data class Telemetry(
     /** Rolling bitrate computed from consecutive `GetStreamStatus` byte counters. */
     val bitrateKbps: Int = 0,
     val virtualCamActive: Boolean = false,
-    val replayBufferActive: Boolean = false,
 )
 
 @Singleton
@@ -81,10 +80,6 @@ constructor(
                 val stream = client.getStreamStatus()
                 val record = client.getRecordStatus()
                 val virtualCam = requestResult { client.getVirtualCamStatus() }.getOrDefault(false)
-                val replayBuffer = requestResult {
-                    client.getReplayBufferStatus()
-                }
-                    .getOrDefault(false)
                 val nowMs = nowMs()
                 val bitrate =
                     computeBitrateKbps(
@@ -103,7 +98,6 @@ constructor(
                         record = record,
                         bitrateKbps = bitrate,
                         virtualCamActive = virtualCam,
-                        replayBufferActive = replayBuffer,
                     )
                 _telemetry.value = snapshot
                 history.add(snapshot.toSample(history.latest()))

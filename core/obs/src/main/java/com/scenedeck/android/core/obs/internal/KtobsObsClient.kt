@@ -38,10 +38,6 @@ import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEvent
 import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEventData
 import com.rejeq.ktobs.event.outputs.RecordStateChangedEvent
 import com.rejeq.ktobs.event.outputs.RecordStateChangedEventData
-import com.rejeq.ktobs.event.outputs.ReplayBufferSavedEvent
-import com.rejeq.ktobs.event.outputs.ReplayBufferSavedEventData
-import com.rejeq.ktobs.event.outputs.ReplayBufferStateChangedEvent
-import com.rejeq.ktobs.event.outputs.ReplayBufferStateChangedEventData
 import com.rejeq.ktobs.event.outputs.StreamStateChangedEvent
 import com.rejeq.ktobs.event.outputs.StreamStateChangedEventData
 import com.rejeq.ktobs.event.outputs.VirtualcamStateChangedEvent
@@ -92,11 +88,7 @@ import com.rejeq.ktobs.request.inputs.setInputVolume
 import com.rejeq.ktobs.request.mediainputs.getMediaInputStatus
 import com.rejeq.ktobs.request.mediainputs.setMediaInputCursor
 import com.rejeq.ktobs.request.mediainputs.triggerMediaInputAction
-import com.rejeq.ktobs.request.outputs.getLastReplayBufferReplay
-import com.rejeq.ktobs.request.outputs.getReplayBufferStatus
 import com.rejeq.ktobs.request.outputs.getVirtualCamStatus
-import com.rejeq.ktobs.request.outputs.saveReplayBuffer
-import com.rejeq.ktobs.request.outputs.toggleReplayBuffer
 import com.rejeq.ktobs.request.outputs.toggleVirtualCam
 import com.rejeq.ktobs.request.record.getRecordStatus
 import com.rejeq.ktobs.request.record.startRecord
@@ -571,14 +563,6 @@ internal class KtobsObsClient(
 
     override suspend fun toggleVirtualCam() = request { it.toggleVirtualCam() }
 
-    override suspend fun getReplayBufferStatus() = request { it.getReplayBufferStatus() }
-
-    override suspend fun toggleReplayBuffer() = request { it.toggleReplayBuffer() }
-
-    override suspend fun saveReplayBuffer() = request { it.saveReplayBuffer() }
-
-    override suspend fun getLastReplayBufferReplay() = request { it.getLastReplayBufferReplay() }
-
     override suspend fun getMediaInputStatus(inputName: String) = request {
         it.getMediaInputStatus(inputName = inputName).toDomain()
     }
@@ -650,9 +634,7 @@ internal class KtobsObsClient(
                 InputVolumeChangedEvent -> dispatchInputEvent(event)
                 StreamStateChangedEvent,
                 RecordStateChangedEvent,
-                VirtualcamStateChangedEvent,
-                ReplayBufferStateChangedEvent,
-                ReplayBufferSavedEvent -> dispatchOutputEvent(event)
+                VirtualcamStateChangedEvent -> dispatchOutputEvent(event)
                 MediaInputPlaybackStartedEvent,
                 MediaInputPlaybackEndedEvent,
                 InputAudioBalanceChangedEvent,
@@ -779,14 +761,6 @@ internal class KtobsObsClient(
                     event.get<VirtualcamStateChangedEventData>().let {
                         ObsEvent.VirtualcamStateChanged(it.outputActive, it.outputState)
                     }
-                ReplayBufferStateChangedEvent ->
-                    event.get<ReplayBufferStateChangedEventData>().let {
-                        ObsEvent.ReplayBufferStateChanged(it.outputActive, it.outputState)
-                    }
-                ReplayBufferSavedEvent ->
-                    ObsEvent.ReplayBufferSaved(
-                        event.get<ReplayBufferSavedEventData>().savedReplayPath
-                    )
                 RecordStateChangedEvent ->
                     event.get<RecordStateChangedEventData>().let {
                         ObsEvent.RecordStateChanged(it.outputActive, it.outputState, it.outputPath)

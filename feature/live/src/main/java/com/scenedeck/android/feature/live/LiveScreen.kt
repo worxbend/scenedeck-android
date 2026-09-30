@@ -102,8 +102,6 @@ fun LiveScreen(
                     onStreamClick = viewModel::onStreamClick,
                     onRecordClick = viewModel::onRecordClick,
                     onToggleVirtualCam = viewModel::toggleVirtualCam,
-                    onToggleReplayBuffer = viewModel::toggleReplayBuffer,
-                    onSaveReplay = viewModel::saveReplayBuffer,
                     onQuickEditSave = viewModel::saveSceneMeta,
                     sceneItemsVersion = sceneItemsVersion,
                     onLoadSceneItems = viewModel::loadSceneItems,
@@ -188,8 +186,6 @@ internal fun LiveDeckContent(
     onStreamClick: () -> Unit,
     onRecordClick: () -> Unit,
     onToggleVirtualCam: () -> Unit,
-    onToggleReplayBuffer: () -> Unit,
-    onSaveReplay: () -> Unit,
     onQuickEditSave:
         (sceneName: String, primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
     modifier: Modifier = Modifier,
@@ -256,8 +252,6 @@ internal fun LiveDeckContent(
             onStudioToggle,
             telemetry,
             motionLevel,
-            onToggleReplayBuffer,
-            onSaveReplay,
         )
         Spacer(Modifier.height(8.dp))
         TransportBar(
@@ -394,8 +388,6 @@ private fun DeckHeader(
     onStudioToggle: (Boolean) -> Unit,
     telemetry: Telemetry,
     motionLevel: MotionLevel,
-    onToggleReplayBuffer: () -> Unit,
-    onSaveReplay: () -> Unit,
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
     val reorderLabel = if (reorderMode) R.string.finish_reordering else R.string.reorder_scenes
@@ -415,17 +407,6 @@ private fun DeckHeader(
                 Icon(SceneDeckIcons.More, stringResource(R.string.scene_options))
             }
             DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
-                ReplayMenuItems(
-                    telemetry.replayBufferActive,
-                    onToggle = {
-                        onToggleReplayBuffer()
-                        optionsOpen = false
-                    },
-                    onSave = {
-                        onSaveReplay()
-                        optionsOpen = false
-                    },
-                )
                 DropdownMenuItem(
                     text = { Text(stringResource(reorderLabel)) },
                     onClick = {
@@ -577,14 +558,6 @@ private fun PersistSceneOrder(
         if (wasDragging && !dragging) onReorder(sceneNames(scenes))
         wasDragging = dragging
     }
-}
-
-@Composable
-private fun ReplayMenuItems(active: Boolean, onToggle: () -> Unit, onSave: () -> Unit) {
-    val label = stringResource(if (active) R.string.stop_replay else R.string.start_replay)
-    DropdownMenuItem(text = { Text(label) }, onClick = onToggle)
-    if (active)
-        DropdownMenuItem(text = { Text(stringResource(R.string.save_replay_cd)) }, onClick = onSave)
 }
 
 @Composable

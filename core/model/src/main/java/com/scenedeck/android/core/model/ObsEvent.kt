@@ -59,10 +59,6 @@ sealed interface ObsEvent {
 
     data class VirtualcamStateChanged(val active: Boolean, val state: String) : ObsEvent
 
-    data class ReplayBufferStateChanged(val active: Boolean, val state: String) : ObsEvent
-
-    data class ReplayBufferSaved(val outputPath: String) : ObsEvent
-
     data class RecordStateChanged(
         val active: Boolean,
         val state: String,

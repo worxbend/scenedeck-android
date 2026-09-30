@@ -144,16 +144,6 @@ interface ObsClient {
     /** Returns the new active state. */
     suspend fun toggleVirtualCam(): Boolean = error(NOT_IMPLEMENTED)
 
-    suspend fun getReplayBufferStatus(): Boolean = error(NOT_IMPLEMENTED)
-
-    /** Returns the new active state. */
-    suspend fun toggleReplayBuffer(): Boolean = error(NOT_IMPLEMENTED)
-
-    suspend fun saveReplayBuffer() = Unit
-
-    /** Filesystem path of the last saved replay. */
-    suspend fun getLastReplayBufferReplay(): String = error(NOT_IMPLEMENTED)
-
     suspend fun getMediaInputStatus(inputName: String): MediaStatus = error(NOT_IMPLEMENTED)
 
     suspend fun setMediaInputCursor(inputName: String, cursorMs: Long) = Unit

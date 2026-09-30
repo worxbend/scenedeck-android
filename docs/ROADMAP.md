@@ -110,10 +110,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 ## M7 — Power features ✅ SHIPPED
 
-- Virtual camera + replay buffer controls; media source play/pause; scene item
+- Virtual camera control; media source play/pause; scene item
   visibility toggles; audio balance/sync-offset/monitor type. **All shipped, E2E-verified
-  against live OBS** (replay buffer unavailable on the flatpak test rig — error 604 path
-  handled gracefully, fixture-tested).
+  against live OBS**. Replay Buffer was removed from the Android scope.
 - T-bar gesture shipped (M6 deferral closed).
 - Foreground service (dataSync, STICKY, 6 h budget handling) + ongoing notification with
   live scene/state + Disconnect action; keep-alive toggle via long-press on the status
@@ -122,7 +121,7 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   `scenedeck://scene/{name}` deep link.
 - **Exit:** feature-complete gate; battery/background audit passed. ✅
 - Follow-ups for M8: stream/record actions in notification; widget refresh affordance;
-  ~~Glance goldens; replay-unavailable snackbar copy; lock glyph icon; ring buffer into
+  ~~Glance goldens; lock glyph icon; ring buffer into
   StatsRepository~~ (done in M8a; Glance pixel goldens skipped — no capture API).
 
 ## M8 — Polish & launch
@@ -133,7 +132,7 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   beta → production.
 - Optional stretch: Wear OS tile (switch scene from watch).
 - **M8a done (2026-09-29):** telemetry ring buffer moved into `StatsRepository`
-  (connection-scoped, FEATURE_SPEC §5); replay-604 snackbar copy; lock/lock-open
+  (connection-scoped, FEATURE_SPEC §5); lock/lock-open
   glyphs added to the icon catalogue (mixer strip no longer reuses the settings
   glyph); SELECTED-mode mixer re-discovers the frozen scene on lifecycle events
   (debounced 300 ms, rename-aware). A11y: gauge/chart/graph text summaries,

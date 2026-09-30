@@ -116,7 +116,6 @@ class LiveDeckRoborazziTest {
                         bytes = 1_234_000,
                     ),
                 virtualCamActive = true,
-                replayBufferActive = true,
             )
 
         composeRule.setContent {
@@ -133,8 +132,6 @@ class LiveDeckRoborazziTest {
                         onStreamClick = {},
                         onRecordClick = {},
                         onToggleVirtualCam = {},
-                        onToggleReplayBuffer = {},
-                        onSaveReplay = {},
                         onQuickEditSave = { _, _, _, _ -> },
                         onReorder = {},
                         onStudioToggle = {},

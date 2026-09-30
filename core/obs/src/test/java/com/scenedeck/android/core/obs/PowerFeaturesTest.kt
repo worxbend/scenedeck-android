@@ -13,7 +13,7 @@ import org.junit.Test
 internal class PowerFeaturesTest : ObsClientTestBase() {
 
     @Test
-    fun virtualCamAndReplay_roundTrip(): Unit = runBlocking {
+    fun virtualCam_roundTrip(): Unit = runBlocking {
         FakeObsServer().use { server ->
             server.start()
             val client = connectedClient(server)
@@ -21,18 +21,6 @@ internal class PowerFeaturesTest : ObsClientTestBase() {
             assertTrue(client.getVirtualCamStatus())
             assertTrue(client.toggleVirtualCam())
             assertEquals(1, server.receivedCount("ToggleVirtualCam"))
-
-            assertTrue(client.getReplayBufferStatus())
-            assertTrue(client.toggleReplayBuffer())
-            assertEquals(1, server.receivedCount("ToggleReplayBuffer"))
-
-            client.saveReplayBuffer()
-            assertEquals(1, server.receivedCount("SaveReplayBuffer"))
-
-            assertEquals(
-                "/home/user/Videos/Replay 2026-09-29 01-23-45.mkv",
-                client.getLastReplayBufferReplay(),
-            )
 
             client.disconnect()
         }

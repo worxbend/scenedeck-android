@@ -186,5 +186,5 @@ use a darker amber for readable timer text. Shared implementation: BroadcastCont
 The Scenes header owns output status and timers in its trailing area: neutral
 Standby when idle, LIVE with green stream time and REC with amber recording time.
 Simultaneous outputs show both rows; status dots pulse only with Full motion.
-The direct control row contains Stream, Record and VCam. Replay controls live in
-the header overflow menu. Keep system insets and accessible status descriptions.
+The direct control row contains Stream, Record and VCam. Keep system insets and
+accessible status descriptions. Replay Buffer is excluded from Android.

@@ -105,3 +105,7 @@ The local quality pipeline passed: debug assembly, 324 tests with zero failures,
 Android Lint, Detekt (cognitive and cyclomatic thresholds of 15), strict Semgrep,
 and Gitleaks history/working-tree scans. Updated Compose screens rendered through
 Roborazzi previews. Hosted CodeQL results are reported separately by GitHub Actions.
+
+Replay Buffer was removed from Android scope: controls, actions, telemetry polling,
+protocol methods/events and fixtures. A menu regression check verifies that replay
+actions are absent; virtual camera protocol coverage remains.

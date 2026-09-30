@@ -70,10 +70,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - Status strip shows output state + elapsed time; transitional states (Starting /
   Stopping / Reconnecting); recording indicator pulses like a tally light (respects
   reduced-motion settings).
-- Compact stream/record row on Scenes; virtual camera and replay actions live in its
-  overflow menu. Studio mode and thumbnail preferences live in the scene options menu.
-- **Extensions**: virtual camera toggle, replay buffer toggle + save (desktop leaves
-  both unimplemented).
+- Compact Stream / Record / VCam row on Scenes. Studio mode and thumbnail preferences
+  live in the scene options menu. Replay Buffer is excluded from the Android app.
 
 ## 5. Stats page (telemetry)
 
@@ -109,7 +107,7 @@ colors, icons, ordering) lives in a local registry on the device.
 | Studio mode (preview/program) + transition control | **SHIPPED M6**: one-tap Studio toggle; deck drives preview (green), TRANSITION + CUT commit to program (red); OBS-side changes from other clients tracked live | M6 ✅ |
 | Scene/source **screenshot preview** (`GetSourceScreenshot`) | **SHIPPED M6**: throttled JPEG thumbnails on deck cards (360 px q50; program/preview 2.5 s, others 10 s; only while Live visible + Ready; "Previews" toggle, default ON) | M6 ✅ |
 | Transition picker + duration + T-bar | **SHIPPED M6/M7**: bottom-sheet picker + debounced duration slider (M6); T-bar pull gesture arms ≥80% and fires on release, spring-back honors MotionLevel (M7) | M6 ✅ M7 ✅ |
-| Virtual camera & replay buffer controls | **SHIPPED M7**: transport-row chips + Save Replay button (non-destructive, no Output Safety); graceful handling of OBS error 604 (replay unavailable) | M7 ✅ |
+| Virtual camera control | **SHIPPED M7**: direct VCam transport action | M7 ✅ |
 | Scene item visibility toggles | **SHIPPED M7**: "Sources" section in the deck card quick-edit sheet, live via `SceneItemEnableStateChanged` | M7 ✅ |
 | Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
@@ -158,4 +156,4 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 - Failed profile saves preserve the draft and show a sanitized message; concurrent duplicate writes are blocked.
 - Profile/credential operations attempt rollback on storage failure; edited connection tests reuse saved passwords when blank.
 - Scenes header shows output status and separate elapsed timers; simultaneous stream/record shows both.
-- Stream, Record and VCam are direct controls; replay toggles/save live in the header overflow menu.
+- Stream, Record and VCam are direct controls; Replay Buffer is excluded.

@@ -226,12 +226,6 @@ constructor(
 
     suspend fun toggleVirtualCam(): Boolean = client.toggleVirtualCam()
 
-    suspend fun toggleReplayBuffer(): Boolean = client.toggleReplayBuffer()
-
-    suspend fun saveReplayBuffer() = client.saveReplayBuffer()
-
-    suspend fun getLastReplayBufferReplay(): String = client.getLastReplayBufferReplay()
-
     suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) =
         client.setSceneItemEnabled(sceneName, sceneItemId, enabled)
 

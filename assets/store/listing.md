@@ -39,7 +39,7 @@ stream or recording, and keep an eye on stream health in real time.
 
 **Stream & record with confidence**
 
-- Start/stop stream, recording, virtual camera and replay buffer.
+- Start/stop stream, recording and virtual camera.
 - Optional safety confirmations before anything goes live or stops.
 - Elapsed time and status always visible.
 

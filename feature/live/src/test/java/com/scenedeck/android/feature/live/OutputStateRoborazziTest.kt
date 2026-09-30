@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DeckState
@@ -37,6 +38,10 @@ class OutputStateRoborazziTest {
         capture(false, false, MotionLevel.OFF, "broadcast_idle_dark.png")
         composeRule.onNodeWithContentDescription("Start Stream").assertIsDisplayed()
         composeRule.onNodeWithText("Standby").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Scene options").performClick()
+        composeRule.onNodeWithText("Start replay buffer").assertDoesNotExist()
+        composeRule.onNodeWithText("Stop replay buffer").assertDoesNotExist()
+        composeRule.onNodeWithText("Save replay buffer").assertDoesNotExist()
     }
 
     @Test

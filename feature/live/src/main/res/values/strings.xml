@@ -9,10 +9,8 @@
     <string name="start_record">Start Record</string>
     <string name="stop_record">Stop Record</string>
     <string name="vcam_chip">VCam</string>
-    <string name="replay_chip">Replay</string>
     <string name="start_vcam_cd">Start virtual camera</string>
     <string name="stop_vcam_cd">Stop virtual camera</string>
-    <string name="save_replay_cd">Save replay buffer</string>
 
     <string name="confirm_start_stream_title">Start stream?</string>
     <string name="confirm_start_stream_body">Go live with the current settings?</string>
@@ -65,8 +63,6 @@
     <string name="record_short">Record</string>
     <string name="record_active_short">Recording</string>
     <string name="transition_options">Transition settings and T-bar</string>
-    <string name="start_replay">Start replay buffer</string>
-    <string name="stop_replay">Stop replay buffer</string>
     <string name="find_scene">Find scene</string>
     <string name="close_search">Close search</string>
     <string name="search_scenes">Search scenes</string>

@@ -167,7 +167,7 @@ constructor(
         }
     }
 
-    // ── Virtual cam & replay buffer (M7) ────────────────────────────────────
+    // ── Virtual camera (M7) ────────────────────────────────────
 
     // ── Scene item visibility (M7) ──────────────────────────────────────────
 
@@ -195,36 +195,6 @@ constructor(
                 .onFailure { _errors.tryEmit("Couldn't toggle virtual cam") }
         }
     }
-
-    fun toggleReplayBuffer() {
-        viewModelScope.launch {
-            coroutineResult { obsState.toggleReplayBuffer() }
-                .onFailure {
-                    _errors.tryEmit(replayErrorMessage(it, "Couldn't toggle replay buffer"))
-                }
-        }
-    }
-
-    fun saveReplayBuffer() {
-        viewModelScope.launch {
-            coroutineResult {
-                obsState.saveReplayBuffer()
-                obsState.getLastReplayBufferReplay()
-            }
-                .onSuccess { path ->
-                    _errors.tryEmit("Replay saved: ${path.substringAfterLast('/')}")
-                }
-                .onFailure { _errors.tryEmit(replayErrorMessage(it, "Couldn't save replay")) }
-        }
-    }
-
-    /** obs-websocket 604 = request processing failed (e.g. replay buffer disabled in OBS). */
-    private fun replayErrorMessage(error: Throwable, fallback: String): String =
-        if (error is ObsRequestFailedException && error.statusCode == "604") {
-            "Replay buffer unavailable in OBS — enable it in OBS Settings → Output"
-        } else {
-            fallback
-        }
 
     fun toggleMixerMute(inputName: String, muted: Boolean) {
         viewModelScope.launch { mixerRepository.setInputMute(inputName, muted) }
