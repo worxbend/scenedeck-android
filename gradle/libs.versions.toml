@@ -39,7 +39,6 @@ reorderable = "3.1.0"
 kaml = "0.104.0"
 datastore-preferences = "1.2.1"
 androidx-test-core = "1.7.0"
-ui-text-google-fonts = "1.12.1" # BOM 2026.09.00-managed version; pinned explicitly for clarity
 roborazzi = "1.75.0"
 robolectric = "4.17"
 # M7b platform power features (:app only) — Glance home-screen widget.
@@ -68,7 +67,6 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "ui-text-google-fonts" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "core-splashscreen" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore-preferences" }

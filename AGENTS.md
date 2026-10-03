@@ -94,8 +94,17 @@ must pass, and Compose preview(s) for changed screens must render.
 - `scripts/configure-play-signing.py` uploads signing secrets using a local hidden password prompt; `scripts/play-infra.py` uses the current gcloud login without printing or saving access tokens.
 - Play delivery defaults to internal/draft; setup is documented in `docs/RELEASING.md`.
 - Play application ID is `com.worxbend.scenedeck`; Kotlin namespaces remain `com.scenedeck.android`.
-- Settings links to `docs/PRIVACY_POLICY.md`; Play Data safety must account for ML Kit diagnostics, not claim that no data is collected.
+- Settings links to `docs/PRIVACY_POLICY.md`; Play Data safety for standard builds must account for ML Kit diagnostics, not claim that no data is collected.
 - `infra/google-play` provisions publishing APIs/account and restricted GitHub OIDC trust; tag track/status and repository listing uploads are explicit opt-ins.
 - OIDC trust checks the environment claim directly alongside numeric repository/owner IDs and the release workflow path; do not assume GitHub's legacy subject format.
 - Validate delivery changes with `python3 scripts/test_release_metadata.py` and `ruby fastlane/test_publish.rb`.
 - Resolve the default Play metadata path from the Fastfile directory; listing uploads must work from both repository and Fastlane working directories.
+
+## F-Droid contract
+
+- App source is MIT licensed, matching desktop SceneDeck; bundled font assets retain SIL OFL 1.1 copyright/license texts from `LICENSES`.
+- Inter 4.1 and JetBrains Mono 2.304 are bundled; do not reintroduce the Google Play services font provider.
+- `-PfdroidBuild=true` excludes `feature/connections/src/play` QR code/dependencies and camera permission; hide Scan QR and preserve manual connections. Normal Play/GitHub builds retain QR pairing.
+- Register extra Kotlin sources through AGP built-in Kotlin's variant source API, not Java directories.
+- F-Droid mode ignores upload signing credentials and produces an unsigned release APK; its packaging recipe removes only the excluded Play QR source directory.
+- Validate F-Droid source/APK with `scripts/check-fdroid-build.py`, fdroidserver 2.4.5 and the F-Droid workflow; complete build/submission steps are in `docs/FDROID.md`.

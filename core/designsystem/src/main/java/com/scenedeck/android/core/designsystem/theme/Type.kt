@@ -5,49 +5,25 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import com.scenedeck.android.core.designsystem.R
 
-private val googleFontProvider =
-    GoogleFont.Provider(
-        providerAuthority = "com.google.android.gms.fonts",
-        providerPackage = "com.google.android.gms",
-        certificates = R.array.scenedeck_google_fonts_certs,
-    )
-
-private val Inter = GoogleFont("Inter")
-private val JetBrainsMono = GoogleFont("JetBrains Mono")
-
-/** UI/body typeface: Inter via downloadable Google Fonts (falls back to system sans). */
+/** Bundled Inter 4.1: typography works offline without a Google Play services provider. */
 val InterFontFamily =
     FontFamily(
-        Font(googleFont = Inter, fontProvider = googleFontProvider, weight = FontWeight.Light),
-        Font(googleFont = Inter, fontProvider = googleFontProvider, weight = FontWeight.Normal),
-        Font(googleFont = Inter, fontProvider = googleFontProvider, weight = FontWeight.Medium),
-        Font(googleFont = Inter, fontProvider = googleFontProvider, weight = FontWeight.SemiBold),
-        Font(googleFont = Inter, fontProvider = googleFontProvider, weight = FontWeight.Bold),
+        Font(R.font.inter_light, FontWeight.Light),
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
     )
 
-/** Readout typeface: JetBrains Mono (dB meters, counters, timecodes). */
+/** Bundled JetBrains Mono 2.304 for dB readouts, counters, and timecodes. */
 val JetBrainsMonoFontFamily =
     FontFamily(
-        Font(
-            googleFont = JetBrainsMono,
-            fontProvider = googleFontProvider,
-            weight = FontWeight.Normal,
-        ),
-        Font(
-            googleFont = JetBrainsMono,
-            fontProvider = googleFontProvider,
-            weight = FontWeight.Medium,
-        ),
-        Font(
-            googleFont = JetBrainsMono,
-            fontProvider = googleFontProvider,
-            weight = FontWeight.Bold,
-        ),
+        Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
+        Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
+        Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
     )
 
 private val baseline = Typography()

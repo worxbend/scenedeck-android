@@ -57,7 +57,8 @@ These hues carry product meaning and adapt per theme but keep their roles:
 ## 4. Typography
 
 - Typeface: **Inter** (UI text) + **JetBrains Mono** (dB readouts, stats counters,
-  timecodes — tabular figures).
+  timecodes — tabular figures). Fonts are bundled as unmodified SIL OFL 1.1 TTFs;
+  typography works offline and without Google Play services.
 - M3 Expressive type scale; **emphasized display** for the current scene name;
   `LabelLarge`-emphasized for card labels. Numerals always tabular in telemetry.
 

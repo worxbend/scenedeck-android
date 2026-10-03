@@ -169,3 +169,12 @@ Stream reconnecting and paused recording have explicit labels. Before the first
 output poll it says Checking outputs; a lost connection makes output state unknown.
 Performance readings appear on a compact second row only while streaming;
 standby and recording-only states hide them.
+
+## Distribution variants
+
+The standard Play/GitHub build includes camera QR pairing. With `-PfdroidBuild=true`,
+Connections exposes manual entry only, does not request camera permission, and
+excludes the proprietary QR scanner and its dependencies. The empty state explains
+manual host/port entry. OBS control, profiles, encrypted credentials, themes, widgets,
+and background connection behavior are otherwise shared. Both builds bundle Inter
+and JetBrains Mono fonts and work without a Google Play services font provider.

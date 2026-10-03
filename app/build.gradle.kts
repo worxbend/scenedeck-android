@@ -7,6 +7,11 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+val fdroidBuild = providers.gradleProperty("fdroidBuild").map { value ->
+    require(value == "true" || value == "false") { "fdroidBuild must be true or false" }
+    value.toBoolean()
+}.getOrElse(false)
+
 android {
     lint {
         lintConfig = rootProject.file("lint.xml")
@@ -28,7 +33,7 @@ android {
 
     // CI credentials are ephemeral environment values, never committed Gradle properties.
     val keyStorePath = providers.environmentVariable("ANDROID_KEYSTORE_FILE").orNull
-    if (!keyStorePath.isNullOrBlank()) {
+    if (!fdroidBuild && !keyStorePath.isNullOrBlank()) {
         signingConfigs.create("release") {
             storeFile = file(keyStorePath)
             storePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").get()
@@ -49,6 +54,19 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+}
+
+tasks.register("writeReleaseRuntimeDependencies") {
+    group = "verification"
+    description = "Write the resolved release dependency graph for distribution checks."
+    val runtime = configurations.named("releaseRuntimeClasspath")
+    val report = layout.buildDirectory.file("reports/fdroid/release-runtime-dependencies.txt")
+    doLast {
+        val file = report.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(runtime.get().incoming.resolutionResult.allComponents
+            .mapNotNull { it.moduleVersion?.toString() }.distinct().sorted().joinToString("\n", postfix = "\n"))
     }
 }
 

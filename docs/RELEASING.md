@@ -57,8 +57,8 @@ working directory Fastlane uses when running the lane.
 `scripts/prepare-play-assets.py` exports existing brand SVGs and app previews to
 Play-compatible PNGs without cropping app content. Privacy policy:
 `https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md`.
-The same policy is linked from Settings. Account declarations must include ML Kit
-diagnostics; see Google's [SDK disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
+The same policy is linked from Settings. For normal Play/GitHub builds, account declarations must include ML Kit
+diagnostics; the F-Droid build excludes that SDK. See Google's [SDK disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
 
 Fastlane can upload the listing, release notes, images, and screenshots alongside
 the bundle. Import your initial listing with `bundle exec fastlane supply init`
@@ -224,3 +224,10 @@ ruby fastlane/test_publish.rb
 
 Actual signing and Play uploads require the owner's keys and Console permissions;
 these are not created or supplied by the repository.
+
+## F-Droid source builds
+
+See [FDROID.md](FDROID.md) for the MIT license, bundled fonts, QR-free build option,
+unsigned APK checks and packaging recipe. The normal tag-based GitHub/Play pipeline
+keeps QR scanning. F-Droid builds use `-PfdroidBuild=true`; signing credentials are
+not consulted in that mode because F-Droid signs its own source-built APK.

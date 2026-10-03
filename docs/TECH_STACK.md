@@ -66,9 +66,9 @@ re-verify against Maven Central / AndroidX release notes at kickoff and quarterl
 | Unit tests | JUnit4/5, **MockK**, **Turbine**, coroutines-test | flow-first testing |
 | UI tests | Compose Test (`createComposeRule`), semantics testTags | — |
 | Screenshot tests | **Roborazzi 1.75.0** (`io.github.takahirom.roborazzi` plugin) + **Robolectric 4.17** (modules with goldens; `recordRoborazziDebug` / `verifyRoborazziDebug`, plain `testDebugUnitTest` verifies by default). Golden matrix since M8a: key screens × {SCENEDECK dark, OBS dark, NORD dark, HIGH_CONTRAST dark, SCENEDECK light} | golden-shot regression for themes/cards |
-| Fonts | `androidx.compose.ui:ui-text-google-fonts` **1.12.1** (Inter + JetBrains Mono downloadable fonts) | brand typography without bundling font files |
+| Fonts | Bundled **Inter 4.1** + **JetBrains Mono 2.304** static TTFs (SIL OFL 1.1) | offline typography; no Google Play services font provider |
 | Widgets | **Glance 1.2.0** (`androidx.glance:glance-appwidget` + `glance-appwidget-testing` for unit tests) + androidx-core **1.19.1** | home-screen mini-deck (M7) |
-| Camera/QR | CameraX **1.6.2** + ML Kit barcode **17.3.0** | `obsws://` QR pairing (M2) |
+| Camera/QR | CameraX **1.6.2** + ML Kit barcode **17.3.0**, normal builds only | omitted with `-PfdroidBuild=true`; F-Droid uses manual connection entry |
 | Lint/format | **detekt** + **ktlint** (or ktfmt) + Android Lint | CI gate |
 | Performance | **Baseline Profiles** + Macrobenchmark | cold start + deck scroll/meter jank budgets |
 | Dependency updates | Renovate or Dependabot | keep BOM current |
@@ -118,7 +118,6 @@ mlkit-barcode = "17.3.0"    # QR pairing (M2)
 reorderable = "3.1.0"         # deck drag-to-reorder (M3)
 kaml = "0.104.0"              # YAML registry export/import (M5)
 # coroutines-guava reuses the kotlinx-coroutines pin
-ui-text-google-fonts = "1.12.1"
 roborazzi = "1.75.0"
 robolectric = "4.17"
 # compose-icons Lucide pack: NOT published on Maven Central — TODO re-check
@@ -178,3 +177,18 @@ Google Play publishing infrastructure uses Terraform >=1.6,<2.0 (validated with
 `google-github-actions/auth@v3` with Workload Identity Federation; Fastlane's pinned
 version supports the generated `external_account` credentials. Play account/app
 bootstrap and policy review remain separate from Google Cloud provisioning.
+
+## F-Droid distribution
+
+The MIT-licensed app supports `-PfdroidBuild=true`. That selects the manual-entry
+connection UI and manifest from `feature/connections/src/fdroid`, without loading
+`src/play/qr-dependencies.txt` or any CameraX/ML Kit dependencies. The normal
+Play/GitHub build retains QR pairing. AGP built-in Kotlin source directories are
+registered through `variant.sources.kotlin`; AGP 9.4's library manifest source-set
+container uses its legacy `AndroidSourceSet` instances. Do not re-enable the external
+Kotlin Android plugin.
+
+Font binaries and their upstream archive checksums are documented in
+`LICENSES/README.md`; OFL copyright/license texts are packaged in APK assets.
+F-Droid validation uses **fdroidserver 2.4.5** plus an explicit runtime-dependency
+and APK permission check. Submission/build instructions are in `docs/FDROID.md`.

@@ -20,21 +20,26 @@ passwords, and OBS content are not sent to the SceneDeck developer by the app.
 
 ## Camera and QR pairing
 
-Camera access is optional and used to scan OBS connection QR codes when you open
-the scanner. Barcode recognition runs on the device using Google's ML Kit. The app
+In the standard Play/GitHub distribution, camera access is optional and used to
+scan OBS connection QR codes when you open the scanner. Barcode recognition runs
+on the device using Google's ML Kit. The app
 does not save camera frames or upload those frames to the SceneDeck developer.
 You can enter connection details manually without granting camera permission.
 
-## Google components
+## Distribution differences and Google components
 
-ML Kit can send technical information to Google for diagnostics and usage analytics,
+The F-Droid build excludes QR scanning and ML Kit entirely. It requests no camera
+permission and uses manual OBS connection entry. Starting with the F-Droid-prepared
+0.1.1 source, fonts are bundled in both distributions and do not use a Google Play
+services font provider. Earlier 0.1.0 Play/GitHub builds requested downloadable
+fonts through Google Play services under the platform's and Google's privacy policies.
+
+In the standard Play/GitHub build, ML Kit can send technical information to Google for diagnostics and usage analytics,
 including device/app information, installation identifiers, feature events and
 performance/error information. Google's documentation states that this SDK data is
 sent using HTTPS. See [ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure)
 and [Google's privacy policy](https://policies.google.com/privacy).
 
-The app also requests downloadable fonts through Google Play services. The platform
-and Google services handle those requests under their respective privacy policies.
 SceneDeck does not include a developer-operated advertising or analytics service.
 
 ## Optional actions and permissions
@@ -51,7 +56,7 @@ Local connection information remains until you delete the corresponding profile
 or clear the app's storage. Clearing app storage or uninstalling removes the app's
 local data. You can revoke camera and notification permissions in Android settings.
 SceneDeck has no user-account registration and holds no developer-side account
-records. Google determines retention for data handled by its services; clearing
+records. For the standard build, Google determines retention for SDK data handled by its services; clearing
 the app's local storage does not imply deletion of Google's service records.
 
 ## Contact and changes

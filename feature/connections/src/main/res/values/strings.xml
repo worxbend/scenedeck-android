@@ -4,7 +4,7 @@
     <string name="connections_subtitle">Named OBS connection profiles with quick-switch and automatic reconnect.</string>
     <string name="add_manually">Add manually</string>
     <string name="scan_qr">Scan QR</string>
-    <string name="no_profiles">No profiles yet. Add your OBS host manually or scan an obsws:// QR code.</string>
+    <string name="no_profiles">No profiles yet. Add your OBS host address and port.</string>
     <string name="last_used">Last used</string>
     <string name="action_disconnect">Disconnect</string>
     <string name="action_edit">Edit</string>

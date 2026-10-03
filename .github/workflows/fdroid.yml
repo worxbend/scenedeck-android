@@ -1,0 +1,43 @@
+name: Verify F-Droid source build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fdroid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-37.0"
+      - uses: astral-sh/setup-uv@v6
+      - name: Build without QR scanner or upload signing credentials
+        run: |
+          ./gradlew :app:assembleDebug :app:assembleRelease :app:writeReleaseRuntimeDependencies \
+            :feature:connections:testDebugUnitTest --no-configuration-cache \
+            -PfdroidBuild=true -PreleaseVersionName=0.1.1 -PreleaseVersionCode=1007
+      - name: Scan exact source snapshot and unsigned APK with F-Droid tools
+        run: |
+          uv run --with fdroidserver==2.4.5 python3 scripts/check-fdroid-build.py \
+            --apk app/build/outputs/apk/release/app-release-unsigned.apk \
+            --dependencies app/build/reports/fdroid/release-runtime-dependencies.txt \
+            --source-ref HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scenedeck-fdroid-unsigned
+          path: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/reports/fdroid/release-runtime-dependencies.txt
+          if-no-files-found: error

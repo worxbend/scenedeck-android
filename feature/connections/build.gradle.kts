@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+val fdroidBuild = providers.gradleProperty("fdroidBuild").map { value ->
+    require(value == "true" || value == "false") { "fdroidBuild must be true or false" }
+    value.toBoolean()
+}.getOrElse(false)
+
 android {
     lint {
         lintConfig = rootProject.file("lint.xml")
@@ -27,6 +32,20 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
+}
+
+// AGP 9.4 exposes legacy source-set instances through its new library DSL container.
+(android.sourceSets as NamedDomainObjectContainer<com.android.build.gradle.api.AndroidSourceSet>).named("main") {
+    // F-Droid removes src/play before scanning; no proprietary QR code enters that build.
+    val distribution = if (fdroidBuild) "fdroid" else "play"
+    manifest.srcFile("src/$distribution/AndroidManifest.xml")
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val distribution = if (fdroidBuild) "fdroid" else "play"
+        variant.sources.kotlin?.addStaticSourceDirectory("src/$distribution/java")
+    }
 }
 
 kotlin {
@@ -61,14 +80,6 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
-    // QR pairing (obsws://): CameraX preview + ML Kit barcode detection.
-    implementation(libs.androidx.camera.core)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
-    implementation(libs.mlkit.barcode.scanning)
-    implementation(libs.kotlinx.coroutines.guava)
-
     testImplementation(libs.junit)
     testImplementation(project(":core:database"))
     debugImplementation(libs.androidx.compose.ui.test.manifest)
@@ -76,4 +87,12 @@ dependencies {
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+if (!fdroidBuild) {
+    // Keep proprietary distribution dependencies in the folder removed by F-Droid.
+    val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+    file("src/play/qr-dependencies.txt").readLines().filter { it.isNotBlank() }.forEach { alias ->
+        dependencies.add("implementation", catalog.findLibrary(alias).get())
+    }
 }

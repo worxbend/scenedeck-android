@@ -48,7 +48,21 @@ import com.scenedeck.android.core.designsystem.components.StudioTone
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.model.ConnectionState
 
-/** Connections page (FEATURE_SPEC §1): named profiles, quick connect, QR pairing. */
+@Composable
+internal fun ConnectionActions(onAdd: () -> Unit, onScan: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(onClick = onAdd, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.add_manually))
+        }
+        if (QR_PAIRING_AVAILABLE) {
+            OutlinedButton(onClick = onScan, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.scan_qr))
+            }
+        }
+    }
+}
+
+/** Connections page (FEATURE_SPEC §1): named profiles, quick connect, optional QR pairing. */
 @Composable
 fun ConnectionsScreen(
     modifier: Modifier = Modifier,
@@ -64,7 +78,7 @@ fun ConnectionsScreen(
     var editor by remember { mutableStateOf<ProfileEditor>(ProfileEditor.Hidden) }
     var scanning by rememberSaveable { mutableStateOf(false) }
 
-    if (scanning) {
+    if (scanning && QR_PAIRING_AVAILABLE) {
         QrScannerScreen(
             onDetected = { target ->
                 scanning = false
@@ -85,21 +99,14 @@ fun ConnectionsScreen(
         )
         Spacer(Modifier.height(20.dp))
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = {
-                    viewModel.resetTestState()
-                    viewModel.clearOperationError()
-                    editor = ProfileEditor.Add(prefill = null)
-                },
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(stringResource(R.string.add_manually))
-            }
-            OutlinedButton(onClick = { scanning = true }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.scan_qr))
-            }
-        }
+        ConnectionActions(
+            onAdd = {
+                viewModel.resetTestState()
+                viewModel.clearOperationError()
+                editor = ProfileEditor.Add(prefill = null)
+            },
+            onScan = { scanning = true },
+        )
         Spacer(Modifier.height(24.dp))
         ProfileDeleteFailure(operationState)
 

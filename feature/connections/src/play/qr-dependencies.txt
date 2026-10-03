@@ -1,0 +1,6 @@
+androidx-camera-core
+androidx-camera-camera2
+androidx-camera-lifecycle
+androidx-camera-view
+mlkit-barcode-scanning
+kotlinx-coroutines-guava

@@ -10,7 +10,7 @@ OUTPUTS AND STATS
 Control streaming, recording and the virtual camera. See live output timers and monitor FPS, bitrate, dropped frames, CPU usage and render time.
 
 YOUR SETUP
-Save connection profiles, pair with an OBS connection QR code, choose light or dark themes, and adjust motion and confirmation settings. Optional widgets and background connection support keep useful controls close at hand.
+Save connection profiles, choose light or dark themes, and adjust motion and confirmation settings. The standard Play/GitHub build also supports OBS connection QR codes; the F-Droid build uses manual connection entry. Optional widgets and background connection support keep useful controls close at hand.
 
 Scene curation stays on your device and does not modify the OBS scene collection.
 

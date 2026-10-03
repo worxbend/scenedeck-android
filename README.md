@@ -94,8 +94,20 @@ Build from source with **JDK 21** and Android SDK **37** installed:
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Supports Android **9 / API 28+**. This is a development build; release packaging
-and Play Store distribution are separate steps.
+Supports Android **9 / API 28+**. Download the signed APK from
+[GitHub Releases](https://github.com/worxbend/scenedeck-android/releases/latest).
+The command above builds a development APK.
+
+## License and F-Droid
+
+SceneDeck Android is [MIT licensed](LICENSE), matching the desktop project.
+Inter and JetBrains Mono are bundled under SIL OFL 1.1; notices and source checksums
+are in [LICENSES](LICENSES/README.md).
+
+An F-Droid source build is available with `-PfdroidBuild=true`. It uses manual OBS
+connection entry and excludes camera QR scanning and ML Kit. See
+[F-Droid preparation and submission](docs/FDROID.md). This preparation does not
+mean the app is already listed in the official F-Droid repository.
 
 ## 🛠️ Keep the code crisp
 

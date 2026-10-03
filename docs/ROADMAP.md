@@ -186,3 +186,11 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 - Gate formatting, cognitive/cyclomatic complexity, Android Lint, unit/preview tests,
   security patterns and secret scanning; add CodeQL and dependency update automation.
 - Refresh active stream transport, publish output previews and an animated README tour.
+
+## F-Droid preparation — 2026-10-03
+
+- Signed GitHub v0.1.0 published before distribution changes.
+- MIT license aligned with the desktop project; bundle Inter/JetBrains Mono with OFL notices.
+- F-Droid build excludes QR scanning, camera permission, CameraX and ML Kit; manual profiles remain.
+- Add unsigned source-build recipe, dependency/APK scans and F-Droid CI validation.
+- Official F-Droid inclusion still requires a packaging submission and maintainer review.

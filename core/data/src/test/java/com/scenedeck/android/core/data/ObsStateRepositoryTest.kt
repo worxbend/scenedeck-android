@@ -140,7 +140,11 @@ class ObsStateRepositoryTest {
 
         client.setDisconnected()
 
-        val deck = awaitDeck { it.scenes.isEmpty() }
+        // Scene clearing and connection-state propagation use separate flow collectors.
+        val deck = awaitDeck {
+            it.scenes.isEmpty() &&
+                it.connectionState == com.scenedeck.android.core.model.ConnectionState.Disconnected
+        }
         assertEquals(
             com.scenedeck.android.core.model.ConnectionState.Disconnected,
             deck.connectionState,

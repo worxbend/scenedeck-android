@@ -1,0 +1,1 @@
+F-Droid build preparation: manual OBS connections without camera QR scanning or ML Kit. Inter and JetBrains Mono fonts are bundled for offline use. App source is MIT licensed, with bundled font license notices.
