@@ -1,0 +1,20 @@
+Turn your Android phone or tablet into an OBS Studio remote control deck.
+
+SCENES
+Switch scenes from a numbered grid, search your scene collection, and curate a personal Deck. Use Studio Mode to choose a preview scene and control transitions.
+
+MIXER
+Adjust audio levels, watch live meters, mute channels, and lock controls to prevent accidental changes.
+
+OUTPUTS AND STATS
+Control streaming, recording and the virtual camera. See live output timers and monitor FPS, bitrate, dropped frames, CPU usage and render time.
+
+YOUR SETUP
+Save connection profiles, pair with an OBS connection QR code, choose light or dark themes, and adjust motion and confirmation settings. Optional widgets and background connection support keep useful controls close at hand.
+
+Scene curation stays on your device and does not modify the OBS scene collection.
+
+REQUIREMENTS
+Android 9 or later and OBS Studio 28 or later on your computer. Enable the OBS WebSocket server and connect your device to a network that can reach it. SceneDeck controls OBS on your computer; it does not replace OBS Studio or broadcast video directly from your phone.
+
+SceneDeck is an independent open-source project and is not affiliated with the OBS Project.

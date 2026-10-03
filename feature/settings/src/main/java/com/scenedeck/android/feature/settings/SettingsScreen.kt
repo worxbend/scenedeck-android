@@ -24,6 +24,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -130,6 +132,8 @@ internal fun SettingsContent(
     modifier: Modifier = Modifier,
 ) {
     var showThemes by rememberSaveable { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
+    val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     if (showThemes) {
         ModalBottomSheet(onDismissRequest = { showThemes = false }) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
@@ -311,6 +315,10 @@ internal fun SettingsContent(
                 checked = outputSafety.confirmStopRecord,
                 onCheckedChange = onConfirmStopRecordChange,
             )
+        }
+        Spacer(Modifier.height(12.dp))
+        TextButton(onClick = { uriHandler.openUri(privacyPolicyUrl) }) {
+            Text(stringResource(R.string.privacy_policy))
         }
         Spacer(Modifier.height(24.dp))
     }

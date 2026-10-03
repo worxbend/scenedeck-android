@@ -1,8 +1,11 @@
 package com.scenedeck.android.feature.settings
 
 import androidx.compose.material3.Surface
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DarkMode
@@ -25,7 +28,12 @@ class SettingsScreenRoborazziTest {
 
     @get:Rule val composeRule = createComposeRule()
 
-    private fun capture(family: ThemeFamily, darkTheme: Boolean, name: String) {
+    private fun capture(
+        family: ThemeFamily,
+        darkTheme: Boolean,
+        name: String,
+        showPrivacy: Boolean = false,
+    ) {
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
@@ -51,6 +59,9 @@ class SettingsScreenRoborazziTest {
                 }
             }
         }
+        if (showPrivacy) {
+            composeRule.onNodeWithText("Privacy policy").performScrollTo().assertHasClickAction()
+        }
         composeRule.onRoot().captureRoboImage(name)
     }
 
@@ -69,4 +80,15 @@ class SettingsScreenRoborazziTest {
     @Test
     fun settingsScreenSceneDeckLight() =
         capture(ThemeFamily.SCENEDECK, darkTheme = false, name = "settings_scenedeck_light.png")
+
+    @Test
+    fun privacySceneDeckDark() =
+        capture(ThemeFamily.SCENEDECK, true, "settings_privacy_scenedeck_dark.png", true)
+
+    @Test
+    fun privacySceneDeckLight() =
+        capture(ThemeFamily.SCENEDECK, false, "settings_privacy_scenedeck_light.png", true)
+
+    @Test
+    fun privacyObsDark() = capture(ThemeFamily.OBS, true, "settings_privacy_obs_dark.png", true)
 }

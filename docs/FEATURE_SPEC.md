@@ -119,6 +119,8 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 
 ## 9. Settings
 
+- Public privacy-policy link covering local OBS data and Google SDK diagnostics.
+
 - Connection profiles; Output Safety toggles; theme (System/Light/Dark) + theme family
   (see DESIGN_SYSTEM.md); dynamic color (Material You) toggle.
 - Appearance uses a focused theme picker sheet; settings toggle rows are tappable.

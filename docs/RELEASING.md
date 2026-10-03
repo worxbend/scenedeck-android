@@ -49,6 +49,13 @@ protection on `google-play` independently.
 
 ## Store listing in Git
 
+English listing text and images are checked in under `fastlane/metadata/android/en-US`.
+`scripts/prepare-play-assets.py` exports existing brand SVGs and app previews to
+Play-compatible PNGs without cropping app content. Privacy policy:
+`https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md`.
+The same policy is linked from Settings. Account declarations must include ML Kit
+diagnostics; see Google's [SDK disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
+
 Fastlane can upload the listing, release notes, images, and screenshots alongside
 the bundle. Import your initial listing with `bundle exec fastlane supply init`
 using the package name and local credentials, then commit `fastlane/metadata/android`.

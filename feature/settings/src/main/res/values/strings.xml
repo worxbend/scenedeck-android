@@ -34,4 +34,6 @@
     <string name="confirm_stop_record">Confirm stop recording</string>
     <string name="confirm_stop_record_desc">Ask before the recording is finalized</string>
     <string name="change_theme">Choose</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="privacy_policy_url" translatable="false">https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md</string>
 </resources>

@@ -1,0 +1,1 @@
+Initial release: OBS scene switching, audio mixer, streaming and recording controls, live stats, connection profiles, scene curation and customizable themes.
