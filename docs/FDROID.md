@@ -20,8 +20,11 @@ service-account JSON, or signing passwords are required:
 ```bash
 ./gradlew :app:assembleDebug :app:assembleRelease :app:writeReleaseRuntimeDependencies \
   :feature:connections:testDebugUnitTest --no-configuration-cache \
-  -PfdroidBuild=true -PreleaseVersionName=0.1.1 -PreleaseVersionCode=1007
+  -PfdroidBuild=true
 ```
+
+F-Droid versions come from `fdroid/version.properties` (currently 0.1.1 / 1007).
+The normal GitHub/Play workflow can still pass explicit release version properties.
 
 The release output is `app/build/outputs/apk/release/app-release-unsigned.apk`.
 F-Droid signs its own source-built packages. `fdroidBuild=true` ignores upload
@@ -71,11 +74,13 @@ If a recipe changes, use `fdroid rewritemeta` to retain canonical YAML formattin
 The recipe's build server must have JDK 21, Gradle 9.6.0 and SDK 37 available.
 Maintainers may adjust provisioning to their current environment.
 
-Initial submission uses explicit commit/version metadata and no automatic update
-mode. Enable tag updates only after a release tag containing this build split
-exists. The earlier GitHub `v0.1.0` tag predates F-Droid preparation and must not be
-used for the first F-Droid source build. Normal Play/GitHub releases can continue
-using the existing signed delivery workflow.
+F-Droid releases use `fdroid-vX.Y.Z` tags, with `AutoUpdateMode: Version` and
+`UpdateCheckData` reading the static version file. To ship an update, increase both
+values in `fdroid/version.properties`, add `changelogs/<versionCode>.txt`, validate
+and commit the changes, then push the matching tag. The dedicated F-Droid workflow
+also verifies these tags. These tags do not trigger the normal `v*` GitHub/Play
+publishing workflow. The earlier `v0.1.0` tag predates F-Droid preparation and must
+not be used for the first F-Droid build.
 
 Official inclusion still requires maintainer review and a successful build on
 F-Droid's infrastructure. Passing local/CI scans is evidence for the submission;

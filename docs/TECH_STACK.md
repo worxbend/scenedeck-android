@@ -192,3 +192,7 @@ Font binaries and their upstream archive checksums are documented in
 `LICENSES/README.md`; OFL copyright/license texts are packaged in APK assets.
 F-Droid validation uses **fdroidserver 2.4.5** plus an explicit runtime-dependency
 and APK permission check. Submission/build instructions are in `docs/FDROID.md`.
+
+F-Droid release versions are stored in `fdroid/version.properties` for both Gradle
+and F-Droid tag checking. Dedicated `fdroid-vX.Y.Z` tags enable automatic updates
+and do not trigger standard GitHub/Play release publication.

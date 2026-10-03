@@ -194,3 +194,8 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 - F-Droid build excludes QR scanning, camera permission, CameraX and ML Kit; manual profiles remain.
 - Add unsigned source-build recipe, dependency/APK scans and F-Droid CI validation.
 - Official F-Droid inclusion still requires a packaging submission and maintainer review.
+
+## F-Droid submission — 2026-10-04
+
+- Add static F-Droid version metadata, dedicated release tags and automatic updates.
+- Verify the packaging recipe with F-Droid tooling and prepare the inclusion merge request.

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -11,6 +13,13 @@ val fdroidBuild = providers.gradleProperty("fdroidBuild").map { value ->
     require(value == "true" || value == "false") { "fdroidBuild must be true or false" }
     value.toBoolean()
 }.getOrElse(false)
+
+// Static release metadata is also readable by F-Droid's tag update checker.
+val fdroidVersion = Properties().apply {
+    if (fdroidBuild) {
+        rootProject.file("fdroid/version.properties").inputStream().use { load(it) }
+    }
+}
 
 android {
     lint {
@@ -27,8 +36,9 @@ android {
         versionCode = providers.gradleProperty("releaseVersionCode").orNull?.let { value ->
             value.toIntOrNull()?.takeIf { it in 1..2_100_000_000 }
                 ?: error("releaseVersionCode must be an integer between 1 and 2100000000")
-        } ?: 1
-        versionName = providers.gradleProperty("releaseVersionName").getOrElse("0.1.0")
+        } ?: if (fdroidBuild) fdroidVersion.getProperty("versionCode").toInt() else 1
+        versionName = providers.gradleProperty("releaseVersionName")
+            .getOrElse(if (fdroidBuild) fdroidVersion.getProperty("versionName") else "0.1.0")
     }
 
     // CI credentials are ephemeral environment values, never committed Gradle properties.

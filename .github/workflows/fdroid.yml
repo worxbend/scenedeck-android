@@ -3,6 +3,7 @@ name: Verify F-Droid source build
 on:
   push:
     branches: [main]
+    tags: ["fdroid-v*"]
   pull_request:
   workflow_dispatch:
 
@@ -27,7 +28,7 @@ jobs:
         run: |
           ./gradlew :app:assembleDebug :app:assembleRelease :app:writeReleaseRuntimeDependencies \
             :feature:connections:testDebugUnitTest --no-configuration-cache \
-            -PfdroidBuild=true -PreleaseVersionName=0.1.1 -PreleaseVersionCode=1007
+            -PfdroidBuild=true
       - name: Scan exact source snapshot and unsigned APK with F-Droid tools
         run: |
           uv run --with fdroidserver==2.4.5 python3 scripts/check-fdroid-build.py \
