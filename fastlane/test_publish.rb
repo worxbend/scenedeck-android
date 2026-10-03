@@ -30,7 +30,7 @@ def assert(condition, message)
   raise message unless condition
 end
 
-keys = %w[AAB_PATH PLAY_JSON_KEY_PATH PLAY_TRACK PLAY_RELEASE_STATUS PACKAGE_NAME]
+keys = %w[AAB_PATH PLAY_JSON_KEY_PATH GOOGLE_APPLICATION_CREDENTIALS PLAY_TRACK PLAY_RELEASE_STATUS PACKAGE_NAME PLAY_UPLOAD_METADATA PLAY_METADATA_PATH]
 previous = keys.to_h { |key| [key, ENV[key]] }
 checks = 0
 begin
@@ -43,7 +43,7 @@ begin
     ENV["AAB_PATH"] = aab
     ENV["PLAY_JSON_KEY_PATH"] = json
     $publish_lane.call
-    assert($upload_options[:package_name] == "com.scenedeck.android", "Wrong default package")
+    assert($upload_options[:package_name] == "com.worxbend.scenedeck", "Wrong default package")
     assert($upload_options[:track] == "internal", "Wrong default track")
     assert($upload_options[:release_status] == "draft", "Wrong default status")
     checks += 1
@@ -63,6 +63,7 @@ begin
     {
       "PLAY_TRACK" => "unsupported",
       "PLAY_RELEASE_STATUS" => "inProgress",
+      "PLAY_UPLOAD_METADATA" => "yes",
       "PACKAGE_NAME" => "invalid-package",
       "AAB_PATH" => File.join(directory, "missing.aab"),
       "PLAY_JSON_KEY_PATH" => File.join(directory, "missing.json")
@@ -77,6 +78,42 @@ begin
       ensure
         ENV[key] = original
       end
+    end
+
+    # OIDC credentials produced by google-github-actions/auth use external_account.
+    File.write(json, '{"type":"external_account"}')
+    ENV.delete("PLAY_JSON_KEY_PATH")
+    ENV["GOOGLE_APPLICATION_CREDENTIALS"] = json
+    $publish_lane.call
+    assert($upload_options[:json_key] == json, "OIDC credentials were not forwarded")
+    checks += 1
+
+    ENV["PLAY_UPLOAD_METADATA"] = "true"
+    ENV["PLAY_METADATA_PATH"] = File.join(directory, "metadata")
+    begin
+      $publish_lane.call
+      raise "Missing listing reached uploader"
+    rescue ArgumentError
+      checks += 1
+    end
+    locale = File.join(ENV["PLAY_METADATA_PATH"], "en-US")
+    Dir.mkdir(ENV["PLAY_METADATA_PATH"])
+    Dir.mkdir(locale)
+    File.write(File.join(locale, "title.txt"), "SceneDeck")
+    $publish_lane.call
+    assert($upload_options[:metadata_path] == ENV["PLAY_METADATA_PATH"], "Wrong listing path")
+    %i[skip_upload_metadata skip_upload_changelogs skip_upload_images skip_upload_screenshots].each do |key|
+      assert($upload_options[key] == false, "Listing upload was skipped")
+    end
+    checks += 1
+    ENV["PLAY_UPLOAD_METADATA"] = "false"
+
+    File.write(json, '{"type":"authorized_user"}')
+    begin
+      $publish_lane.call
+      raise "Unsupported credential type reached uploader"
+    rescue ArgumentError
+      checks += 1
     end
 
     File.write(json, "sensitive-invalid-fixture")

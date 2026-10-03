@@ -16,7 +16,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.scenedeck.android"
+        applicationId = "com.worxbend.scenedeck"
         minSdk = 28
         targetSdk = 36
         versionCode = providers.gradleProperty("releaseVersionCode").orNull?.let { value ->

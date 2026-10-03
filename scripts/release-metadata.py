@@ -22,7 +22,18 @@ def metadata(env):
     publish = env.get("PLAY_PUBLISH_ENABLED", "false") == "true" if tagged else env.get("INPUT_PUBLISH_PLAY", "false") == "true"
     if publish and variant != "release":
         raise ValueError("Google Play publishing requires the release variant")
-    return {"variant": variant, "version_name": version, "version_code": str(int(code)), "publish_play": str(publish).lower(), "tagged": str(tagged).lower()}
+    track_key = "PLAY_TAG_TRACK" if tagged else "INPUT_PLAY_TRACK"
+    status_key = "PLAY_TAG_RELEASE_STATUS" if tagged else "INPUT_PLAY_RELEASE_STATUS"
+    track = env.get(track_key, "") or "internal"
+    status = env.get(status_key, "") or "draft"
+    upload_metadata = env.get("PLAY_TAG_UPLOAD_METADATA", "false") if tagged else env.get("INPUT_UPLOAD_PLAY_METADATA", "false")
+    if track not in {"internal", "beta", "production"}:
+        raise ValueError("Google Play track must be internal, beta, or production")
+    if status not in {"draft", "completed"}:
+        raise ValueError("Google Play release status must be draft or completed")
+    if upload_metadata not in {"true", "false"}:
+        raise ValueError("Upload Play metadata must be true or false")
+    return {"variant": variant, "version_name": version, "version_code": str(int(code)), "publish_play": str(publish).lower(), "tagged": str(tagged).lower(), "play_track": track, "play_release_status": status, "upload_play_metadata": upload_metadata}
 
 
 if __name__ == "__main__":

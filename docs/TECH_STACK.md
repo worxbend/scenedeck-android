@@ -171,3 +171,10 @@ review and Dependabot must continue checking future upstream security fixes.
 ## Delivery tools
 
 GitHub Actions builds APK/AAB artifacts. Google Play uploads use Ruby 3.3, Bundler 2.5.22, and Fastlane 2.240.1, pinned in `Gemfile`/`Gemfile.lock`. See [RELEASING.md](RELEASING.md) for credentials and track controls.
+
+Google Play publishing infrastructure uses Terraform >=1.6,<2.0 (validated with
+1.13.5) and the HashiCorp Google provider 7.x, resolved in
+`infra/google-play/.terraform.lock.hcl`. GitHub authentication uses
+`google-github-actions/auth@v3` with Workload Identity Federation; Fastlane's pinned
+version supports the generated `external_account` credentials. Play account/app
+bootstrap and policy review remain separate from Google Cloud provisioning.

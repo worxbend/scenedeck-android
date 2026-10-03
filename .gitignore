@@ -21,3 +21,10 @@ local.properties
 vendor/bundle/
 fastlane/report.xml
 fastlane/README.md
+gha-creds-*.json
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example

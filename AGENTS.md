@@ -91,5 +91,8 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - `.github/workflows/release.yml` gates APK/AAB builds on quality checks.
 - Signing uses environment credentials; never commit upload keys or service-account JSON.
+- `scripts/configure-play-signing.py` uploads signing secrets using a local hidden password prompt; `scripts/play-infra.py` uses the current gcloud login without printing or saving access tokens.
 - Play delivery defaults to internal/draft; setup is documented in `docs/RELEASING.md`.
+- Play application ID is `com.worxbend.scenedeck`; Kotlin namespaces remain `com.scenedeck.android`.
+- `infra/google-play` provisions publishing APIs/account and restricted GitHub OIDC trust; tag track/status and repository listing uploads are explicit opt-ins.
 - Validate delivery changes with `python3 scripts/test_release_metadata.py` and `ruby fastlane/test_publish.rb`.
