@@ -56,7 +56,7 @@ jobs:
       play_release_status: ${{ steps.metadata.outputs.play_release_status }}
       upload_play_metadata: ${{ steps.metadata.outputs.upload_play_metadata }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: metadata
         name: Validate release inputs
         env:
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-java@v4
@@ -118,7 +118,7 @@ jobs:
       VERSION_NAME: ${{ needs.prepare.outputs.version_name }}
       VERSION_CODE: ${{ needs.prepare.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -218,7 +218,7 @@ jobs:
       PACKAGE_NAME: com.worxbend.scenedeck
       AAB_PATH: ${{ github.workspace }}/dist/scenedeck-android-release.aab
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: scenedeck-release-${{ needs.prepare.outputs.version_code }}
