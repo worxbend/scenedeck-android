@@ -13,6 +13,8 @@ Terraform. This uses temporary GitHub credentials; no Google service-account key
 is needed. Set repository variables `PLAY_WORKLOAD_IDENTITY_PROVIDER` and
 `PLAY_SERVICE_ACCOUNT_EMAIL` from Terraform outputs. Android signing still uses
 the four signing secrets below.
+Federation checks numeric repository/owner IDs, the `google-play` environment
+claim, and the release workflow path; it supports GitHub's immutable-ID subjects.
 
 The one-time Play Console work is account verification, app creation, first signed
 bundle upload/App Signing, granting the publishing account app access, and policy

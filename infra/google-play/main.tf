@@ -48,11 +48,12 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository_id" = "assertion.repository_id"
   }
   # Numeric IDs prevent a renamed/deleted repository from granting access to a new owner.
-  # Match the release job's environment and workflow, including manual runs and tags.
+  # Check the environment directly: new repositories include immutable IDs in sub.
+  # Match the release workflow, including manual runs and tags.
   attribute_condition = join(" && ", [
     "assertion.repository_id == '${var.github_repository_id}'",
     "assertion.repository_owner_id == '${var.github_owner_id}'",
-    "assertion.sub == 'repo:${var.github_repository}:environment:google-play'",
+    "assertion.environment == 'google-play'",
     "assertion.workflow_ref.startsWith('${var.github_repository}/.github/workflows/release.yml@')",
   ])
   oidc {

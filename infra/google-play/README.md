@@ -9,6 +9,8 @@ Trust is restricted to the numeric GitHub repository and owner IDs, the
 `google-play` job environment, and `.github/workflows/release.yml`. Play permissions
 are granted separately in Play Console; Google Cloud IAM alone cannot grant them.
 No project-wide IAM role is assigned to the publishing service account.
+The condition checks `assertion.environment` directly, so both GitHub's legacy and
+immutable-ID subject formats work without weakening the repository restrictions.
 
 ## Deploy once
 

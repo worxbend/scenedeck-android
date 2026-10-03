@@ -96,4 +96,5 @@ must pass, and Compose preview(s) for changed screens must render.
 - Play application ID is `com.worxbend.scenedeck`; Kotlin namespaces remain `com.scenedeck.android`.
 - Settings links to `docs/PRIVACY_POLICY.md`; Play Data safety must account for ML Kit diagnostics, not claim that no data is collected.
 - `infra/google-play` provisions publishing APIs/account and restricted GitHub OIDC trust; tag track/status and repository listing uploads are explicit opt-ins.
+- OIDC trust checks the environment claim directly alongside numeric repository/owner IDs and the release workflow path; do not assume GitHub's legacy subject format.
 - Validate delivery changes with `python3 scripts/test_release_metadata.py` and `ruby fastlane/test_publish.rb`.
