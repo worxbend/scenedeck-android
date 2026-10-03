@@ -1,4 +1,4 @@
-# F-Droid publishing preparation
+# F-Droid publishing
 
 SceneDeck Android is MIT licensed, matching desktop SceneDeck. The F-Droid build
 keeps OBS control, encrypted profiles, themes, widgets, and background connection.
@@ -10,6 +10,28 @@ SIL OFL 1.1. Font sources/checksums and copyright/license texts are in `LICENSES
 and the license texts are also packaged inside the APK. Neither build needs a
 Google Play services font provider. The privacy policy distinguishes ML Kit's
 standard-build diagnostics from the F-Droid build, which excludes the SDK.
+
+## Submission status
+
+SceneDeck **0.1.1 (1007)** was submitted in
+[fdroiddata merge request !51067](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51067).
+It is awaiting maintainer review and is not yet listed in the official repository.
+The initial [F-Droid pipeline](https://gitlab.com/worxbend/fdroiddata/-/pipelines/2909789939)
+passed all nine jobs, including build, APK/source checks, metadata schema, lint,
+formatting and update detection. GitLab reruns checks when the merge request opens.
+
+The release source is tagged `fdroid-v0.1.1` at
+`64b0f81a195b666614d189036c7300fa017789c4`. The recipe was also built locally using
+F-Droid's `buildserver-trixie` image and its Gradle wrapper; the resulting unsigned
+APK passed the dependency, permission, font/license and F-Droid binary checks.
+Regular debug/unit/Roborazzi/security checks and the upstream F-Droid CI passed.
+
+The initial submission uses F-Droid signing rather than upstream-signature
+reproducible builds. Those are encouraged but not required by the Quick Start
+Guide. Cross-environment reproducibility is not established for a signed QR-free
+upstream APK. ABI splitting would save little: compressed native libraries occupy
+about 0.1 MiB of the approximately 40 MiB universal APK. These choices and build-tool
+warnings are explained in the merge request.
 
 ## Build from source
 
