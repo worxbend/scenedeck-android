@@ -98,3 +98,4 @@ must pass, and Compose preview(s) for changed screens must render.
 - `infra/google-play` provisions publishing APIs/account and restricted GitHub OIDC trust; tag track/status and repository listing uploads are explicit opt-ins.
 - OIDC trust checks the environment claim directly alongside numeric repository/owner IDs and the release workflow path; do not assume GitHub's legacy subject format.
 - Validate delivery changes with `python3 scripts/test_release_metadata.py` and `ruby fastlane/test_publish.rb`.
+- Resolve the default Play metadata path from the Fastfile directory; listing uploads must work from both repository and Fastlane working directories.

@@ -52,6 +52,8 @@ protection on `google-play` independently.
 ## Store listing in Git
 
 English listing text and images are checked in under `fastlane/metadata/android/en-US`.
+The default listing path is resolved relative to the Fastfile, independent of the
+working directory Fastlane uses when running the lane.
 `scripts/prepare-play-assets.py` exports existing brand SVGs and app previews to
 Play-compatible PNGs without cropping app content. Privacy policy:
 `https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md`.

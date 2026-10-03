@@ -12,7 +12,7 @@ platform :android do
     release_status = ENV.fetch("PLAY_RELEASE_STATUS", "draft")
     package_name = ENV.fetch("PACKAGE_NAME", "com.worxbend.scenedeck")
     upload_metadata = ENV.fetch("PLAY_UPLOAD_METADATA", "false")
-    metadata_path = ENV.fetch("PLAY_METADATA_PATH", "fastlane/metadata/android")
+    metadata_path = ENV.fetch("PLAY_METADATA_PATH", File.expand_path("metadata/android", __dir__))
 
     UI.user_error!("AAB_PATH must point to an existing .aab file") unless
       File.file?(aab_path) && File.extname(aab_path).downcase == ".aab"

@@ -89,6 +89,19 @@ begin
     checks += 1
 
     ENV["PLAY_UPLOAD_METADATA"] = "true"
+    # Fastlane runs lanes from fastlane/, unlike this script's usual repository cwd.
+    [File.expand_path("..", __dir__), __dir__].each do |working_directory|
+      Dir.chdir(working_directory) do
+        $publish_lane.call
+        assert($upload_options[:metadata_path] == File.expand_path("metadata/android", __dir__), "Default listing depends on cwd")
+        assert(File.file?(File.join($upload_options[:metadata_path], "en-US", "full_description.txt")), "Description missing")
+        assert(Dir.glob(File.join($upload_options[:metadata_path], "en-US", "images", "phoneScreenshots", "*.png")).length == 4, "Screenshot set incomplete")
+        %i[skip_upload_metadata skip_upload_changelogs skip_upload_images skip_upload_screenshots].each do |key|
+          assert($upload_options[key] == false, "Default listing upload was skipped")
+        end
+        checks += 1
+      end
+    end
     ENV["PLAY_METADATA_PATH"] = File.join(directory, "metadata")
     begin
       $publish_lane.call
