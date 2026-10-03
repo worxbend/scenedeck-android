@@ -13,8 +13,8 @@ standard-build diagnostics from the F-Droid build, which excludes the SDK.
 
 ## Build from source
 
-Use JDK 21 and Android SDK platform 37 (the installed SDK package is
-`platforms;android-37.0`). No Play Console, Google Cloud account, upload key,
+Use JDK 21, Gradle 9.6.0 (provided by the wrapper), and Android SDK platform 37
+(the installed SDK package is `platforms;android-37.0`). No Play Console, Google Cloud account, upload key,
 service-account JSON, or signing passwords are required:
 
 ```bash
@@ -68,8 +68,8 @@ Copy the recipe into a checkout of `https://gitlab.com/fdroid/fdroiddata`, verif
 it with `fdroid lint com.worxbend.scenedeck`, and submit a merge request following
 the [official quick-start guide](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/).
 If a recipe changes, use `fdroid rewritemeta` to retain canonical YAML formatting.
-The recipe's build server must have JDK 21 and SDK 37 available; maintainers may
-adjust provisioning to their current environment.
+The recipe's build server must have JDK 21, Gradle 9.6.0 and SDK 37 available.
+Maintainers may adjust provisioning to their current environment.
 
 Initial submission uses explicit commit/version metadata and no automatic update
 mode. Enable tag updates only after a release tag containing this build split

@@ -1,0 +1,31 @@
+Categories:
+  - Multimedia
+License: MIT
+AuthorName: Oleksandr Balyshyn
+SourceCode: https://github.com/worxbend/scenedeck-android
+IssueTracker: https://github.com/worxbend/scenedeck-android/issues
+Changelog: https://github.com/worxbend/scenedeck-android/releases
+
+AutoName: SceneDeck
+
+RepoType: git
+Repo: https://github.com/worxbend/scenedeck-android.git
+
+Builds:
+  - versionName: 0.1.1
+    versionCode: 1007
+    commit: d20cb0db2198caa46afc9d5e0bc6082f601cf1b1
+    subdir: app
+    gradle:
+      - yes
+    rm:
+      - feature/connections/src/play
+    gradleprops:
+      - fdroidBuild=true
+      - releaseVersionName=0.1.1
+      - releaseVersionCode=1007
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: 0.1.1
+CurrentVersionCode: 1007
