@@ -53,6 +53,21 @@ android {
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
 
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Keep F-Droid reproducible builds byte-identical across checkouts and build hosts.
+            vcsInfo.include = false
+        }
+    }
+
+    // The encrypted dependency block is Play-only metadata and breaks APK reproducibility.
+    dependenciesInfo {
+        includeInApk = false
+    }
+
     buildFeatures {
         compose = true
     }

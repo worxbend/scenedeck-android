@@ -42,3 +42,66 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/reports/fdroid/release-runtime-dependencies.txt
           if-no-files-found: error
+
+  # F-Droid verifies its own source build against this upstream-signed APK
+  # (reproducible builds), so sign the exact scanned output instead of rebuilding.
+  signed-release:
+    needs: fdroid
+    if: startsWith(github.ref, 'refs/tags/fdroid-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      EXPECTED_CERT_SHA256: 48e613d25d603670a423da9ee69f980ef8f687cd4518756724e372f4427f8800
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: scenedeck-fdroid-unsigned
+          path: unsigned
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "build-tools;36.0.0"
+      - name: Check tag matches static F-Droid version
+        run: |
+          version="$(sed -n 's/^versionName=//p' fdroid/version.properties)"
+          [[ "$GITHUB_REF_NAME" == "fdroid-v$version" ]] || { echo "Tag does not match versionName $version"; exit 1; }
+          echo "VERSION_NAME=$version" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$(sed -n 's/^versionCode=//p' fdroid/version.properties)" >> "$GITHUB_ENV"
+      - name: Sign with upload key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          keystore="$RUNNER_TEMP/scenedeck-release.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          apksigner="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          unsigned="$(find unsigned -name app-release-unsigned.apk)"
+          mkdir -p dist
+          apk="dist/scenedeck-fdroid-$VERSION_NAME.apk"
+          # Keep the ZIP byte-identical (no v1 entries, no realignment) so F-Droid's
+          # apksigcopier can transplant this signature onto its own unsigned build.
+          "$apksigner" sign --v1-signing-enabled false --alignment-preserved true \
+            --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$apk" "$unsigned"
+          "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
+          grep -q "SHA-256 digest: $EXPECTED_CERT_SHA256" "$RUNNER_TEMP/certs.txt" \
+            || { echo "APK is not signed by the F-Droid AllowedAPKSigningKeys certificate"; exit 1; }
+          (cd dist && sha256sum *.apk > SHA256SUMS)
+      - name: Publish F-Droid reference APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag \
+            --title "SceneDeck $VERSION_NAME (F-Droid)" \
+            --notes-file "fastlane/metadata/android/en-US/changelogs/$VERSION_CODE.txt"

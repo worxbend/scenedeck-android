@@ -16,6 +16,8 @@ standard-build diagnostics from the F-Droid build, which excludes the SDK.
 SceneDeck **0.1.1 (1007)** was submitted in
 [fdroiddata merge request !51067](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51067).
 It is awaiting maintainer review and is not yet listed in the official repository.
+Review feedback (R8, category, reproducible builds, cleartext question) was answered
+by releasing **0.1.2 (1008)**, which replaces 0.1.1 in the merge request.
 The initial [F-Droid pipeline](https://gitlab.com/worxbend/fdroiddata/-/pipelines/2909789939)
 passed all nine jobs, including build, APK/source checks, metadata schema, lint,
 formatting and update detection. GitLab reruns checks when the merge request opens.
@@ -26,12 +28,24 @@ F-Droid's `buildserver-trixie` image and its Gradle wrapper; the resulting unsig
 APK passed the dependency, permission, font/license and F-Droid binary checks.
 Regular debug/unit/Roborazzi/security checks and the upstream F-Droid CI passed.
 
-The initial submission uses F-Droid signing rather than upstream-signature
-reproducible builds. Those are encouraged but not required by the Quick Start
-Guide. Cross-environment reproducibility is not established for a signed QR-free
-upstream APK. ABI splitting would save little: compressed native libraries occupy
-about 0.1 MiB of the approximately 40 MiB universal APK. These choices and build-tool
-warnings are explained in the merge request.
+Release builds use R8 code and resource shrinking (about 7 MiB instead of 40 MiB).
+The F-Droid build is reproducible: building the same commit with Temurin 21 on the
+host and with Debian OpenJDK 21 inside F-Droid's `buildserver-trixie` image under a
+different path produced a byte-identical unsigned APK. AGP's VCS-info file and
+encrypted dependency-metadata block are disabled because they break reproducibility.
+
+F-Droid therefore publishes the **upstream-signed** APK. The recipe lists `Binaries`
+(the GitHub release asset) and `AllowedAPKSigningKeys` (the upload certificate,
+SHA-256 `48e613d25d603670a423da9ee69f980ef8f687cd4518756724e372f4427f8800`). F-Droid
+builds from source, copies the upstream signature onto its own unsigned output with
+apksigcopier and only publishes when it verifies. GitHub release APKs use the same
+upload key; Play installs are re-signed by Google Play App Signing, so moving between
+Play and F-Droid still requires uninstalling first.
+
+Cleartext traffic is enabled on purpose: obs-websocket only speaks plain `ws://` on
+the local network (OBS has no TLS), and hosts are arbitrary LAN IPs that a network
+security config cannot enumerate. Passwords use the protocol's challenge/response
+and stay Keystore-encrypted at rest.
 
 ## Build from source
 
@@ -45,7 +59,7 @@ service-account JSON, or signing passwords are required:
   -PfdroidBuild=true
 ```
 
-F-Droid versions come from `fdroid/version.properties` (currently 0.1.1 / 1007).
+F-Droid versions come from `fdroid/version.properties` (currently 0.1.2 / 1008).
 The normal GitHub/Play workflow can still pass explicit release version properties.
 
 The release output is `app/build/outputs/apk/release/app-release-unsigned.apk`.
@@ -87,7 +101,7 @@ The packaging recipe is `fdroid/metadata/com.worxbend.scenedeck.yml`. It pins a 
 prepared Git commit, passes the distribution/version properties, and removes only
 the excluded Play QR source folder before scanning. Descriptions and screenshots
 come from `fastlane/metadata/android/en-US`; the description explicitly states the
-F-Droid QR limitation. Version-specific release notes are in `changelogs/1007.txt`.
+F-Droid QR limitation. Version-specific release notes are in `changelogs/<versionCode>.txt`.
 
 Copy the recipe into a checkout of `https://gitlab.com/fdroid/fdroiddata`, verify
 it with `fdroid lint com.worxbend.scenedeck`, and submit a merge request following
@@ -100,12 +114,15 @@ F-Droid releases use `fdroid-vX.Y.Z` tags, with `AutoUpdateMode: Version` and
 `UpdateCheckData` reading the static version file. To ship an update, increase both
 values in `fdroid/version.properties`, add `changelogs/<versionCode>.txt`, validate
 and commit the changes, then push the matching tag. The dedicated F-Droid workflow
-also verifies these tags. These tags do not trigger the normal `v*` GitHub/Play
+verifies the tag, then its `signed-release` job signs that exact scanned APK with the
+upload key (`ANDROID_KEYSTORE_*` secrets; v2/v3 only with `--alignment-preserved`, so
+the ZIP stays byte-identical), checks the certificate digest and publishes
+`scenedeck-fdroid-X.Y.Z.apk` as the GitHub release F-Droid's `Binaries` URL points at.
+Never rebuild or re-sign that APK by other means: F-Droid will refuse an update whose
+upstream signature does not match its own build. These tags do not trigger the normal `v*` GitHub/Play
 publishing workflow. The earlier `v0.1.0` tag predates F-Droid preparation and must
 not be used for the first F-Droid build.
 
 Official inclusion still requires maintainer review and a successful build on
 F-Droid's infrastructure. Passing local/CI scans is evidence for the submission;
 it is not a guarantee of acceptance or a claim that the app is already listed.
-F-Droid's signing key usually differs from other distributions, so switching
-between channels with the same package ID can require uninstalling first.

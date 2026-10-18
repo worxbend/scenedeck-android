@@ -107,5 +107,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - `-PfdroidBuild=true` excludes `feature/connections/src/play` QR code/dependencies and camera permission; hide Scan QR and preserve manual connections. Normal Play/GitHub builds retain QR pairing.
 - Register extra Kotlin sources through AGP built-in Kotlin's variant source API, not Java directories.
 - F-Droid mode ignores upload signing credentials and produces an unsigned release APK; its packaging recipe removes only the excluded Play QR source directory.
+- Release builds use R8 code/resource shrinking; keep VCS info and the APK dependency-metadata block disabled so F-Droid builds stay byte-reproducible.
+- F-Droid publishes the upstream-signed APK (`Binaries` + `AllowedAPKSigningKeys`); only the `fdroid-v*` workflow's `signed-release` job signs it (upload key, v2/v3, alignment preserved).
 - Validate F-Droid source/APK with `scripts/check-fdroid-build.py`, fdroidserver 2.4.5 and the F-Droid workflow; complete build/submission steps are in `docs/FDROID.md`.
 - F-Droid versions are static in `fdroid/version.properties`; increment code/name and publish matching `fdroid-vX.Y.Z` tags. F-Droid auto-update metadata reads this file; do not freeze future versions with recipe Gradle overrides.

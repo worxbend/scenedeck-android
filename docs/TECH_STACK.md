@@ -196,3 +196,7 @@ and APK permission check. Submission/build instructions are in `docs/FDROID.md`.
 F-Droid release versions are stored in `fdroid/version.properties` for both Gradle
 and F-Droid tag checking. Dedicated `fdroid-vX.Y.Z` tags enable automatic updates
 and do not trigger standard GitHub/Play release publication.
+
+All release builds enable R8 (`proguard-android-optimize.txt` + `app/proguard-rules.pro`)
+with resource shrinking. F-Droid uses reproducible builds against an upstream APK signed
+with **build-tools 36.0.0** `apksigner` (v2/v3 only, `--alignment-preserved true`).

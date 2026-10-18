@@ -1,0 +1,1 @@
+Smaller, faster release build: R8 code and resource shrinking is now enabled. F-Droid builds are reproducible and match the upstream-signed APK.
