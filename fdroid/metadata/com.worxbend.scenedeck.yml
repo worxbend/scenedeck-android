@@ -10,7 +10,6 @@ AutoName: SceneDeck
 
 RepoType: git
 Repo: https://github.com/worxbend/scenedeck-android.git
-
 Binaries: https://github.com/worxbend/scenedeck-android/releases/download/fdroid-v%v/scenedeck-fdroid-%v.apk
 
 Builds:

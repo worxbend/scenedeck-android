@@ -89,7 +89,7 @@ jobs:
           apk="dist/scenedeck-fdroid-$VERSION_NAME.apk"
           # Keep the ZIP byte-identical (no v1 entries, no realignment) so F-Droid's
           # apksigcopier can transplant this signature onto its own unsigned build.
-          "$apksigner" sign --v1-signing-enabled false --alignment-preserved true \
+          "$apksigner" sign --v1-signing-enabled false --v4-signing-enabled false --alignment-preserved true \
             --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
             --out "$apk" "$unsigned"
