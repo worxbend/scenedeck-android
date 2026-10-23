@@ -90,11 +90,22 @@ object DoctorChecks {
         )
     }
 
-    /** WARNING/ERROR: edges violating the role rules (SUSPICIOUS/FORBIDDEN). */
-    fun hierarchyInversions(graph: SceneGraph): List<DoctorIssue> {
+    /**
+     * WARNING/ERROR: edges violating the role rules (SUSPICIOUS/FORBIDDEN).
+     *
+     * Only edges whose two scenes both carry an explicitly assigned role are reported: a scene
+     * without a registry role is only *implicitly* Primary, so flagging it would turn every nested
+     * scene of a fresh, uncurated collection into noise.
+     */
+    fun hierarchyInversions(
+        graph: SceneGraph,
+        entries: List<SceneRegistryEntry>,
+    ): List<DoctorIssue> {
         val roleOf = graph.nodes.associate { it.name to it.role }
+        val explicit = entries.filter { it.role != null }.map { it.sceneName }.toSet()
         return graph.edges
             .filter { it.verdict != EdgeVerdict.OK }
+            .filter { it.from in explicit && it.to in explicit }
             .map { edge ->
                 val forbidden = edge.verdict == EdgeVerdict.FORBIDDEN
                 DoctorIssue(
@@ -133,6 +144,21 @@ object DoctorChecks {
             }
     }
 
+    /**
+     * Scenes the broken-audio probe should visit: explicitly PRIMARY entries that still exist in
+     * OBS (stale entries are reported separately and must not abort the scan).
+     */
+    fun primaryScenesToProbe(
+        obsSceneNames: List<String>,
+        entries: List<SceneRegistryEntry>,
+    ): List<String> {
+        val present = obsSceneNames.toSet()
+        return entries
+            .filter { it.role == SceneRole.PRIMARY && it.sceneName in present }
+            .map { it.sceneName }
+            .distinct()
+    }
+
     /** WARNING: PRIMARY scenes whose audio inputs failed volume/mute probing. */
     fun primaryWithBrokenAudio(
         entries: List<SceneRegistryEntry>,
@@ -151,7 +177,9 @@ object DoctorChecks {
                         title = "Audio source without control state",
                         detail =
                             "“${entry.sceneName}” is on the deck but " +
-                                "${broken.joinToString()} report no volume/mute state.",
+                                "${broken.joinToString()} " +
+                                (if (broken.size == 1) "reports" else "report") +
+                                " no volume/mute state.",
                         sceneName = entry.sceneName,
                     )
                 }

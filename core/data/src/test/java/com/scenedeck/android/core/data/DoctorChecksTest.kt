@@ -82,7 +82,16 @@ class DoctorChecksTest {
                         edge("Live", "Scratch", EdgeVerdict.FORBIDDEN),
                     ),
             )
-        val issues = DoctorChecks.hierarchyInversions(g)
+        val issues =
+            DoctorChecks.hierarchyInversions(
+                g,
+                entries =
+                    listOf(
+                        entry("Live", SceneRole.PRIMARY),
+                        entry("OtherLive", SceneRole.PRIMARY),
+                        entry("Scratch", SceneRole.DEBUG),
+                    ),
+            )
         assertEquals(2, issues.size)
         val suspicious = issues.single { !it.title.startsWith("Forbidden") }
         assertEquals(DoctorSeverity.WARNING, suspicious.severity)
@@ -90,6 +99,81 @@ class DoctorChecksTest {
             DoctorSeverity.ERROR,
             issues.single { it.title.startsWith("Forbidden") }.severity,
         )
+    }
+
+    @Test
+    fun hierarchyInversionsIgnoreImplicitDefaultRoles() {
+        // Fresh install: no registry roles, every scene is only implicitly PRIMARY.
+        val g =
+            graph(
+                nodes =
+                    listOf(
+                        SceneGraphNode("Camera", SceneRole.PRIMARY),
+                        SceneGraphNode("Lower Third", SceneRole.PRIMARY),
+                        SceneGraphNode("Screen", SceneRole.PRIMARY),
+                    ),
+                edges =
+                    listOf(
+                        edge("Camera", "Lower Third", EdgeVerdict.SUSPICIOUS),
+                        edge("Screen", "Lower Third", EdgeVerdict.SUSPICIOUS),
+                    ),
+            )
+        assertTrue(DoctorChecks.hierarchyInversions(g, entries = emptyList()).isEmpty())
+        // An entry with curation but no role is still only implicitly PRIMARY.
+        assertTrue(
+            DoctorChecks.hierarchyInversions(
+                    g,
+                    entries =
+                        listOf(
+                            entry("Camera", SceneRole.PRIMARY),
+                            SceneRegistryEntry("Lower Third", role = null),
+                        ),
+                )
+                .isEmpty()
+        )
+        // Once both ends are explicitly assigned, the rule applies again.
+        val explicit =
+            DoctorChecks.hierarchyInversions(
+                g,
+                entries =
+                    listOf(
+                        entry("Camera", SceneRole.PRIMARY),
+                        entry("Lower Third", SceneRole.PRIMARY),
+                    ),
+            )
+        assertEquals(listOf("Camera"), explicit.map { it.sceneName })
+    }
+
+    @Test
+    fun primaryScenesToProbeSkipStaleAndImplicitScenes() {
+        val scenes =
+            DoctorChecks.primaryScenesToProbe(
+                obsSceneNames = listOf("Camera", "Screen", "Parked"),
+                entries =
+                    listOf(
+                        entry("Camera", SceneRole.PRIMARY),
+                        entry("Ghost", SceneRole.PRIMARY),
+                        entry("Parked", SceneRole.SECONDARY),
+                        SceneRegistryEntry("Screen", role = null),
+                    ),
+            )
+        assertEquals(listOf("Camera"), scenes)
+    }
+
+    @Test
+    fun brokenAudioCopyAgreesWithInputCount() {
+        val single =
+            DoctorChecks.primaryWithBrokenAudio(
+                listOf(entry("Camera", SceneRole.PRIMARY)),
+                mapOf("Camera" to listOf("Mic")),
+            )
+        assertTrue(single[0].detail.endsWith("Mic reports no volume/mute state."))
+        val plural =
+            DoctorChecks.primaryWithBrokenAudio(
+                listOf(entry("Camera", SceneRole.PRIMARY)),
+                mapOf("Camera" to listOf("Mic", "Tone")),
+            )
+        assertTrue(plural[0].detail.endsWith("Mic, Tone report no volume/mute state."))
     }
 
     @Test
@@ -164,7 +248,13 @@ class DoctorChecksTest {
                 edges = listOf(edge("A", "M", EdgeVerdict.OK)),
             )
         assertTrue(DoctorChecks.circularReferences(g).isEmpty())
-        assertTrue(DoctorChecks.hierarchyInversions(g).isEmpty())
+        assertTrue(
+            DoctorChecks.hierarchyInversions(
+                    g,
+                    listOf(entry("A", SceneRole.PRIMARY), entry("M", SceneRole.MODULE)),
+                )
+                .isEmpty()
+        )
         assertTrue(
             DoctorChecks.staleEntries(listOf("A"), listOf(entry("A", SceneRole.PRIMARY))).isEmpty()
         )

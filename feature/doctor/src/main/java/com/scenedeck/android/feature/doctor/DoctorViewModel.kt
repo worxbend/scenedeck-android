@@ -7,10 +7,10 @@ import com.scenedeck.android.core.data.DoctorChecks
 import com.scenedeck.android.core.data.DoctorIssue
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneGraphBuilder
-import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.probeBrokenAudioInputs
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ObsRequestTimeoutException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -27,7 +27,20 @@ data class DoctorUiState(
     val running: Boolean = false,
     val issues: List<DoctorIssue> = emptyList(),
     val ranOnce: Boolean = false,
+    /**
+     * Sanitized message for the last failed run (no server comments or transport details). When
+     * set, [issues] is empty: results from an earlier run are never shown as current.
+     */
+    val error: String? = null,
 )
+
+internal const val DOCTOR_FAILED_MESSAGE =
+    "Checks couldn't finish. Make sure OBS is still connected, then re-run."
+internal const val DOCTOR_TIMEOUT_MESSAGE = "OBS didn't answer in time. Re-run the checks."
+
+/** Maps a failed run to user copy without exposing exception messages or OBS comments. */
+internal fun doctorFailureMessage(failure: Throwable): String =
+    if (failure is ObsRequestTimeoutException) DOCTOR_TIMEOUT_MESSAGE else DOCTOR_FAILED_MESSAGE
 
 @HiltViewModel
 class DoctorViewModel
@@ -74,27 +87,30 @@ constructor(
         checkJob?.cancel()
         checkJob = viewModelScope.launch {
             coroutineResult { runChecks(connection) }
-                .onFailure {
-                    _uiState.value = _uiState.value.copy(running = false)
+                .onFailure { failure ->
+                    // Drop earlier results: they would read as the outcome of this failed run.
+                    _uiState.value =
+                        DoctorUiState(
+                            connection = connection,
+                            error = doctorFailureMessage(failure),
+                        )
                 }
         }
     }
 
     private suspend fun runChecks(connection: ConnectionState) {
-        _uiState.value = _uiState.value.copy(connection = connection, running = true)
+        _uiState.value = _uiState.value.copy(connection = connection, running = true, error = null)
         val obsScenes = client.getSceneList().scenes.map { it.name }
         val entries = registry.snapshot()
         val graph = graphBuilder.build(entries)
-        val primaryScenes =
-            entries
-                .filter { it.role == SceneRole.PRIMARY }
-                .map { it.sceneName }
-                .ifEmpty { obsScenes } // default rule: everything is PRIMARY
+        // Only explicitly PRIMARY scenes still present in OBS are reported, so only those are
+        // probed; stale entries are a finding of their own and must not abort the scan.
+        val primaryScenes = DoctorChecks.primaryScenesToProbe(obsScenes, entries)
         val brokenAudio = probeBrokenAudioInputs(client, primaryScenes)
 
         val issues = buildList {
             addAll(DoctorChecks.circularReferences(graph))
-            addAll(DoctorChecks.hierarchyInversions(graph))
+            addAll(DoctorChecks.hierarchyInversions(graph, entries))
             addAll(DoctorChecks.staleEntries(obsScenes, entries))
             addAll(DoctorChecks.primaryWithBrokenAudio(entries, brokenAudio))
             addAll(DoctorChecks.unassignedRoles(obsScenes, entries))
