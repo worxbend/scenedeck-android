@@ -69,7 +69,8 @@ one module owns the wire protocol.**
 - **Event subscription**: `ALL | INPUT_VOLUME_METERS` (meters require explicit opt-in).
 - **Stats poller**: 1 Hz `GetStats` + `GetStreamStatus` while connected, independent of
   which screen is visible (desktop keeps a 2-min ring buffer for the whole session —
-  we do the same in `StatsRepository`).
+  we do the same in `StatsRepository`). The canvas FPS (`GetVideoSettings`) is re-read
+  on connect, `CurrentProfileChanged` and every 10 polls (OBS has no video-settings event).
 - **Audio discovery**: special inputs → active-scene audio inputs → recurse into
   enabled nested scenes/groups → dedupe → filter allow-list. Ported 1:1 from desktop.
 

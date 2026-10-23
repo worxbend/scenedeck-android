@@ -9,6 +9,7 @@ import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsProfile
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
+import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.ProfileListSnapshot
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneCollectionListSnapshot
@@ -70,6 +71,12 @@ interface ObsClient {
     suspend fun getVersion(): ObsVersionInfo
 
     suspend fun getStats(): ObsStats
+
+    /**
+     * Canvas/output resolution and frame rate (`GetVideoSettings`). OBS emits no event when these
+     * change, so callers re-read them on connect, on profile switch and periodically.
+     */
+    suspend fun getVideoSettings(): ObsVideoSettings = error(NOT_IMPLEMENTED)
 
     // ── Scenes ──────────────────────────────────────────────────────────────
     suspend fun getSceneList(): SceneListSnapshot

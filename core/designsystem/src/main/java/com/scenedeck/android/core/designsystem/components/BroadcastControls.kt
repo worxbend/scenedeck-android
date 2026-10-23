@@ -91,9 +91,12 @@ fun BroadcastTimer(
     }
 }
 
-/** Amber text retains readable contrast on light timer containers. */
+/**
+ * Amber recording tone; text retains readable contrast on light timer containers. Shared by
+ * recording timers and indicators outside the transport (e.g. the Stats REC chip).
+ */
 @Composable
-private fun broadcastWarningTextColor() =
+fun broadcastWarningTextColor() =
     if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) {
         lerp(SceneDeckTheme.colors.warning, MaterialTheme.colorScheme.onSurface, 0.55f)
     } else {

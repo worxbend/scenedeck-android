@@ -132,4 +132,22 @@ internal class RequestsTest : ObsClientTestBase() {
             client.disconnect()
         }
     }
+
+    @Test
+    fun videoSettingsRequest_mapsCanvasFrameRate(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            val client = connectedClient(server)
+
+            val video = client.getVideoSettings()
+            assertEquals(30000, video.fpsNumerator)
+            assertEquals(1001, video.fpsDenominator)
+            assertEquals(29.97, video.fps ?: 0.0, 1e-3)
+            assertEquals(1920, video.baseWidth)
+            assertEquals(720, video.outputHeight)
+            assertEquals(1, server.receivedCount("GetVideoSettings"))
+
+            client.disconnect()
+        }
+    }
 }

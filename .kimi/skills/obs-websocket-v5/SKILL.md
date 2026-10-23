@@ -29,7 +29,8 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
   `All`; they stream at ~50 ms and must be buffered with `DROP_OLDEST` (mirror the
   desktop's drop policy; never backpressure the UI).
 - **Stats are poll-only**: `GetStats` + `GetStreamStatus` at 1 Hz for the whole
-  connection (2-min ring buffer), not per-screen.
+  connection (2-min ring buffer), not per-screen. Stats thresholds use the canvas FPS
+  from `GetVideoSettings` (fpsNumerator/fpsDenominator), never a hardcoded 60 fps.
 - **Concurrency**: bound parallel request batches with `Semaphore(8)` (desktop parity).
   The 10-second request deadline includes permit admission and response wait.
   Bind requests to the session captured before admission; reject replacement
@@ -54,7 +55,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 | General | `GetVersion`, `GetStats` |
 | Scenes | `GetSceneList`, `GetCurrentProgramScene`, `SetCurrentProgramScene`, `GetSceneItemList` (groups incl.), `GetSceneItemEnabled`, `SetSceneItemEnabled` (M7) |
 | Studio (M6) | `GetStudioModeEnabled`, `SetStudioModeEnabled`, `Get/SetCurrentPreviewScene`, `TriggerStudioModeTransition`, `Get/SetCurrentSceneTransition`, `SetCurrentSceneTransitionDuration` |
-| Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection` |
+| Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection`, `GetVideoSettings` |
 | Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `ToggleVirtualCam` (M7) |
 | Audio | `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
 | Media (M7) | `GetMediaInputStatus`, `TriggerMediaInputAction` |

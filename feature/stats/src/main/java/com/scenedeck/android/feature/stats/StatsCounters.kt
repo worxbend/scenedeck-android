@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.core.designsystem.components.broadcastWarningTextColor
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.mono
 
@@ -132,7 +133,8 @@ internal fun OutputStateChips(uiState: StatsUiState) {
         OutputChip(
             label = if (uiState.streamActive) "STREAM LIVE" else "STREAM OFF",
             active = uiState.streamActive,
-            activeColor = MaterialTheme.colorScheme.primary,
+            // LIVE is the red program/on-air tally everywhere (status strip, transport).
+            activeColor = SceneDeckTheme.colors.program,
         )
         OutputChip(
             label =
@@ -142,7 +144,8 @@ internal fun OutputStateChips(uiState: StatsUiState) {
                     else -> "REC OFF"
                 },
             active = uiState.recordActive,
-            activeColor = SceneDeckTheme.colors.recording,
+            // Recording is amber, matching the REC timers (readable on light themes).
+            activeColor = broadcastWarningTextColor(),
         )
     }
 }
