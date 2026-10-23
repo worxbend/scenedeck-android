@@ -23,6 +23,7 @@ coroutines ≥ 1.10.2 — all satisfied by our pins (3.6.0 / 1.11.0 / 1.11.0).
 
 - Session state machine `Disconnected → Connecting → Identifying → Ready →
   Reconnecting(backoff ≤ 30 s)`; `ObsAuthException` → `Failed(Auth)`, no retry.
+  `retryNow()` skips only the pending backoff wait (no-op otherwise).
 - `Semaphore(8)` around every request (desktop parity).
 - The receiver, typed request continuations and initial GetVersion share one
   `Dispatchers.Default.limitedParallelism(1)` execution lane. Suspended requests remain

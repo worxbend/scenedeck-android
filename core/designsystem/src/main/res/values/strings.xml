@@ -9,6 +9,7 @@
     <string name="obs_failed_detail">Check the host, port and password. Your phone and OBS computer need to be on a reachable network.</string>
     <string name="obs_offline_detail">Connect to OBS to switch scenes, mix audio and monitor your broadcast from your phone.</string>
     <string name="obs_open_connections">Open connections</string>
+    <string name="obs_retry_now">Retry now</string>
     <string name="obs_connect_action">Connect to OBS</string>
     <string name="scene_program">PROGRAM</string>
     <string name="scene_preview">PREVIEW</string>

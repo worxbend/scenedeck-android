@@ -1,6 +1,7 @@
 package com.scenedeck.android.core.designsystem
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -8,9 +9,11 @@ import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
+import com.scenedeck.android.core.designsystem.components.LocalRetryNow
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,5 +55,35 @@ class DisconnectedPlaceholderRoborazziTest {
         }
         composeRule.onNodeWithText("Open connections").performClick()
         assertTrue(opened)
+    }
+
+    @Test
+    fun reconnectingOffersAppProvidedRetryNow() {
+        var retried = 0
+        var opened = false
+        composeRule.setContent {
+            SceneDeckTheme {
+                CompositionLocalProvider(LocalRetryNow provides { retried++ }) {
+                    DisconnectedPlaceholder(ConnectionState.Reconnecting(6), { opened = true })
+                }
+            }
+        }
+        composeRule.onNodeWithText("Retry now").performClick()
+        assertEquals(1, retried)
+        composeRule.onNodeWithText("Open connections").performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun retryNowIsOnlyOfferedWhileReconnecting() {
+        composeRule.setContent {
+            SceneDeckTheme {
+                CompositionLocalProvider(LocalRetryNow provides {}) {
+                    DisconnectedPlaceholder(ConnectionState.Failed(ConnectionError.Auth()), {})
+                }
+            }
+        }
+        composeRule.onNodeWithText("Retry now").assertDoesNotExist()
+        composeRule.onNodeWithText("Open connections").assertExists()
     }
 }

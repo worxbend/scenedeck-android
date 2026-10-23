@@ -97,6 +97,11 @@ internal class FakeObsServer(
         )
     }
 
+    /** Enqueue one connection attempt that OBS refuses (no WebSocket upgrade). */
+    fun enqueueRejectedSession() {
+        server.enqueue(MockResponse().setResponseCode(503))
+    }
+
     fun sendEvent(eventType: String, eventDataJson: String, intent: Int = 1) {
         val frame =
             template("event.json")

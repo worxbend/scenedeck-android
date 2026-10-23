@@ -204,6 +204,17 @@ class ObsSessionHolderTest {
         assertEquals(2, client.connectCalls.size)
     }
 
+    @Test
+    fun retryNowNudgesClientWithoutQueuingCommands(): Unit = runBlocking {
+        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+
+        assertTrue(holder.retryNow())
+
+        assertEquals(1, client.retryNowCalls)
+        assertEquals(0, client.connectCalls.size)
+        assertTrue(!client.disconnectCalled)
+    }
+
     // ── Fakes ───────────────────────────────────────────────────────────────
 
     private class FailingDataStore : DataStore<Preferences> {
@@ -290,6 +301,13 @@ class ObsSessionHolderTest {
         override suspend fun disconnect() {
             disconnectCalled = true
             _connectionState.value = ConnectionState.Disconnected
+        }
+
+        @Volatile var retryNowCalls = 0
+
+        override fun retryNow(): Boolean {
+            retryNowCalls++
+            return true
         }
 
         private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")

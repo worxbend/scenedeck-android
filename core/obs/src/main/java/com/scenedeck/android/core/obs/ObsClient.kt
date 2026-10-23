@@ -66,6 +66,14 @@ interface ObsClient {
      */
     suspend fun disconnect()
 
+    /**
+     * Skips the remaining reconnect backoff and attempts immediately (user "Retry now", app
+     * foreground, network available). Returns true only when a backoff wait was cut short; it never
+     * starts a session, never revives a terminal [ConnectionState.Failed] and keeps the reconnect
+     * attempt count. Thread-safe and non-suspending.
+     */
+    fun retryNow(): Boolean = false
+
     // ── General ─────────────────────────────────────────────────────────────
     suspend fun getVersion(): ObsVersionInfo
 

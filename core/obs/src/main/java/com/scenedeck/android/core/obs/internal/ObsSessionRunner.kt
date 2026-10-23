@@ -24,7 +24,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -47,6 +46,26 @@ internal fun exponentialBackoffMillis(attempt: Int): Long {
     require(attempt >= 1) { "attempt must be >= 1, was $attempt" }
     val shift = (attempt - 1).coerceAtMost(MAX_BACKOFF_SHIFT)
     return minOf(BASE_BACKOFF_MS shl shift, MAX_BACKOFF_MS)
+}
+
+/** A reconnect backoff wait that [wake] can end early; only the wait in progress is affected. */
+internal class WakeableBackoff {
+    @Volatile private var pending: CompletableDeferred<Unit>? = null
+
+    /** True when a wait was in progress and is now ending; otherwise a no-op. */
+    fun wake(): Boolean = pending?.complete(Unit) == true
+
+    /** Waits [delayMillis] or until [wake]; caller cancellation propagates. */
+    suspend fun await(delayMillis: Long) {
+        val signal = CompletableDeferred<Unit>()
+        pending = signal
+        try {
+            withTimeoutOrNull(delayMillis) { signal.await() }
+        } finally {
+            // Each wait owns a fresh signal, so a late wake cannot skip a later backoff.
+            pending = null
+        }
+    }
 }
 
 private class SessionLostException(
@@ -92,6 +111,13 @@ internal class ObsSessionRunner(
     private var sessionJob: Job? = null
     private var closeSignal: CompletableDeferred<Unit>? = null
     private var connectOutcome: CompletableDeferred<Unit>? = null
+
+    /**
+     * Reconnect backoff wait. [WakeableBackoff.wake] ("Retry now") ends only a wait in progress, so
+     * the next attempt starts immediately; a live attempt, a Ready session or a terminal state is
+     * left untouched. The attempt counter is kept, so a failing retry continues the backoff.
+     */
+    val backoff = WakeableBackoff()
 
     suspend fun connect(host: String, port: Int, password: String?) {
         val outcome = CompletableDeferred<Unit>()
@@ -149,7 +175,7 @@ internal class ObsSessionRunner(
             if (attemptSession(host, port, password, progress)) return
             progress.attempt++
             connectionState.value = ConnectionState.Reconnecting(progress.attempt)
-            delay(backoffMillis(progress.attempt))
+            backoff.await(backoffMillis(progress.attempt))
         }
     }
 

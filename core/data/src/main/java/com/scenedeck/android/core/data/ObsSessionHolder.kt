@@ -116,6 +116,12 @@ constructor(
         enqueue { client.disconnect() }
     }
 
+    /**
+     * Cuts the current reconnect backoff short ("Retry now", app foreground, network available).
+     * Never starts or replaces a session, so pending connect/disconnect commands stay in charge.
+     */
+    fun retryNow(): Boolean = client.retryNow()
+
     private fun enqueue(
         connecting: Boolean = false,
         operation: suspend () -> Unit,

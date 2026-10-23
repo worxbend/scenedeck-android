@@ -50,7 +50,9 @@ one module owns the wire protocol.**
 
 - **Connection state machine**: `Disconnected → Connecting → Identifying → Ready →
   Reconnecting(backoff) → Disconnected`. Errors (`ObsAuthException`, socket loss)
-  map to typed `ConnectionError`.
+  map to typed `ConnectionError`. `ObsClient.retryNow()` only cuts a pending backoff
+  wait short (Retry now, app foreground, network available); it keeps the attempt count
+  and never starts, replaces or revives a session.
 - **Event lane**: single `MutableSharedFlow` (buffered, `DROP_OLDEST` for high-volume
   `InputVolumeMeters` ~50 ms cadence — mirrors desktop's `try_send` drop policy).
 - **Request lane**: suspend functions with bounded parallelism (`Semaphore(8)`, same

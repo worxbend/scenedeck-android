@@ -70,6 +70,8 @@ must pass, and Compose preview(s) for changed screens must render.
 - Run `scripts/check-quality.sh` with JDK21 and uv before declaring hardening done.
 - Cognitive and cyclomatic complexity checks include Compose; no blanket baselines.
 - Cancellation must propagate from suspend best-effort operations; settings/locks update atomically.
+- Reconnect backoff (1–30 s) is skippable via `retryNow()` (Retry now button, app
+  foreground, network available); it only wakes a pending backoff and keeps the attempt count.
 - Latest Mixer discovery wins; Doctor failures must not produce false stale/broken-source findings.
 - OBS requests have a 10-second admission-and-response deadline, remain bound to their
   originating session, and never retry timed-out writes automatically. Caller cancellation
