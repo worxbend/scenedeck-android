@@ -1,5 +1,6 @@
 package com.scenedeck.android.feature.onboarding
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
@@ -35,19 +36,32 @@ sealed interface OnboardingConnectState {
 class OnboardingViewModel
 @Inject
 constructor(
-    private val profiles: ProfileRepository,
-    private val secrets: SecretsStore,
+    profiles: ProfileRepository,
+    secrets: SecretsStore,
     private val settings: SettingsRepository,
     private val sessionHolder: ObsSessionHolder,
     private val client: ObsClient,
+    savedState: SavedStateHandle,
 ) : ViewModel() {
+
+    // Only the non-secret draft id is saved; the password never enters saved state.
+    private val draftProfile =
+        OnboardingDraftProfile(
+            profiles = profiles,
+            secrets = secrets,
+            draftId = savedState.get<Long>(KEY_DRAFT_PROFILE_ID),
+            onDraftCreated = { savedState[KEY_DRAFT_PROFILE_ID] = it },
+        )
 
     private var connectJob: Job? = null
     private val _connectState =
         MutableStateFlow<OnboardingConnectState>(OnboardingConnectState.Editing)
     val connectState: StateFlow<OnboardingConnectState> = _connectState
 
-    /** Saves the profile, connects through the shared session, verifies via scene list. */
+    /**
+     * Saves the (single, reused) draft profile, connects through the shared session, verifies via
+     * scene list.
+     */
     fun connect(name: String, host: String, port: Int, password: String?) {
         if (_connectState.value is OnboardingConnectState.Connecting) return
         _connectState.value = OnboardingConnectState.Connecting
@@ -63,8 +77,7 @@ constructor(
     }
 
     private suspend fun connectProfile(name: String, host: String, port: Int, password: String?) {
-        val profileId = profiles.add(name.trim().ifBlank { "My OBS" }, host, port)
-        if (!password.isNullOrBlank()) secrets.setPassword(profileId, password)
+        val profileId = draftProfile.save(name, host, port, password)
 
         when (val terminal = sessionHolder.connectAndAwait(profileId)) {
             is ConnectionState.Ready -> {
@@ -91,5 +104,9 @@ constructor(
 
     fun finish() {
         viewModelScope.launch { settings.setOnboardingCompleted(true) }
+    }
+
+    private companion object {
+        const val KEY_DRAFT_PROFILE_ID = "onboarding_draft_profile_id"
     }
 }

@@ -62,7 +62,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - Scene order: saved registry positions first, then OBS order (descending `sceneIndex`), then name; Scenes and Inventory share it. Reorders renumber densely and never assign roles; import applies the file's order so export → import round-trips.
 
 - Use StudioPageHeader/StudioSectionHeader/StudioIconWell and shared control colors from StudioChrome; scene cards have no left accent rail.
-- The living StudioStylebook and docs/DESIGN_SYSTEM.md define the common visual language; connection forms open fully expanded and group identity/server/security with secure password visibility.
+- The living StudioStylebook and docs/DESIGN_SYSTEM.md define the common visual language; connection forms open fully expanded and group identity/server/security with secure password visibility (shared `StudioPasswordField`, also used by onboarding).
 
 - Apply status-bar insets outside main-screen scroll containers; Mixer headers must remain below system icons and cutouts.
 
@@ -98,6 +98,7 @@ must pass, and Compose preview(s) for changed screens must render.
   Explicit widget refresh remains unconditional.
 - Stream transport: blue idle Stream, red Stop while active; Full motion breathing halo only.
 - Timers remain visible; green stream, amber recording with readable light-theme contrast.
+- Onboarding Connect retries reuse one draft profile; never add a profile per attempt.
 - Connection operations expose sanitized failures, preserve failed-save drafts and gate duplicate writes; blank edit-test credentials reuse encrypted storage.
 - Scenes header owns status/timers (Standby, LIVE, REC); simultaneous outputs show both. Direct row: Stream, Record, VCam.
 

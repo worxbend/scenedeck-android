@@ -13,7 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -33,11 +32,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.data.ProfileInputValidator
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.StudioPasswordField
 import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
 import com.scenedeck.android.core.designsystem.components.studioTextFieldColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -276,42 +274,17 @@ private fun ProfileFormActions(
 
 @Composable
 private fun PasswordInput(profileId: Long?, password: String, onValueChange: (String) -> Unit) {
-    var showPassword by remember(profileId) { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
-    OutlinedTextField(
+    StudioPasswordField(
         value = password,
         onValueChange = onValueChange,
-        label = { Text(stringResource(R.string.password_optional)) },
-        leadingIcon = { Icon(SceneIcon.LOCK.imageVector, contentDescription = null) },
-        keyboardOptions =
-            KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-        supportingText = {
+        label = stringResource(R.string.password_optional),
+        supportingText =
             if (profileId != null && password.isBlank()) {
-                Text(stringResource(R.string.password_keep_saved))
+                stringResource(R.string.password_keep_saved)
             } else {
-                Text(stringResource(R.string.password_help))
-            }
-        },
-        singleLine = true,
-        visualTransformation =
-            if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            IconButton(onClick = { showPassword = !showPassword }) {
-                Icon(
-                    imageVector =
-                        if (showPassword) SceneIcon.LOCK_OPEN.imageVector
-                        else SceneIcon.LOCK.imageVector,
-                    contentDescription =
-                        stringResource(
-                            if (showPassword) R.string.password_hide else R.string.password_show
-                        ),
-                )
-            }
-        },
-        shape = MaterialTheme.shapes.large,
-        colors = studioTextFieldColors(),
-        modifier = Modifier.fillMaxWidth(),
+                stringResource(R.string.password_help)
+            },
+        visibilityKey = profileId,
     )
 }
 

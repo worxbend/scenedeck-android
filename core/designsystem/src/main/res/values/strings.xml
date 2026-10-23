@@ -21,4 +21,6 @@
     <string name="broadcast_status_description">%1$s, elapsed %2$s</string>
     <string name="broadcast_reconnecting">RETRYING</string>
     <string name="broadcast_recording_paused">REC PAUSED</string>
+    <string name="password_show">Show password</string>
+    <string name="password_hide">Hide password</string>
 </resources>
