@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
+import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
@@ -13,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -181,6 +183,37 @@ class MixerViewModelTest {
             it.displayedScene == "Quiet A" && it.inputs.size == 2
         }
         assertEquals(listOf("Desktop Audio", "Mic/Aux"), state.inputs.map { it.name })
+    }
+
+    @Test
+    fun selectedSceneFollowsObsRename(): Unit = runBlocking {
+        client.setReady()
+        awaitState { it.inputs.isNotEmpty() }
+        viewModel.setMode(MixerMode.SELECTED)
+        viewModel.selectScene("Quiet A")
+        awaitState { it.displayedScene == "Quiet A" }
+        val events = client.events as MutableSharedFlow<ObsEvent>
+        withTimeout(5_000) {
+            settings.settings.first { it.mixerSelectedScene == "Quiet A" }
+            events.subscriptionCount.first { it >= 2 } // repository + view model
+        }
+
+        client.sceneListSnapshot =
+            SceneListSnapshot(
+                currentProgramScene = "Cam 1",
+                scenes = listOf(SceneSummary("Cam 1", 0), SceneSummary("Quiet B", 1)),
+            )
+        events.emit(ObsEvent.SceneNameChanged(oldSceneName = "Quiet A", sceneName = "Quiet B"))
+
+        val state = awaitState { it.displayedScene == "Quiet B" && "Quiet B" in it.sceneNames }
+        assertTrue(state.notInProgram)
+        assertEquals(listOf("Desktop Audio", "Mic/Aux"), state.inputs.map { it.name })
+        assertEquals(
+            "Quiet B",
+            withTimeout(5_000) {
+                settings.settings.first { it.mixerSelectedScene == "Quiet B" }.mixerSelectedScene
+            },
+        )
     }
 
     private suspend fun awaitState(condition: (MixerUiState) -> Boolean): MixerUiState =

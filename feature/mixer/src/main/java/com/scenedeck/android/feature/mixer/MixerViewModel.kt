@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class MixerMode {
@@ -198,12 +199,10 @@ constructor(
                     is ObsEvent.InputRemoved,
                     is ObsEvent.InputNameChanged -> selectedRefresh.tryEmit(Unit)
 
+                    // MixerRepository migrates the persisted selection; follow it in memory.
                     is ObsEvent.SceneNameChanged -> {
-                        if (selectedScene.value == event.oldSceneName) {
-                            selectedScene.value = event.sceneName
-                            launchAction {
-                                settings.setMixerSelectedScene(event.sceneName)
-                            }
+                        selectedScene.update {
+                            if (it == event.oldSceneName) event.sceneName else it
                         }
                         selectedRefresh.tryEmit(Unit)
                     }

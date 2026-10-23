@@ -98,8 +98,12 @@ colors, icons, ordering) lives in a local registry on the device.
   scene vanished from OBS) with one-tap cleanup.
 - Roles are only assigned explicitly: reordering or changing a color/icon keeps a scene
   **Unassigned** (shown as Primary on the deck, counted by Unassigned → Secondary/Doctor).
-- Renames reported by OBS (`SceneNameChanged`) move a scene's curation and position to
-  the new name; curation already saved for the new name wins.
+- Renames reported by OBS (`SceneNameChanged`) update the deck immediately (card name,
+  program/preview tallies, Mixer's selected scene, Graph selection) and move a scene's
+  curation and position to the new name in one local transaction (OBS is never
+  mutated). If curation already exists for the new name, nothing is migrated: both
+  entries are kept, the new name's curation applies and the old entry shows as stale.
+  A scene-list read that raced the rename cannot bring the old name back.
 - **Export/import registry as YAML/JSON** (backup, share between devices). Export carries
   roles (`UNASSIGNED` for none) and positions; import applies the file's order first,
   then local placed scenes the file doesn't mention, so export → import restores the

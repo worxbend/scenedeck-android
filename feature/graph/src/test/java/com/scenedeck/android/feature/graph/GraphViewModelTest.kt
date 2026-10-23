@@ -89,6 +89,23 @@ class GraphViewModelTest {
         assertTrue(refreshed.graph!!.nodes.any { it.name == "New scene" })
     }
 
+    @Test
+    fun selectedNodeFollowsObsRenames(): Unit = runBlocking {
+        val client = FakeObsClient()
+        client.setReady()
+        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        viewModel.selectNode("LowerThird")
+        withTimeout(5_000) { client.events.subscriptionCount.first { it > 0 } }
+
+        client.events.emit(ObsEvent.SceneNameChanged("LowerThird", "Lower third"))
+        withTimeout(5_000) { viewModel.selectedNode.first { it == "Lower third" } }
+
+        // Source (input) nodes follow input renames.
+        viewModel.selectNode("Cam 1")
+        client.events.emit(ObsEvent.InputNameChanged("Cam 1", "Camera"))
+        withTimeout(5_000) { viewModel.selectedNode.first { it == "Camera" } }
+    }
+
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())
 

@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class GraphUiState(
     val connection: ConnectionState = ConnectionState.Disconnected,
@@ -60,6 +62,16 @@ constructor(
     private val _selectedNode = MutableStateFlow<String?>(null)
     val selectedNode: StateFlow<String?> = _selectedNode.asStateFlow()
 
+    init {
+        // Graph nodes are keyed by OBS name; keep the open detail sheet on a renamed node.
+        viewModelScope.launch {
+            client.events.collect { event ->
+                val (old, new) = renamedNode(event) ?: return@collect
+                _selectedNode.update { if (it == old) new else it }
+            }
+        }
+    }
+
     fun selectNode(name: String?) {
         _selectedNode.value = name
     }
@@ -70,6 +82,13 @@ constructor(
     fun childrenOf(name: String): List<String> =
         uiState.value.graph?.edges?.filter { it.from == name }?.map { it.to }.orEmpty()
 }
+
+private fun renamedNode(event: ObsEvent): Pair<String, String>? =
+    when (event) {
+        is ObsEvent.SceneNameChanged -> event.oldSceneName to event.sceneName
+        is ObsEvent.InputNameChanged -> event.oldInputName to event.inputName
+        else -> null
+    }
 
 private fun affectsSceneGraph(event: ObsEvent): Boolean =
     when (event) {

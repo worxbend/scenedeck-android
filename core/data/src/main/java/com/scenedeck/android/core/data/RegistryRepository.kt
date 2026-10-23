@@ -64,15 +64,14 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     }
 
     /**
-     * Moves curation from [oldName] to [newName] after a rename in OBS. An existing entry for
-     * [newName] wins, so curation made for the new name is never overwritten.
+     * Moves curation (role, colour, icon, position) from [oldName] to [newName] after a rename in
+     * OBS, atomically. An existing entry for [newName] wins: nothing is migrated, both entries are
+     * kept (the old one becomes stale for Doctor/Inventory cleanup), so curation made for the new
+     * name is never overwritten. Returns true when the entry moved. Local registry only; OBS is
+     * never mutated.
      */
-    suspend fun rename(oldName: String, newName: String) = mutationMutex.withLock {
-        if (oldName == newName) return@withLock
-        val old = dao.byName(oldName) ?: return@withLock
-        if (dao.byName(newName) != null) return@withLock
-        dao.upsert(old.copy(sceneName = newName))
-        dao.delete(oldName)
+    suspend fun rename(oldName: String, newName: String): Boolean = mutationMutex.withLock {
+        dao.rename(oldName, newName)
     }
 
     /** Removes registry entries whose scene no longer exists in OBS. */
