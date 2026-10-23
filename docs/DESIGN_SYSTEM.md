@@ -53,7 +53,10 @@ These hues carry product meaning and adapt per theme but keep their roles:
 - **Stream transport** — blue idle Stream / red active Stop. **LIVE status and stream
   time** — green; **REC status and recording time** — amber. Pulse only with Full motion.
 - **Meter zones** — green < −20 dB, yellow −20…−9 dB, red > −9 dB (OBS semantics).
-- **Warning/Critical thresholds** (stats) — amber at warn, red at crit.
+- **Warning/Critical thresholds** (stats) — amber at warn, red at crit. FPS and render
+  thresholds scale with the OBS canvas frame rate.
+- **Stats output chips** — STREAM LIVE uses the program/live red; REC uses the amber
+  recording tone (`broadcastWarningTextColor`).
 
 ## 4. Typography
 

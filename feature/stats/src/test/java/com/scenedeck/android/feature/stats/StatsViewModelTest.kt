@@ -6,6 +6,7 @@ import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsStats
+import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
 import java.io.File
@@ -145,6 +146,26 @@ class StatsViewModelTest {
         client.streamStatusResponse = client.streamStatusResponse.copy(bytes = 1_500_000)
         val state = awaitState { it.bitrateKbps > 0 }
         assertTrue(state.bitrateKbps in 5_000..7_000) // wall-clock 1 Hz poll, loose bounds
+    }
+
+    @Test
+    fun canvasFrameRateDrivesThresholds(): Unit = runBlocking {
+        client.videoSettingsResponse = ObsVideoSettings(30, 1, 1920, 1080, 1280, 720)
+        client.setReady()
+        val state = awaitState { it.sampleCount > 0 }
+
+        assertEquals(30f, state.targetFps ?: 0f, 1e-3f)
+        assertEquals(27f, state.frameRate.fpsWarn, 1e-3f)
+        assertEquals(22.5f, state.frameRate.fpsCrit, 1e-3f)
+    }
+
+    @Test
+    fun unknownCanvasFrameRateFallsBackToSixty(): Unit = runBlocking {
+        client.setReady()
+        val state = awaitState { it.sampleCount > 0 }
+
+        assertEquals(null, state.targetFps)
+        assertEquals(60f, state.frameRate.fpsMax, 1e-3f)
     }
 
     private suspend fun awaitState(condition: (StatsUiState) -> Boolean): StatsUiState =

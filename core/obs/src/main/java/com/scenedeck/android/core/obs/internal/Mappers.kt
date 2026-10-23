@@ -7,6 +7,7 @@ import com.rejeq.ktobs.model.MediaAction
 import com.rejeq.ktobs.model.MediaState
 import com.rejeq.ktobs.model.MonitorType
 import com.rejeq.ktobs.model.SceneItem
+import com.rejeq.ktobs.model.VideoSettings
 import com.rejeq.ktobs.request.config.GetProfileListResponse
 import com.rejeq.ktobs.request.config.GetSceneCollectionListResponse
 import com.rejeq.ktobs.request.general.GetStatsResponse
@@ -27,6 +28,7 @@ import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
+import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.ProfileListSnapshot
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneCollectionListSnapshot
@@ -108,6 +110,16 @@ internal fun GetStatsResponse.toDomain() =
         renderTotalFrames = renderTotalFrames,
         outputSkippedFrames = outputSkippedFrames,
         outputTotalFrames = outputTotalFrames,
+    )
+
+internal fun VideoSettings.toDomain() =
+    ObsVideoSettings(
+        fpsNumerator = fpsNumerator,
+        fpsDenominator = fpsDenominator,
+        baseWidth = baseWidth,
+        baseHeight = baseHeight,
+        outputWidth = outputWidth,
+        outputHeight = outputHeight,
     )
 
 internal fun GetProfileListResponse.toDomain() =

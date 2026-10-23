@@ -117,7 +117,7 @@ internal fun StatsContent(
             Spacer(Modifier.height(16.dp))
             StudioSectionHeader("Performance · last 2 minutes")
             Spacer(Modifier.height(12.dp))
-            TrendCard("Frame rate") {
+            TrendCard(frameRateTitle(uiState.targetFps)) {
                 TrendChart(
                     samplesHolder = fpsTrend,
                     motionLevel = motionLevel,
@@ -187,15 +187,16 @@ private fun CollectingTelemetry() {
 
 @Composable
 private fun GaugeRow(uiState: StatsUiState) {
+    val frameRate = uiState.frameRate
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GaugePanel(Modifier.weight(1f)) {
                 StatGauge(
                     value = uiState.fps,
                     minValue = 0f,
-                    maxValue = StatsThresholds.FPS_MAX,
-                    warnThreshold = StatsThresholds.FPS_WARN,
-                    critThreshold = StatsThresholds.FPS_CRIT,
+                    maxValue = frameRate.fpsMax,
+                    warnThreshold = frameRate.fpsWarn,
+                    critThreshold = frameRate.fpsCrit,
                     label = "Frame rate",
                     unit = "fps",
                     direction = GaugeDirection.FALLING,
@@ -207,9 +208,9 @@ private fun GaugeRow(uiState: StatsUiState) {
                 StatGauge(
                     value = uiState.renderTimeMs,
                     minValue = 0f,
-                    maxValue = StatsThresholds.RENDER_MAX_MS,
-                    warnThreshold = StatsThresholds.RENDER_WARN_MS,
-                    critThreshold = StatsThresholds.RENDER_CRIT_MS,
+                    maxValue = frameRate.renderMaxMs,
+                    warnThreshold = frameRate.renderWarnMs,
+                    critThreshold = frameRate.renderCritMs,
                     label = "Render time",
                     unit = "ms",
                     valueText = "%.1f".format(uiState.renderTimeMs),
@@ -264,18 +265,19 @@ private fun GaugePanel(modifier: Modifier, content: @Composable () -> Unit) {
 /**
  * Shared gauge classification keeps the summary and individual readings consistent at boundaries.
  */
-internal fun studioHealthZone(state: StatsUiState): GaugeZone =
-    listOf(
+internal fun studioHealthZone(state: StatsUiState): GaugeZone {
+    val frameRate = state.frameRate
+    return listOf(
             classifyGaugeZone(
                 state.fps,
-                StatsThresholds.FPS_WARN,
-                StatsThresholds.FPS_CRIT,
+                frameRate.fpsWarn,
+                frameRate.fpsCrit,
                 GaugeDirection.FALLING,
             ),
             classifyGaugeZone(
                 state.renderTimeMs,
-                StatsThresholds.RENDER_WARN_MS,
-                StatsThresholds.RENDER_CRIT_MS,
+                frameRate.renderWarnMs,
+                frameRate.renderCritMs,
             ),
             classifyGaugeZone(
                 state.droppedPct,
@@ -289,6 +291,7 @@ internal fun studioHealthZone(state: StatsUiState): GaugeZone =
             ),
         )
         .maxBy { it.ordinal }
+}
 
 @Composable
 private fun HealthSummary(state: StatsUiState) {

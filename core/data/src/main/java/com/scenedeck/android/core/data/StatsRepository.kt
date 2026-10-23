@@ -7,6 +7,7 @@ import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.obs.ObsClient
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtual camera
- * status status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
+ * status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
  * StatusStrip, the TransportBar and the stats page; [StatsRepository.samples] keeps the rolling
  * 2-minute window for charts.
  */
@@ -34,6 +35,11 @@ data class Telemetry(
     /** Rolling bitrate computed from consecutive `GetStreamStatus` byte counters. */
     val bitrateKbps: Int = 0,
     val virtualCamActive: Boolean = false,
+    /**
+     * OBS canvas frame rate from `GetVideoSettings` (e.g. 30, 59.94); null until known. Stats
+     * thresholds derive from it instead of assuming 60 fps.
+     */
+    val targetFps: Double? = null,
 )
 
 @Singleton
@@ -55,6 +61,8 @@ constructor(
     private val history = TelemetryHistory()
     private val _samples = MutableStateFlow<List<TelemetrySample>>(emptyList())
     val samples: StateFlow<List<TelemetrySample>> = _samples.asStateFlow()
+
+    private val canvasFrameRate = CanvasFrameRate(client)
 
     private val outputLock = Any()
     private var streamRevision = 0L
@@ -85,6 +93,7 @@ constructor(
     private suspend fun pollLoop(connection: ConnectionState) {
         history.clear()
         _samples.value = emptyList()
+        canvasFrameRate.reset()
         var lastBytes: Long? = null
         var lastSampleAtMs = 0L
         while (currentCoroutineContext().isActive) {
@@ -95,6 +104,7 @@ constructor(
             val record = requestResult { client.getRecordStatus() }.getOrNull()
             val cameraVersion = synchronized(outputLock) { cameraRevision }
             val virtualCam = requestResult { client.getVirtualCamStatus() }.getOrDefault(false)
+            val targetFps = canvasFrameRate.refreshIfDue()
             val now = nowMs()
             val bitrate =
                 computeBitrateKbps(
@@ -105,7 +115,8 @@ constructor(
                 )
             lastBytes = stream?.bytes
             lastSampleAtMs = now
-            val polled = Telemetry(connection, stats, stream, record, bitrate, virtualCam)
+            val polled =
+                Telemetry(connection, stats, stream, record, bitrate, virtualCam, targetFps)
             val snapshot =
                 publishPoll(polled, OutputRevisions(streamVersion, recordVersion, cameraVersion))
             if (snapshot?.stats != null) {
@@ -141,7 +152,13 @@ constructor(
         )
     }
 
-    private fun applyOutputEvent(event: ObsEvent) =
+    private fun applyOutputEvent(event: ObsEvent) {
+        // A profile switch can load a different canvas frame rate.
+        if (event is ObsEvent.CurrentProfileChanged) canvasFrameRate.markStale()
+        applyOutputStateEvent(event)
+    }
+
+    private fun applyOutputStateEvent(event: ObsEvent) =
         synchronized(outputLock) {
             val connection =
                 client.connectionState.value as? ConnectionState.Ready ?: return@synchronized
@@ -197,6 +214,39 @@ constructor(
                 old.copy(timecode = "00:00:00.000", durationMs = 0, bytes = 0)
             else old
         return base.copy(active = event.active, paused = event.state.endsWith("PAUSED"))
+    }
+
+    /**
+     * Connection-scoped canvas FPS cache. OBS has no video-settings event, so it re-reads
+     * `GetVideoSettings` on connect, after a profile switch and every [REFRESH_POLLS] polls. A
+     * failed read keeps the last known value.
+     */
+    private class CanvasFrameRate(private val client: ObsClient) {
+        private val stale = AtomicBoolean(true)
+        private var pollsSinceRead = 0
+
+        @Volatile private var fps: Double? = null
+
+        fun reset() {
+            fps = null
+            pollsSinceRead = 0
+            stale.set(true)
+        }
+
+        fun markStale() = stale.set(true)
+
+        suspend fun refreshIfDue(): Double? {
+            pollsSinceRead++
+            if (stale.getAndSet(false) || pollsSinceRead >= REFRESH_POLLS) {
+                pollsSinceRead = 0
+                requestResult { client.getVideoSettings() }.getOrNull()?.fps?.let { fps = it }
+            }
+            return fps
+        }
+
+        private companion object {
+            const val REFRESH_POLLS = 10
+        }
     }
 
     private companion object {

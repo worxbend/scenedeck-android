@@ -3,6 +3,7 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsStats
+import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
 import kotlinx.coroutines.CompletableDeferred
@@ -183,6 +184,70 @@ class StatsRepositoryTest {
         runCurrent()
         assertEquals(false, repository.telemetry.value.record?.paused)
     }
+
+    @Test
+    fun canvasFrameRateReadOnConnectRefreshedOnProfileSwitchAndPeriodically() = runTest {
+        val client = FakeObsClient(statsResponse = statsResponse())
+        client.videoSettingsResponse = videoSettings(30, 1)
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        assertEquals(30.0, repository.telemetry.value.targetFps)
+        assertEquals(1, client.videoSettingsCalls)
+
+        // Steady polling does not re-read video settings every second.
+        advanceTimeBy(1_100)
+        runCurrent()
+        assertEquals(1, client.videoSettingsCalls)
+
+        // A profile switch can change the canvas; the next poll re-reads it.
+        client.videoSettingsResponse = videoSettings(60_000, 1_001)
+        client.emit(ObsEvent.CurrentProfileChanged("Studio"))
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2, client.videoSettingsCalls)
+        assertEquals(59.94, repository.telemetry.value.targetFps ?: 0.0, 1e-2)
+
+        // No event exists for edits in OBS settings, so the value is also refreshed periodically.
+        client.videoSettingsResponse = videoSettings(60, 1)
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertEquals(3, client.videoSettingsCalls)
+        assertEquals(60.0, repository.telemetry.value.targetFps)
+    }
+
+    @Test
+    fun failedCanvasFrameRateReadKeepsLastKnownValueAndClearsOnDisconnect() = runTest {
+        val client = FakeObsClient(statsResponse = statsResponse())
+        client.videoSettingsResponse = videoSettings(30, 1)
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+
+        client.videoSettingsResponse = null
+        client.emit(ObsEvent.CurrentProfileChanged("Broken"))
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2, client.videoSettingsCalls)
+        assertEquals(30.0, repository.telemetry.value.targetFps)
+
+        client.setDisconnected()
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.targetFps)
+    }
+
+    @Test
+    fun unknownCanvasFrameRateWhenVideoSettingsUnavailable() = runTest {
+        val client = FakeObsClient(statsResponse = statsResponse())
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.targetFps)
+        assertEquals(59.94, repository.telemetry.value.stats?.activeFps)
+    }
+
+    private fun videoSettings(numerator: Int, denominator: Int) =
+        ObsVideoSettings(numerator, denominator, 1920, 1080, 1280, 720)
 
     private fun statsResponse() =
         ObsStats(

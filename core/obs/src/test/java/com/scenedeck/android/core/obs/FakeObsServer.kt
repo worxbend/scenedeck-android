@@ -220,6 +220,7 @@ internal class FakeObsServer(
                 "GetProfileList" to "get_profile_list.json",
                 "GetSceneCollectionList" to "get_scene_collection_list.json",
                 "GetStats" to "get_stats.json",
+                "GetVideoSettings" to "get_video_settings.json",
                 "GetStudioModeEnabled" to "get_studio_mode_enabled.json",
                 "GetCurrentPreviewScene" to "get_current_preview_scene.json",
                 "GetSceneTransitionList" to "get_scene_transition_list.json",

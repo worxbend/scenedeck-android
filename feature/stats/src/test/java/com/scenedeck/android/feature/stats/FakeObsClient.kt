@@ -4,6 +4,7 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
+import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.StreamStatus
@@ -49,6 +50,7 @@ internal class FakeObsClient(
             durationMs = 0,
             bytes = 0,
         ),
+    var videoSettingsResponse: ObsVideoSettings? = null,
 ) : ObsClient {
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -69,6 +71,9 @@ internal class FakeObsClient(
     override suspend fun disconnect() = Unit
 
     override suspend fun getStats(): ObsStats = statsResponse
+
+    override suspend fun getVideoSettings(): ObsVideoSettings =
+        checkNotNull(videoSettingsResponse) { "video settings unavailable" }
 
     override suspend fun getStreamStatus(): StreamStatus = streamStatusResponse
 

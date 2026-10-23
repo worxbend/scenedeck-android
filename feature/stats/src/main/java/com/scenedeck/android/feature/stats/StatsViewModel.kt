@@ -34,16 +34,8 @@ object StatsThresholds {
     const val CONGESTION_CRIT_PCT = 60f
     const val CONGESTION_MAX_PCT = 100f
 
-    /** FPS gauge: max = 60 fps stream target; falling direction (low FPS is bad). */
-    const val FPS_MAX = 60f
-    const val FPS_WARN = 54f // 90 % of target
-    const val FPS_CRIT = 45f // 75 % of target
-
-    /** Avg frame render time vs the 60 fps frame budget: warn 50 %, crit 90 %. */
-    const val FRAME_BUDGET_MS = 1000f / 60f
-    const val RENDER_WARN_MS = FRAME_BUDGET_MS * 0.5f
-    const val RENDER_CRIT_MS = FRAME_BUDGET_MS * 0.9f
-    const val RENDER_MAX_MS = FRAME_BUDGET_MS * 1.2f
+    /** Canvas frame rate assumed only while OBS has not reported `GetVideoSettings`. */
+    const val FALLBACK_TARGET_FPS = 60f
 }
 
 data class StatsUiState(
@@ -66,7 +58,13 @@ data class StatsUiState(
     val streamActive: Boolean = false,
     val recordActive: Boolean = false,
     val recordPaused: Boolean = false,
-)
+    /** OBS canvas frame rate (`GetVideoSettings`); null while unknown. */
+    val targetFps: Float? = null,
+) {
+    /** FPS/render thresholds for the canvas rate (60 fps fallback while unknown). */
+    val frameRate: FrameRateThresholds
+        get() = FrameRateThresholds.forTargetFps(targetFps)
+}
 
 /**
  * Per-sample skipped/missed frame series for the bar visualization. Read in the Canvas DRAW PHASE
@@ -160,5 +158,6 @@ constructor(
             streamActive = stream?.active == true,
             recordActive = record?.active == true,
             recordPaused = record?.paused == true,
+            targetFps = targetFps?.toFloat(),
         )
 }

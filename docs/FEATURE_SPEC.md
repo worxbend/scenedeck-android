@@ -82,6 +82,11 @@ colors, icons, ordering) lives in a local registry on the device.
 - Poll `GetStats` + `GetStreamStatus` once per second (obs-websocket has no push stats).
 - Gauges with amber/red thresholds: FPS, avg frame render time, dropped-frame %
   (warn 1%, crit 5%), network congestion (30%/60%).
+- FPS/render thresholds derive from the OBS canvas rate (`GetVideoSettings`, read on
+  connect, profile switch and every 10 s): FPS max = target, warn 90 %, crit 75 %;
+  render time warn 50 %, crit 90 % of the `1000 / target` ms frame budget. 60 fps is
+  only a fallback while the canvas rate is unknown.
+- Output chips: STREAM LIVE uses the red program/live tally; REC uses amber recording.
 - Compact gauge panels follow bitrate, CPU, memory and output-state summaries.
 - Trend charts (FPS, render time), per-sample skipped/missed frame bars, counter cards
   (CPU, memory, bitrate, frame totals); rolling bitrate from consecutive byte counters.

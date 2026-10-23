@@ -5,6 +5,7 @@ import com.rejeq.ktobs.ObsRequestException
 import com.rejeq.ktobs.ObsSession
 import com.rejeq.ktobs.request.config.getProfileList
 import com.rejeq.ktobs.request.config.getSceneCollectionList
+import com.rejeq.ktobs.request.config.getVideoSettings
 import com.rejeq.ktobs.request.config.setCurrentProfile
 import com.rejeq.ktobs.request.config.setCurrentSceneCollection
 import com.rejeq.ktobs.request.general.getStats
@@ -225,6 +226,8 @@ internal class KtobsObsClient(
     override suspend fun getVersion() = request { it.getVersion().toDomain() }
 
     override suspend fun getStats() = request { it.getStats().toDomain() }
+
+    override suspend fun getVideoSettings() = request { it.getVideoSettings().toDomain() }
 
     override suspend fun getSceneList() = request { it.getSceneList().toDomain() }
 
