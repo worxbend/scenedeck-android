@@ -7,13 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,17 +27,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.designsystem.components.TBar
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
+import com.scenedeck.android.core.model.CurrentTransition
 
 /**
  * Studio-mode command bar (FEATURE_SPEC §2/§8): a prominent TRANSITION button (preview → program
  * with the current transition), a CUT button (instant swap), and a transition-options gear that
- * opens the picker sheet. The T-Bar is an advanced control toggled from the deck options menu.
+ * opens the picker sheet. The full-width T-Bar is an advanced control toggled from the deck options
+ * menu and sits under the transition row.
  */
 @Composable
 fun StudioModeBar(
@@ -61,8 +64,44 @@ fun StudioModeBar(
             label = "transitionPress",
         )
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TransitionRow(deckState, interactionSource, scale, onTransitionClick, onCutClick) {
+            pickerOpen = true
+        }
+        if (tBarOpen) {
+            TBar(
+                motionLevel = motionLevel,
+                onTrigger = onTransitionClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+
+    if (pickerOpen) {
+        TransitionPickerSheet(
+            current = deckState.currentTransition,
+            transitions = deckState.transitions,
+            onSelect = onTransitionSelect,
+            onDurationChange = onTransitionDurationChange,
+            onDismiss = { pickerOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun TransitionRow(
+    deckState: DeckState,
+    interactionSource: MutableInteractionSource,
+    scale: Float,
+    onTransitionClick: () -> Unit,
+    onCutClick: () -> Unit,
+    onOptionsClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -97,26 +136,36 @@ fun StudioModeBar(
         ) {
             Text(stringResource(R.string.cut_button))
         }
-        IconButton(onClick = { pickerOpen = true }) {
+        IconButton(onClick = onOptionsClick) {
             Icon(SceneDeckIcons.Settings, stringResource(R.string.transition_options))
         }
     }
+}
 
-    if (tBarOpen) {
-        TBar(
-            motionLevel = motionLevel,
-            onTrigger = onTransitionClick,
-            modifier = Modifier.height(56.dp),
-        )
-    }
-
-    if (pickerOpen) {
-        TransitionPickerSheet(
-            current = deckState.currentTransition,
-            transitions = deckState.transitions,
-            onSelect = onTransitionSelect,
-            onDurationChange = onTransitionDurationChange,
-            onDismiss = { pickerOpen = false },
-        )
+@PreviewLightDark
+@Composable
+private fun StudioModeBarTBarPreview() {
+    SceneDeckTheme {
+        Surface {
+            StudioModeBar(
+                deckState =
+                    DeckState(
+                        studioMode = true,
+                        currentTransition =
+                            CurrentTransition(
+                                name = "Fade",
+                                kind = "fade_transition",
+                                durationMs = 700,
+                                configurable = true,
+                                fixed = false,
+                            ),
+                    ),
+                onTransitionClick = {},
+                onCutClick = {},
+                onTransitionSelect = {},
+                onTransitionDurationChange = {},
+                tBarOpen = true,
+            )
+        }
     }
 }

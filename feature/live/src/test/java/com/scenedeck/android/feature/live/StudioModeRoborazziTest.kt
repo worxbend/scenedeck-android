@@ -1,9 +1,15 @@
 package com.scenedeck.android.feature.live
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DeckState
@@ -68,6 +74,64 @@ class StudioModeRoborazziTest {
             }
         }
         composeRule.onRoot().captureRoboImage("studio_deck_dark.png")
+    }
+
+    @Test
+    fun studioBarWithTBarAndVirtualCamDark() {
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    Column(
+                        Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        TransportBar(
+                            streaming = false,
+                            recording = false,
+                            enabled = true,
+                            pulseTally = false,
+                            onToggleStream = {},
+                            onToggleRecord = {},
+                            virtualCamActive = true,
+                        )
+                        StudioModeBar(
+                            deckState = previewDeckState(),
+                            onTransitionClick = {},
+                            onCutClick = {},
+                            onTransitionSelect = {},
+                            onTransitionDurationChange = {},
+                            motionLevel = MotionLevel.OFF,
+                            tBarOpen = true,
+                        )
+                    }
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("studio_bar_tbar_dark.png")
+    }
+
+    @Test
+    fun virtualCamStartingDark() {
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    TransportBar(
+                        streaming = false,
+                        recording = false,
+                        enabled = true,
+                        pulseTally = false,
+                        onToggleStream = {},
+                        onToggleRecord = {},
+                        virtualCamPending = VirtualCamPending.STARTING,
+                        modifier = Modifier.padding(20.dp),
+                    )
+                }
+            }
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.onNodeWithContentDescription("Virtual camera starting").assertExists()
+        composeRule.onRoot().captureRoboImage("transport_vcam_starting_dark.png")
     }
 
     @Test

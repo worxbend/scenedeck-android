@@ -91,10 +91,10 @@ These hues carry product meaning and adapt per theme but keep their roles:
 
 | Component | Craft details |
 |---|---|
-| **SceneCard** | restrained accent wash, icon + label, numbered position, program/preview semantic outline and pill, haptic; press = scale 0.96 spring + ripple; no left rail |
+| **SceneCard** | restrained accent wash, icon + label, numbered position (stable under search), program/preview semantic outline and pill, haptic; press = scale 0.96 spring + ripple; no left rail; thumbnails get top and bottom scrims and a dark icon well |
 | **VolumeMeter** | custom Canvas: OBS-accurate zones, per-channel bars, peak hold line (20 s), loudness notch (~300 ms), pre-fader base square, butter-smooth 60 fps decay animation |
 | **MixerStrip** | vertical fader with dB taper curve, mute with animated strike-through, scope badge chip, lock toggle |
-| **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers |
+| **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers; active VCam = tertiary "Stop VCam", pending = spinner + Starting…/Stopping… |
 | **StatusStrip** | persistent bottom: connection and OFF AIR/LIVE/REC state with timers; performance metrics on a second row only while streaming |
 | **StatGauge** | arc gauge with amber/red threshold arcs (FPS, render time, congestion, dropped %) |
 | **TrendChart** | custom Canvas line/area chart, 2-min window, theme-aware grid |
@@ -118,8 +118,9 @@ These hues carry product meaning and adapt per theme but keep their roles:
 
 ## 10. Accessibility
 
-- 48dp+ targets, TalkBack labels on cards ("Scene Camera 1, ready, double-tap to
-  switch"), meters expose text dB values, sufficient contrast in every theme family
+- 48dp+ targets, TalkBack labels on cards follow the tap action ("Scene Camera 1, ready,
+  double-tap to switch"; studio "double-tap to load in preview"; preview "use Transition or
+  Cut"; reorder mode "drag the grip to move"), locked faders announce "locked", meters expose text dB values, sufficient contrast in every theme family
   (verify with Roborazzi contrast goldens), reduced-motion respected everywhere.
 
 ## 11. Mobile navigation refresh (2026-09-30)
@@ -151,7 +152,8 @@ while navigation and actions remain specific to OBS.
 
 Scene cards use compact proportions, a consistent two-line title area, scene-number
 labels and state/action captions. Drag handles are shown only in reorder mode,
-which suppresses scene-switch taps. Pending shimmer and press scaling respect
+which suppresses scene-switch taps and captions cards "Drag grip to move". The studio T-bar
+is a full-width 56dp track under the transition row. Pending shimmer and press scaling respect
 Reduced/Off motion settings.
 
 ## 13. Studio stylebook

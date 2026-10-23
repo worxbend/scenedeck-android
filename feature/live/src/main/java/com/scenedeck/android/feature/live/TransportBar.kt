@@ -18,7 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,6 +32,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -54,6 +58,7 @@ fun TransportBar(
     modifier: Modifier = Modifier,
     virtualCamActive: Boolean = false,
     onToggleVirtualCam: () -> Unit = {},
+    virtualCamPending: VirtualCamPending? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -62,7 +67,13 @@ fun TransportBar(
     ) {
         StreamButton(streaming, enabled, pulseTally, onToggleStream, Modifier.weight(1f))
         RecordButton(recording, enabled, pulseTally, onToggleRecord, Modifier.weight(1f))
-        VirtualCameraButton(virtualCamActive, enabled, onToggleVirtualCam, Modifier.weight(1f))
+        VirtualCameraButton(
+            virtualCamActive,
+            virtualCamPending,
+            enabled,
+            onToggleVirtualCam,
+            Modifier.weight(1f),
+        )
     }
 }
 
@@ -129,32 +140,74 @@ private fun RecordButton(
     }
 }
 
+/**
+ * VCam: neutral tonal when idle, a strong tertiary "Stop VCam" fill while active, and a spinner
+ * with Starting…/Stopping… while OBS brings the camera up or down (taps ignored until confirmed).
+ */
 @Composable
 private fun VirtualCameraButton(
     active: Boolean,
+    pending: VirtualCamPending?,
     enabled: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description = stringResource(if (active) R.string.stop_vcam_cd else R.string.start_vcam_cd)
+    val label = virtualCamLabel(active, pending)
+    val description = stringResource(virtualCamDescription(active, pending))
+    val scheme = MaterialTheme.colorScheme
     val colors =
-        if (active) ButtonDefaults.filledTonalButtonColors()
-        else
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-    androidx.compose.material3.FilledTonalButton(
-        onClick = onToggle,
+        when {
+            pending != null ->
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = scheme.secondaryContainer,
+                    contentColor = scheme.onSecondaryContainer,
+                )
+            active ->
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = scheme.tertiary,
+                    contentColor = scheme.onTertiary,
+                )
+            else ->
+                ButtonDefaults.filledTonalButtonColors(containerColor = scheme.surfaceContainerHigh)
+        }
+    FilledTonalButton(
+        onClick = { if (pending == null) onToggle() },
         enabled = enabled,
         colors = colors,
         contentPadding = PaddingValues(horizontal = 10.dp),
-        modifier = modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
+        modifier =
+            modifier.heightIn(min = 48.dp).semantics {
+                contentDescription = description
+                if (pending != null) stateDescription = description
+            },
     ) {
-        Icon(SceneIcon.CAMERA.imageVector, null, Modifier.size(16.dp))
+        if (pending != null) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(14.dp),
+                strokeWidth = 2.dp,
+                color = LocalContentColor.current,
+            )
+        } else {
+            Icon(SceneIcon.CAMERA.imageVector, null, Modifier.size(16.dp))
+        }
         Spacer(Modifier.width(5.dp))
-        Text(stringResource(R.string.vcam_chip), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+
+internal fun virtualCamLabel(active: Boolean, pending: VirtualCamPending?): Int =
+    when (pending) {
+        VirtualCamPending.STARTING -> R.string.vcam_starting
+        VirtualCamPending.STOPPING -> R.string.vcam_stopping
+        null -> if (active) R.string.vcam_stop_short else R.string.vcam_chip
+    }
+
+internal fun virtualCamDescription(active: Boolean, pending: VirtualCamPending?): Int =
+    when (pending) {
+        VirtualCamPending.STARTING -> R.string.vcam_starting_cd
+        VirtualCamPending.STOPPING -> R.string.vcam_stopping_cd
+        null -> if (active) R.string.stop_vcam_cd else R.string.start_vcam_cd
+    }
 
 @Composable
 private fun TallyDot(pulse: Boolean) {
@@ -190,6 +243,23 @@ private fun TransportBarPreview() {
             pulseTally = true,
             onToggleStream = {},
             onToggleRecord = {},
+            virtualCamActive = true,
+        )
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun TransportBarVirtualCamStartingPreview() {
+    SceneDeckTheme {
+        TransportBar(
+            streaming = false,
+            recording = false,
+            enabled = true,
+            pulseTally = false,
+            onToggleStream = {},
+            onToggleRecord = {},
+            virtualCamPending = VirtualCamPending.STARTING,
         )
     }
 }

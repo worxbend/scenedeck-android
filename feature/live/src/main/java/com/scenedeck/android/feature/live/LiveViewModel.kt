@@ -187,12 +187,19 @@ constructor(
         }
     }
 
-    fun toggleVirtualCam() {
-        viewModelScope.launch {
-            coroutineResult { obsState.toggleVirtualCam() }
-                .onFailure { _errors.tryEmit("Couldn't toggle virtual cam") }
-        }
-    }
+    private val virtualCam =
+        VirtualCamToggle(
+            scope = viewModelScope,
+            currentActive = { telemetry.value.virtualCamActive },
+            activeUpdates = telemetry.map { it.virtualCamActive },
+            toggle = { obsState.toggleVirtualCam() },
+            onFailure = { _errors.tryEmit("Couldn't toggle virtual cam") },
+        )
+
+    /** Start/stop in flight until OBS confirms the new virtual camera state. */
+    val virtualCamPending: StateFlow<VirtualCamPending?> = virtualCam.pending
+
+    fun toggleVirtualCam() = virtualCam.request()
 
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
 

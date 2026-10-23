@@ -14,6 +14,13 @@ internal fun filterScenes(scenes: List<SceneCardState>, query: String): List<Sce
     else scenes.filter { it.name.contains(term, ignoreCase = true) }
 }
 
+/** 1-based deck positions by scene name, taken from the unfiltered list (first duplicate wins). */
+internal fun scenePositions(scenes: List<SceneCardState>): Map<String, Int> {
+    val positions = LinkedHashMap<String, Int>(scenes.size)
+    scenes.forEachIndexed { index, scene -> positions.putIfAbsent(scene.name, index + 1) }
+    return positions
+}
+
 internal fun sceneIconFor(iconName: String?): ImageVector =
     iconName?.let { runCatching { SceneIcon.valueOf(it) }.getOrNull() }?.imageVector
         ?: SceneDeckIcons.Scenes

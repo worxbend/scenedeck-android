@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,29 @@ import org.robolectric.annotation.GraphicsMode
 class SceneCardRoborazziTest {
 
     @get:Rule val composeRule = createComposeRule()
+
+    @Test
+    fun sceneCardBrightThumbnailDark() {
+        val frame =
+            android.graphics.Bitmap.createBitmap(32, 18, android.graphics.Bitmap.Config.ARGB_8888)
+                .apply { eraseColor(android.graphics.Color.rgb(250, 245, 230)) }
+                .asImageBitmap()
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    SceneCard(
+                        label = "Camera",
+                        icon = SceneIcon.CAMERA.imageVector,
+                        active = false,
+                        thumbnail = frame,
+                        sceneNumber = 2,
+                        modifier = Modifier.width(200.dp).padding(16.dp),
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("scene_card_bright_thumbnail_dark.png")
+    }
 
     @Test
     fun sceneCardReadyDark() {

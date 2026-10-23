@@ -119,8 +119,8 @@ colors, icons, ordering) lives in a local registry on the device.
 | Multiple connection profiles | named, QR pairing, last-used default | M2 |
 | Studio mode (preview/program) + transition control | **SHIPPED M6**: one-tap Studio toggle; deck drives preview (green), TRANSITION + CUT commit to program (red); OBS-side changes from other clients tracked live | M6 ✅ |
 | Scene/source **screenshot preview** (`GetSourceScreenshot`) | **SHIPPED M6**: throttled JPEG thumbnails on deck cards (360 px q50; program/preview 2.5 s, others 10 s; only while Live visible + Ready; "Previews" toggle, default ON) | M6 ✅ |
-| Transition picker + duration + T-bar | **SHIPPED M6/M7**: bottom-sheet picker + debounced duration slider (M6); T-bar pull gesture arms ≥80% and fires on release, spring-back honors MotionLevel (M7) | M6 ✅ M7 ✅ |
-| Virtual camera control | **SHIPPED M7**: direct VCam transport action | M7 ✅ |
+| Transition picker + duration + T-bar | **SHIPPED M6/M7**: bottom-sheet picker + debounced duration slider (M6); full-width T-bar: drag the thumb right (position tracks the finger), release past 80% of the travel to fire, spring-back honors MotionLevel, TalkBack custom action fires it (M7) | M6 ✅ M7 ✅ |
+| Virtual camera control | **SHIPPED M7**: direct VCam transport action; active state reads "Stop VCam" on a tertiary fill, Starting…/Stopping… with a spinner until OBS confirms (taps ignored meanwhile) | M7 ✅ |
 | Scene item visibility toggles | **SHIPPED M7**: "Sources" section in the deck card quick-edit sheet, live via `SceneItemEnableStateChanged` | M7 ✅ |
 | Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
