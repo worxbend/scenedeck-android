@@ -8,12 +8,15 @@ import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.navigation.SceneLinkFeedback
 import com.scenedeck.android.ui.components.StatusStripState
 import com.scenedeck.android.ui.components.toStatusStripState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -48,6 +51,11 @@ constructor(
             .map { it.onboardingCompleted }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    private val _sceneLinkMessage = MutableStateFlow<String?>(null)
+
+    /** Pending, sanitized feedback for a failed scene deep link; null when nothing to show. */
+    val sceneLinkMessage: StateFlow<String?> = _sceneLinkMessage.asStateFlow()
+
     init {
         // Foreground launch re-arms the keep-alive service if the user enabled it
         // (covers force-stop / system kills that STICKY restart did not survive).
@@ -62,6 +70,14 @@ constructor(
 
     /** `scenedeck://scene/{name}` automation entry point (connects first if needed). */
     fun onSceneLink(sceneName: String) {
-        viewModelScope.launch { sceneSwitcher.switchTo(sceneName) }
+        viewModelScope.launch {
+            val result = sceneSwitcher.switchTo(sceneName)
+            SceneLinkFeedback.messageFor(result, sceneName)?.let { _sceneLinkMessage.value = it }
+        }
+    }
+
+    /** Clears [message] once shown; a newer message posted meanwhile is kept. */
+    fun onSceneLinkMessageShown(message: String) {
+        _sceneLinkMessage.compareAndSet(message, null)
     }
 }

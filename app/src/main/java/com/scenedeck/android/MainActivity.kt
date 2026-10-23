@@ -2,6 +2,7 @@ package com.scenedeck.android
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -39,6 +40,15 @@ class MainActivity : ComponentActivity() {
             val darkTheme = appState.isDarkTheme(isSystemInDarkTheme())
             // Bar icons follow the resolved app theme, not the system night mode.
             LaunchedEffect(darkTheme) { applySystemBarAppearance(darkTheme) }
+            val sceneLinkMessage by appViewModel.sceneLinkMessage.collectAsStateWithLifecycle()
+            // Toast (not a shell snackbar) so deep-link failures surface on every screen,
+            // including onboarding.
+            LaunchedEffect(sceneLinkMessage) {
+                sceneLinkMessage?.let { message ->
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                    appViewModel.onSceneLinkMessageShown(message)
+                }
+            }
 
             SceneDeckTheme(
                 family = appState.themeFamily,
