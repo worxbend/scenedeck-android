@@ -37,15 +37,15 @@ object DoctorChecks {
         obsSceneNames: List<String>,
         entries: List<SceneRegistryEntry>,
     ): List<DoctorIssue> {
-        val known = entries.map { it.sceneName }.toSet()
+        val assigned = entries.filter { it.role != null }.map { it.sceneName }.toSet()
         return obsSceneNames
-            .filter { it !in known }
+            .filter { it !in assigned }
             .map { name ->
                 DoctorIssue(
                     severity = DoctorSeverity.INFO,
                     checkId = "unassigned-role",
                     title = "No role assigned",
-                    detail = "“$name” has no registry entry and is treated as Primary on the deck.",
+                    detail = "“$name” has no role and is treated as Primary on the deck.",
                     sceneName = name,
                     fix = DoctorFix.AssignRole(name),
                 )

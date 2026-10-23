@@ -3,7 +3,7 @@ package com.scenedeck.android.feature.inventory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
-import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRegistryEntry
 import com.scenedeck.android.core.data.SceneRole
@@ -28,6 +28,10 @@ data class InventoryScene(
 ) {
     val role: SceneRole
         get() = entry?.role ?: SceneRole.PRIMARY
+
+    /** A live scene with no role chosen yet (no entry, or curation without a role). */
+    val unassigned: Boolean
+        get() = !stale && entry?.role == null
 }
 
 data class InventoryUiState(
@@ -41,36 +45,29 @@ class InventoryViewModel
 @Inject
 constructor(
     private val registry: RegistryRepository,
-    private val mixer: MixerRepository,
+    private val obsState: ObsStateRepository,
     private val client: ObsClient,
 ) : ViewModel() {
 
     val uiState: StateFlow<InventoryUiState> =
         combine(
                 client.connectionState,
-                mixer.sceneNames,
+                obsState.deckState,
                 registry.entries,
-            ) { connection, sceneNames, entries ->
+            ) { connection, deck, entries ->
+                // Live scenes in exactly the deck's order; stale entries follow in saved order.
                 val byName = entries.associateBy { it.sceneName }
-                val present = sceneNames.toSet()
+                val live = deck.allScenes.map { it.name }
+                val present = live.toSet()
                 val scenes =
-                    (sceneNames.map { name ->
-                            InventoryScene(name, byName[name], stale = false)
-                        } +
-                            entries
-                                .filter { it.sceneName !in present }
-                                .map { InventoryScene(it.sceneName, it, stale = true) })
-                        .sortedWith(
-                            compareBy(
-                                { it.entry?.sortOrder ?: Int.MAX_VALUE },
-                                { it.stale },
-                                { it.name },
-                            )
-                        )
+                    live.map { name -> InventoryScene(name, byName[name], stale = false) } +
+                        entries
+                            .filter { it.sceneName !in present }
+                            .map { InventoryScene(it.sceneName, it, stale = true) }
                 InventoryUiState(
                     connection = connection,
                     scenes = scenes,
-                    unassignedCount = scenes.count { it.entry == null && !it.stale },
+                    unassignedCount = scenes.count { it.unassigned },
                 )
             }
             .stateIn(
@@ -105,7 +102,7 @@ constructor(
             val existing = registry.byName(sceneName)
             registry.update(
                 sceneName,
-                existing?.role ?: SceneRole.PRIMARY,
+                existing?.role,
                 accentArgb,
                 existing?.iconName,
             )
@@ -117,7 +114,7 @@ constructor(
             val existing = registry.byName(sceneName)
             registry.update(
                 sceneName,
-                existing?.role ?: SceneRole.PRIMARY,
+                existing?.role,
                 existing?.accentColorArgb,
                 iconName,
             )
@@ -137,8 +134,7 @@ constructor(
 
     fun bulkAssignUnassigned() {
         launchAction {
-            val names =
-                uiState.value.scenes.filter { it.entry == null && !it.stale }.map { it.name }
+            val names = uiState.value.scenes.filter { it.unassigned }.map { it.name }
             registry.assignRoleToUnassigned(names, SceneRole.SECONDARY)
             _messages.emit("Assigned ${names.size} scenes to Secondary")
         }

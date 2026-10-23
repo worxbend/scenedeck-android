@@ -19,6 +19,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -56,11 +57,12 @@ class ObsStateRepositoryTest {
     }
 
     @Test
-    fun scenesWithoutRegistryEntryDefaultToPrimarySortedByName(): Unit = runBlocking {
+    fun scenesWithoutRegistryEntryDefaultToPrimaryInObsOrder(): Unit = runBlocking {
         client.setReady()
         val deck = awaitDeck { it.scenes.isNotEmpty() }
 
-        assertEquals(listOf("Cam 1", "Scene", "Screen"), deck.scenes.map { it.name })
+        // OBS lists its top scene with the highest sceneIndex.
+        assertEquals(listOf("Screen", "Cam 1", "Scene"), deck.scenes.map { it.name })
         assertTrue(deck.scenes.all { it.role == SceneRole.PRIMARY })
         assertEquals("Scene", deck.currentProgramScene)
         assertEquals("Scene", deck.scenes.first { it.isActive }.name)
@@ -77,7 +79,9 @@ class ObsStateRepositoryTest {
                 sortOrder = 0,
             )
         )
-        registryDao.upsert(SceneRegistryEntity(sceneName = "Screen", role = "SECONDARY"))
+        registryDao.upsert(
+            SceneRegistryEntity(sceneName = "Screen", role = "SECONDARY", sortOrder = 1)
+        )
 
         client.setReady()
         val deck = awaitDeck { it.scenes.size == 2 }
@@ -162,6 +166,49 @@ class ObsStateRepositoryTest {
         awaitDeck { it.allScenes.size == 2 }
         client.emit(ObsEvent.CurrentProgramSceneChanged("Cam 1"))
         assertEquals("Cam 1", awaitDeck { it.currentProgramScene == "Cam 1" }.currentProgramScene)
+    }
+
+    @Test
+    fun savedPositionsComeFirstAndUnplacedScenesFollowObsOrder(): Unit = runBlocking {
+        registryDao.upsert(
+            SceneRegistryEntity(sceneName = "Scene", role = "PRIMARY", sortOrder = 0)
+        )
+        registryDao.upsert(
+            SceneRegistryEntity(
+                sceneName = "Screen",
+                role = "PRIMARY",
+                accentColorArgb = 0xFF00FF00,
+                sortOrder = UNPLACED_SORT_ORDER,
+            )
+        )
+
+        client.setReady()
+        val deck = awaitDeck { it.allScenes.size == 3 }
+
+        assertEquals(listOf("Scene", "Screen", "Cam 1"), deck.allScenes.map { it.name })
+    }
+
+    @Test
+    fun sceneRenameInObsKeepsCurationAndPosition(): Unit = runBlocking {
+        RegistryRepository(registryDao).reorder(listOf("Cam 1", "Screen", "Scene"))
+        registryDao.upsert(
+            SceneRegistryEntity(
+                sceneName = "Cam 1",
+                role = "SECONDARY",
+                iconName = "CAMERA",
+                sortOrder = 0,
+            )
+        )
+        client.setReady()
+        awaitDeck { it.allScenes.size == 3 }
+
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Cam 1", sceneName = "Camera"))
+
+        val deck = awaitDeck { it.allScenes.firstOrNull()?.name == "Camera" }
+        assertEquals(listOf("Camera", "Screen", "Scene"), deck.allScenes.map { it.name })
+        assertEquals("CAMERA", deck.allScenes.first().iconName)
+        assertEquals(SceneRole.SECONDARY, deck.allScenes.first().role)
+        assertNull(registryDao.byName("Cam 1"))
     }
 
     private suspend fun awaitDeck(condition: (DeckState) -> Boolean): DeckState =

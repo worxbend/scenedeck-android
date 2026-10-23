@@ -11,6 +11,8 @@ class RegistryExportTest {
             SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
             SceneRegistryEntry("Quiet A", SceneRole.ARCHIVE, null, null, 5),
             SceneRegistryEntry("Nested Audio", SceneRole.MODULE, null, "MUSIC", 3),
+            SceneRegistryEntry("Placed, no role", null, null, null, 1),
+            SceneRegistryEntry("Following OBS", SceneRole.RAW, null, null, UNPLACED_SORT_ORDER),
         )
 
     @Test

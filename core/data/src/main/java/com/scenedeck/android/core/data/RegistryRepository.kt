@@ -24,48 +24,55 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
 
     suspend fun byName(sceneName: String): SceneRegistryEntry? = dao.byName(sceneName)?.toDomain()
 
-    /** Upserts curation metadata for a scene (quick-edit). */
+    /** Upserts curation metadata for a scene (quick-edit); a null [role] stays unassigned. */
     suspend fun update(
         sceneName: String,
-        role: SceneRole,
+        role: SceneRole?,
         accentColorArgb: Long?,
         iconName: String?,
     ) = mutationMutex.withLock {
-        updateLocked(sceneName, role, accentColorArgb, iconName)
-    }
-
-    private suspend fun updateLocked(
-        sceneName: String,
-        role: SceneRole,
-        accentColorArgb: Long?,
-        iconName: String?,
-    ) {
         val existing = dao.byName(sceneName)
         dao.upsert(
             SceneRegistryEntity(
                 sceneName = sceneName,
-                role = role.name,
+                role = role?.name ?: UNASSIGNED_ROLE,
                 accentColorArgb = accentColorArgb,
                 iconName = iconName,
-                sortOrder = existing?.sortOrder ?: Int.MAX_VALUE,
+                sortOrder = existing?.sortOrder ?: UNPLACED_SORT_ORDER,
             )
         )
     }
 
-    /** Persists a deck order: [orderedSceneNames] get sortOrder 0..n, others keep theirs. */
+    /**
+     * Persists a full order: [orderedSceneNames] become positions 0..n-1 and every other placed
+     * entry (e.g. stale ones) follows in its previous relative order, so positions stay dense and
+     * unique. Scenes without an entry get one with no role, so reordering never assigns roles.
+     */
     suspend fun reorder(orderedSceneNames: List<String>) = mutationMutex.withLock {
-        val existingByName = dao.observeAll().first().associateBy { it.sceneName }
-        val entities = orderedSceneNames.mapIndexed { index, name ->
-            val existing = existingByName[name]
-            SceneRegistryEntity(
-                sceneName = name,
-                role = existing?.role ?: SceneRole.PRIMARY.name,
-                accentColorArgb = existing?.accentColorArgb,
-                iconName = existing?.iconName,
-                sortOrder = index,
-            )
+        val all = dao.observeAll().first()
+        val byName = all.associateBy { it.sceneName }
+        val ordered = orderedSceneNames.distinct()
+        val orderedSet = ordered.toSet()
+        val placedRest = all.filter {
+            it.sceneName !in orderedSet && it.sortOrder != UNPLACED_SORT_ORDER
         }
-        dao.upsertAll(entities)
+        val sequence =
+            ordered.map { name ->
+                byName[name] ?: SceneRegistryEntity(sceneName = name, role = UNASSIGNED_ROLE)
+            } + placedRest
+        dao.upsertAll(sequence.mapIndexed { index, entity -> entity.copy(sortOrder = index) })
+    }
+
+    /**
+     * Moves curation from [oldName] to [newName] after a rename in OBS. An existing entry for
+     * [newName] wins, so curation made for the new name is never overwritten.
+     */
+    suspend fun rename(oldName: String, newName: String) = mutationMutex.withLock {
+        if (oldName == newName) return@withLock
+        val old = dao.byName(oldName) ?: return@withLock
+        if (dao.byName(newName) != null) return@withLock
+        dao.upsert(old.copy(sceneName = newName))
+        dao.delete(oldName)
     }
 
     /** Removes registry entries whose scene no longer exists in OBS. */
@@ -77,53 +84,78 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     /** Removes one entry (e.g. Doctor "remove stale" fix). */
     suspend fun remove(sceneName: String) = mutationMutex.withLock { dao.delete(sceneName) }
 
-    /** Current entries as a one-shot list (export). */
+    /** Current entries as a one-shot list (export), in saved order. */
     suspend fun snapshot(): List<SceneRegistryEntry> = entries.first()
 
-    /** Bulk-assigns a role to scenes that have NO entry yet (fast curation). */
+    /** Bulk-assigns a role to scenes without one (no entry or unassigned), keeping their order. */
     suspend fun assignRoleToUnassigned(obsSceneNames: List<String>, role: SceneRole) =
         mutationMutex.withLock {
-            val existing = dao.observeAll().first().map { it.sceneName }.toSet()
+            val byName = dao.observeAll().first().associateBy { it.sceneName }
             val entities =
-                obsSceneNames
-                    .distinct()
-                    .filter { it !in existing }
-                    .map { name ->
-                        SceneRegistryEntity(
-                            sceneName = name,
-                            role = role.name,
-                            sortOrder = Int.MAX_VALUE,
-                        )
+                obsSceneNames.distinct().mapNotNull { name ->
+                    val existing = byName[name]
+                    when {
+                        existing == null ->
+                            SceneRegistryEntity(
+                                sceneName = name,
+                                role = role.name,
+                                sortOrder = UNPLACED_SORT_ORDER,
+                            )
+                        existing.role == UNASSIGNED_ROLE -> existing.copy(role = role.name)
+                        else -> null
                     }
+                }
             dao.upsertAll(entities)
         }
 
     /**
-     * Merge-import: entries matched by sceneName are updated field-by-field; new names are inserted
-     * keeping their imported order when free. Returns (inserted, updated) counts for the
-     * confirmation summary.
+     * Merge-import: entries matched by sceneName are updated field-by-field and new names are
+     * inserted. The file's order wins: its placed entries take the first positions in file order,
+     * local placed entries the file doesn't mention follow in their previous order, and positions
+     * are renumbered densely, so export -> import restores the same order. Returns (inserted,
+     * updated) counts for the confirmation summary.
      */
     suspend fun importMerge(imported: List<SceneRegistryEntry>): Pair<Int, Int> =
         mutationMutex.withLock {
             var inserted = 0
             var updated = 0
-            val byName = dao.observeAll().first().associateBy { it.sceneName }.toMutableMap()
-            val changes = linkedMapOf<String, SceneRegistryEntity>()
-            imported.forEach { entry ->
+            val local = dao.observeAll().first()
+            val byName = local.associateBy { it.sceneName }.toMutableMap()
+            // First occurrence of a name fixes its position in the file.
+            val filePosition = linkedMapOf<String, Pair<Int, Int>>()
+            imported.forEachIndexed { index, entry ->
                 val existing = byName[entry.sceneName]
                 if (existing == null) inserted++ else updated++
-                val entity =
+                byName[entry.sceneName] =
                     SceneRegistryEntity(
                         sceneName = entry.sceneName,
-                        role = entry.role.name,
+                        role = entry.role?.name ?: existing?.role ?: UNASSIGNED_ROLE,
                         accentColorArgb = entry.accentColorArgb ?: existing?.accentColorArgb,
                         iconName = entry.iconName ?: existing?.iconName,
-                        sortOrder = existing?.sortOrder ?: entry.sortOrder,
+                        sortOrder = existing?.sortOrder ?: UNPLACED_SORT_ORDER,
                     )
-                byName[entry.sceneName] = entity
-                changes[entry.sceneName] = entity
+                filePosition.getOrPut(entry.sceneName) { entry.sortOrder to index }
             }
-            dao.upsertAll(changes.values.toList())
+            val filePlaced =
+                filePosition.entries
+                    .filter { it.value.first != UNPLACED_SORT_ORDER }
+                    .sortedWith(compareBy({ it.value.first }, { it.value.second }))
+                    .map { it.key }
+            val filePlacedSet = filePlaced.toSet()
+            val localPlaced =
+                local
+                    .filter { it.sortOrder != UNPLACED_SORT_ORDER }
+                    .map { it.sceneName }
+                    .filter { it !in filePlacedSet }
+            val positions =
+                (filePlaced + localPlaced).withIndex().associate { it.value to it.index }
+            val touched = filePosition.keys + localPlaced
+            dao.upsertAll(
+                touched.map { name ->
+                    val entity = byName.getValue(name)
+                    entity.copy(sortOrder = positions[name] ?: UNPLACED_SORT_ORDER)
+                }
+            )
             inserted to updated
         }
 }

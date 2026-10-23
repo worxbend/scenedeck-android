@@ -194,7 +194,9 @@ internal fun InventoryContent(
                     InventoryRow(
                         name = scene.name,
                         icon = sceneIconForInventory(scene.entry?.iconName),
-                        roleLabel = scene.role.name.lowercase().replaceFirstChar { it.uppercase() },
+                        roleLabel =
+                            if (scene.unassigned) "Unassigned"
+                            else scene.role.name.lowercase().replaceFirstChar { it.uppercase() },
                         accentColor = scene.entry?.accentColorArgb?.let { Color(it) },
                         stale = scene.stale,
                         onIconClick = { iconEditorFor = scene.name },

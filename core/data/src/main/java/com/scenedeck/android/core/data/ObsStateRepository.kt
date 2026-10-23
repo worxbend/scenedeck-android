@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** One scene card on the deck (OBS scene + local registry metadata). */
@@ -95,8 +96,11 @@ constructor(
                 studio,
             ) { connection, scenes, program, entries, studioSnap ->
                 val entriesByName = entries.associateBy { it.sceneName }
+                // Saved positions first; unplaced scenes follow OBS's list, whose top scene has
+                // the highest sceneIndex.
                 val cards =
                     scenes
+                        .sortedWith(compareBy({ -it.index }, { it.name }))
                         .map { scene ->
                             val entry = entriesByName[scene.name]
                             SceneCardState(
@@ -104,13 +108,13 @@ constructor(
                                 role = entry?.role ?: SceneRole.PRIMARY,
                                 accentColorArgb = entry?.accentColorArgb,
                                 iconName = entry?.iconName,
-                                sortOrder = entry?.sortOrder ?: Int.MAX_VALUE,
+                                sortOrder = entry?.sortOrder ?: UNPLACED_SORT_ORDER,
                                 isActive = scene.name == program,
                                 isPreview =
                                     studioSnap.studioMode && scene.name == studioSnap.previewScene,
                             )
                         }
-                        .sortedWith(compareBy({ it.sortOrder }, { it.name }))
+                        .sortedBy { it.sortOrder } // stable: ties keep OBS order
                 DeckState(
                     connectionState = connection,
                     currentProgramScene = program,
@@ -160,6 +164,8 @@ constructor(
                     is ObsEvent.SceneTransitionStarted,
                     is ObsEvent.SceneTransitionEnded -> Unit
 
+                    is ObsEvent.SceneNameChanged -> applyRename(event)
+
                     is ObsEvent.SceneListChanged -> {
                         sceneList.value = event.scenes
                         // Retain local curation across hosts/collections; Doctor offers explicit
@@ -170,6 +176,15 @@ constructor(
                 }
             }
         }
+    }
+
+    /** OBS sends no SceneListChanged for renames; follow them locally and move curation. */
+    private suspend fun applyRename(event: ObsEvent.SceneNameChanged) {
+        val (old, new) = event.oldSceneName to event.sceneName
+        sceneList.update { list -> list.map { if (it.name == old) it.copy(name = new) else it } }
+        programScene.update { if (it == old) new else it }
+        previewScene.update { if (it == old) new else it }
+        requestResult { registry.rename(old, new) }
     }
 
     private suspend fun refresh() {

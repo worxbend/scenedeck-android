@@ -1,13 +1,10 @@
 package com.scenedeck.android.feature.inventory
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
-import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
-import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsVersionInfo
@@ -16,7 +13,6 @@ import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ScreenshotRequest
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -55,16 +51,8 @@ class InventoryViewModelTest {
         registry = RegistryRepository(dao)
         client = FakeObsClient()
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val settings =
-            SettingsRepository(
-                SceneDeckSettingsStore.forTesting(
-                    PreferenceDataStoreFactory.create(
-                        produceFile = { File.createTempFile("inventory_test", ".preferences_pb") }
-                    )
-                )
-            )
-        val mixer = MixerRepository(client, settings, holderScope)
-        viewModel = InventoryViewModel(registry, mixer, client)
+        viewModel =
+            InventoryViewModel(registry, ObsStateRepository(client, registry, holderScope), client)
     }
 
     @After
@@ -137,6 +125,21 @@ class InventoryViewModelTest {
         assertEquals(0xFF7E57C2, registry.byName("Cam 1")?.accentColorArgb)
         assertEquals("CAMERA", registry.byName("Cam 1")?.iconName)
         assertEquals(SceneRole.ARCHIVE, registry.byName("Quiet A")?.role)
+    }
+
+    @Test
+    fun ordersLikeTheDeckAndKeepsUnassignedAfterReorder(): Unit = runBlocking {
+        registry.update("Ghost", SceneRole.MODULE, null, null)
+        client.setReady()
+        // No saved positions: OBS order (top scene has the highest index), stale entry last.
+        var state = awaitState { it.scenes.size == 4 }
+        assertEquals(listOf("Quiet A", "Screen", "Cam 1", "Ghost"), state.scenes.map { it.name })
+
+        viewModel.reorder(listOf("Cam 1", "Ghost", "Quiet A", "Screen"))
+        state = awaitState { it.scenes.firstOrNull()?.name == "Cam 1" }
+
+        assertEquals(listOf("Cam 1", "Quiet A", "Screen", "Ghost"), state.scenes.map { it.name })
+        assertEquals(3, state.unassignedCount) // reordering never assigns roles
     }
 
     @Test
@@ -242,7 +245,7 @@ class InventoryViewModelTest {
 
         override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray = unused()
 
-        private fun unused(): Nothing = throw NotImplementedError("not needed by these tests")
+        private fun unused(): Nothing = throw UnsupportedOperationException("not needed here")
 
         override suspend fun getVersion() = unused()
 

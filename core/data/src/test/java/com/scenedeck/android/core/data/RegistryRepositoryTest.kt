@@ -165,7 +165,7 @@ class RegistryRepositoryTest {
     }
 
     @Test
-    fun duplicateImportsPreserveSequentialCountsNullMergesAndExistingOrder(): Unit = runBlocking {
+    fun duplicateImportsPreserveSequentialCountsNullMergesAndFileOrder(): Unit = runBlocking {
         repository.update("Existing", SceneRole.PRIMARY, 123L, "CAMERA")
         repository.reorder(listOf("Existing"))
         val counts =
@@ -177,24 +177,126 @@ class RegistryRepositoryTest {
                 )
             )
         assertEquals(1 to 2, counts)
+        // The first occurrence fixes a name's file position; positions are renumbered densely.
         assertEquals(
-            SceneRegistryEntry("New", SceneRole.MODULE, 456L, "MIC", 7),
+            SceneRegistryEntry("New", SceneRole.MODULE, 456L, "MIC", 0),
             repository.byName("New"),
         )
         assertEquals(
-            SceneRegistryEntry("Existing", SceneRole.ARCHIVE, 123L, "CAMERA", 0),
+            SceneRegistryEntry("Existing", SceneRole.ARCHIVE, 123L, "CAMERA", 1),
             repository.byName("Existing"),
         )
     }
 
     @Test
-    fun bulkRoleAssignmentRetainsExistingOrderAndAppendsNewScenes(): Unit = runBlocking {
-        repository.reorder(listOf("Curated"))
-        repository.assignRoleToUnassigned(listOf("Curated", "New", "New"), SceneRole.SECONDARY)
+    fun bulkRoleAssignmentFillsUnassignedRolesAndKeepsOrder(): Unit = runBlocking {
+        repository.reorder(listOf("Curated", "Kept"))
+        repository.update("Kept", SceneRole.PRIMARY, null, null)
+        repository.assignRoleToUnassigned(
+            listOf("Curated", "Kept", "New", "New"),
+            SceneRole.SECONDARY,
+        )
         assertEquals(0, repository.byName("Curated")?.sortOrder)
-        assertEquals(SceneRole.PRIMARY, repository.byName("Curated")?.role)
-        assertEquals(Int.MAX_VALUE, repository.byName("New")?.sortOrder)
+        assertEquals(SceneRole.SECONDARY, repository.byName("Curated")?.role)
+        assertEquals(1, repository.byName("Kept")?.sortOrder)
+        assertEquals(SceneRole.PRIMARY, repository.byName("Kept")?.role)
+        assertEquals(UNPLACED_SORT_ORDER, repository.byName("New")?.sortOrder)
         assertEquals(SceneRole.SECONDARY, repository.byName("New")?.role)
+    }
+
+    @Test
+    fun reorderNeverAssignsRolesAndRenumbersEveryPlacedEntryDensely(): Unit = runBlocking {
+        repository.update("Stale", SceneRole.MODULE, null, null)
+        repository.reorder(listOf("Stale", "X"))
+        repository.update("Colour only", null, 0xFF00FF00, null)
+
+        repository.reorder(listOf("B", "A"))
+
+        val saved = repository.snapshot()
+        assertEquals(listOf("B", "A", "Stale", "X", "Colour only"), saved.map { it.sceneName })
+        assertEquals(listOf(0, 1, 2, 3), saved.take(4).map { it.sortOrder })
+        assertNull(repository.byName("B")?.role)
+        assertNull(repository.byName("X")?.role)
+        assertEquals(SceneRole.MODULE, repository.byName("Stale")?.role)
+        // Editing a colour neither places the scene nor assigns it a role.
+        assertEquals(UNPLACED_SORT_ORDER, repository.byName("Colour only")?.sortOrder)
+        assertNull(repository.byName("Colour only")?.role)
+    }
+
+    @Test
+    fun renameMovesCurationAndPosition(): Unit = runBlocking {
+        repository.reorder(listOf("Intro", "Cam 1"))
+        repository.update("Cam 1", SceneRole.SECONDARY, 0xFF7E57C2, "CAMERA")
+
+        repository.rename("Cam 1", "Camera")
+
+        assertNull(repository.byName("Cam 1"))
+        assertEquals(
+            SceneRegistryEntry("Camera", SceneRole.SECONDARY, 0xFF7E57C2, "CAMERA", 1),
+            repository.byName("Camera"),
+        )
+    }
+
+    @Test
+    fun renameKeepsCurationAlreadyMadeForTheNewName(): Unit = runBlocking {
+        repository.update("Old", SceneRole.ARCHIVE, null, null)
+        repository.update("New", SceneRole.PRIMARY, null, "STAR")
+
+        repository.rename("Old", "New")
+
+        assertEquals(SceneRole.ARCHIVE, repository.byName("Old")?.role)
+        assertEquals("STAR", repository.byName("New")?.iconName)
+    }
+
+    @Test
+    fun exportImportRoundTripRestoresOrderRolesAndUnassignedScenes(): Unit = runBlocking {
+        repository.reorder(listOf("Intro", "Camera", "Screen", "BRB"))
+        repository.update("Camera", SceneRole.SECONDARY, 0xFF7E57C2, "CAMERA")
+        repository.update("Unplaced", SceneRole.ARCHIVE, null, null)
+        val exported = repository.snapshot()
+        val yaml = RegistryExportCodec.encode(exported)
+
+        // Another device with its own, different curation.
+        val otherDatabase =
+            Room.inMemoryDatabaseBuilder(
+                    ApplicationProvider.getApplicationContext(),
+                    SceneDeckDatabase::class.java,
+                )
+                .build()
+        try {
+            val other = RegistryRepository(otherDatabase.sceneRegistryDao())
+            other.reorder(listOf("BRB", "Local only", "Screen", "Intro"))
+
+            other.importMerge(RegistryExportCodec.decode(yaml))
+
+            val restored = other.snapshot()
+            assertEquals(
+                listOf("Intro", "Camera", "Screen", "BRB", "Local only", "Unplaced"),
+                restored.map { it.sceneName },
+            )
+            assertEquals(exported, restored.filter { it.sceneName != "Local only" })
+            assertNull(other.byName("Intro")?.role)
+        } finally {
+            otherDatabase.close()
+        }
+    }
+
+    @Test
+    fun importWithoutSavedPositionsKeepsFileOrder(): Unit = runBlocking {
+        val yaml =
+            """
+            format: scenedeck-registry
+            entries:
+              - sceneName: Zeta
+                role: PRIMARY
+              - sceneName: Alpha
+                role: SECONDARY
+            """
+                .trimIndent()
+
+        repository.importMerge(RegistryExportCodec.decode(yaml))
+
+        assertEquals(listOf("Zeta", "Alpha"), repository.snapshot().map { it.sceneName })
     }
 
     /** Freezes a snapshot after reading, before a mutation can write it back. */

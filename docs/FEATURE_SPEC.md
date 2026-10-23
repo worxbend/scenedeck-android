@@ -40,7 +40,10 @@ colors, icons, ordering) lives in a local registry on the device.
 - Uniform card tiles use an icon well, numbered positions and separate scene/state
   labels, with no accent rail; grips appear only in explicit reorder mode.
 - Per-scene optional **accent color** and **icon** (local metadata).
-- Scene card order = user-defined drag order, persisted locally. Enable Reorder scenes
+- Scene card order = the registry order, shared with Inventory and persisted locally.
+  Scenes with a saved position come first; scenes never placed follow OBS's own list
+  order (top scene has the highest `sceneIndex`), then name. Any drag (Scenes Reorder
+  mode or Inventory) saves the whole arrangement as dense positions. Enable Reorder scenes
   in scene options to expose grips; scene taps do not switch OBS during reordering.
 - Long-press card → quick actions (rename local label, change icon/color, remove from deck).
 - **Studio mode (extension)**: when enabled, deck switches the *preview* scene;
@@ -90,9 +93,17 @@ colors, icons, ordering) lives in a local registry on the device.
 
 - Lists OBS scenes; assign local **roles**: `Primary` (deck), `Secondary`, `Module`
   (nested reusable), `Raw`, `Debug`, `Archive`.
-- Drag-to-reorder (persisted), accent color picker, icon picker, stale-entry detection
-  (registry entry whose scene vanished from OBS) with one-tap cleanup.
-- **Export/import registry as YAML/JSON** (backup, share between devices).
+- Drag-to-reorder (persisted, same order as the Scenes grid; stale entries listed
+  last), accent color picker, icon picker, stale-entry detection (registry entry whose
+  scene vanished from OBS) with one-tap cleanup.
+- Roles are only assigned explicitly: reordering or changing a color/icon keeps a scene
+  **Unassigned** (shown as Primary on the deck, counted by Unassigned → Secondary/Doctor).
+- Renames reported by OBS (`SceneNameChanged`) move a scene's curation and position to
+  the new name; curation already saved for the new name wins.
+- **Export/import registry as YAML/JSON** (backup, share between devices). Export carries
+  roles (`UNASSIGNED` for none) and positions; import applies the file's order first,
+  then local placed scenes the file doesn't mention, so export → import restores the
+  same order. Entries without positions keep file order.
 
 ## 7. Graph & Doctor (health tooling)
 

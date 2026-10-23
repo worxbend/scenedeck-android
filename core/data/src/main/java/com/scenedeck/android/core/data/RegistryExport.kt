@@ -21,13 +21,14 @@ data class RegistryExportEntry(
     val role: String,
     val accentColorArgb: Long? = null,
     val iconName: String? = null,
+    /** Saved position; [UNPLACED_SORT_ORDER] follows OBS order. Missing values keep file order. */
     val sortOrder: Int = 0,
 )
 
 internal fun SceneRegistryEntry.toExport() =
     RegistryExportEntry(
         sceneName = sceneName,
-        role = role.name,
+        role = role?.name ?: UNASSIGNED_ROLE,
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
@@ -36,7 +37,9 @@ internal fun SceneRegistryEntry.toExport() =
 internal fun RegistryExportEntry.toDomain() =
     SceneRegistryEntry(
         sceneName = sceneName,
-        role = runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.SECONDARY),
+        role =
+            if (role == UNASSIGNED_ROLE) null
+            else runCatching { SceneRole.valueOf(role) }.getOrDefault(SceneRole.SECONDARY),
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
