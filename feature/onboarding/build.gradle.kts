@@ -47,6 +47,9 @@ tasks.withType<Test>().configureEach {
 dependencies {
     testImplementation(libs.junit)
     testImplementation(project(":core:database"))
+    testImplementation(project(":core:datastore"))
+    testImplementation(libs.androidx.datastore.preferences)
+    testImplementation(libs.kotlinx.coroutines.test)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)

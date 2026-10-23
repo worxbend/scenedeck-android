@@ -129,6 +129,7 @@ private fun SceneGraphCanvas(graph: SceneGraph, onNodeClick: (String) -> Unit) {
                     name = node.name,
                     color = fill,
                     contentColor = label,
+                    outlineColor = if (node.role.isNeutralFill()) scheme.outline else null,
                     isStale = node.isStale,
                     inCycle = node.name in graph.cycleMembers,
                 )
@@ -197,6 +198,9 @@ private fun NodeDetailSheet(
     }
 }
 
+/** Raw/Archive use neutral surface fills, so their node shape gets an outline. */
+internal fun SceneRole.isNeutralFill(): Boolean = this == SceneRole.RAW || this == SceneRole.ARCHIVE
+
 /**
  * Node fill and label colors per role. Roles use the theme's accent containers and neutral tones,
  * never the program/LIVE red, which stays reserved for on-air state and graph errors (forbidden
@@ -209,7 +213,8 @@ internal fun roleColors(
 ): Pair<Color, Color> =
     when (role) {
         SceneRole.PRIMARY -> scheme.primaryContainer to scheme.onPrimaryContainer
-        SceneRole.SECONDARY -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        // Full-strength secondary: its container tone is too close to the neutral roles in light.
+        SceneRole.SECONDARY -> scheme.secondary to scheme.onSecondary
         SceneRole.MODULE -> scheme.tertiaryContainer to scheme.onTertiaryContainer
         SceneRole.RAW -> scheme.surfaceContainerHighest to scheme.onSurface
         SceneRole.DEBUG -> colors.warning to Color.Black

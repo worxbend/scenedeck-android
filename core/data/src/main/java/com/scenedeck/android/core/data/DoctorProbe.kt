@@ -4,6 +4,7 @@ import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsRequestFailedException
 import com.scenedeck.android.core.obs.isInputWithoutAudio
+import com.scenedeck.android.core.obs.isResourceNotFound
 
 /**
  * Doctor probe: for each PRIMARY scene, lists enabled audio-capable inputs whose volume probe OBS
@@ -33,13 +34,16 @@ suspend fun probeBrokenAudioInputs(
     return broken
 }
 
-/** OBS rejected the scene read (e.g. it was removed mid-scan): nothing to probe, no finding. */
+/**
+ * The scene vanished (removed mid-scan): nothing to probe, no finding. Any other OBS rejection
+ * aborts the run, so a scene that could not be inspected never reads as healthy.
+ */
 @Suppress("SwallowedException") // a vanished scene is not a finding; stale entries are reported
-private suspend fun sceneItemsOrNull(client: ObsClient, sceneName: String): List<SceneItemInfo>? =
+internal suspend fun sceneItemsOrNull(client: ObsClient, sceneName: String): List<SceneItemInfo>? =
     try {
         client.getSceneItemList(sceneName)
     } catch (rejected: ObsRequestFailedException) {
-        null
+        if (rejected.isResourceNotFound) null else throw rejected
     }
 
 /**

@@ -132,7 +132,16 @@ private fun SceneDeckShell(
     // per-entry remember/rememberSaveable state and ViewModelStores survive.
     val layout = rememberShellLayout(fullScreen)
     NavigationSuiteScaffold(
-        modifier = modifier,
+        // The rail's library insets omit display cutouts; landscape punch-holes usually sit on
+        // the rail's (start) edge, so the whole suite clears them there.
+        modifier =
+            if (layout.sideNavigation) {
+                modifier.windowInsetsPadding(
+                    WindowInsets.displayCutout.only(WindowInsetsSides.Start)
+                )
+            } else {
+                modifier
+            },
         layoutType = layout.navigationType,
         navigationSuiteItems = {
             SceneDeckDestination.primary.forEach { destination ->

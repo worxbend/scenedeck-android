@@ -31,6 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -129,7 +133,15 @@ private fun DoctorReport(
     )
     // Re-running keeps the previous successful report visible, marked as refreshing.
     Box(Modifier.fillMaxWidth().height(16.dp), contentAlignment = Alignment.Center) {
-        if (uiState.running) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        if (uiState.running) {
+            LinearProgressIndicator(
+                modifier =
+                    Modifier.fillMaxWidth().semantics {
+                        contentDescription = "Refreshing checks"
+                        liveRegion = LiveRegionMode.Polite
+                    }
+            )
+        }
     }
     val visible = uiState.issues.filter { severityFilter == null || it.severity == severityFilter }
     if (visible.isEmpty()) {
@@ -145,7 +157,8 @@ private fun DoctorReport(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(visible, key = { "${it.checkId}-${it.sceneName}-${it.title}" }) { issue ->
-            IssueRow(issue = issue, onFix = onFix)
+            // Fixes act on the previous report; hold them until the refresh finishes.
+            IssueRow(issue = issue, fixEnabled = !uiState.running, onFix = onFix)
         }
     }
 }
@@ -182,7 +195,7 @@ private fun SeverityFilterRow(
 private fun DoctorSeverity.label(): String = name.lowercase().replaceFirstChar { it.uppercase() }
 
 @Composable
-private fun IssueRow(issue: DoctorIssue, onFix: (DoctorIssue) -> Unit) {
+private fun IssueRow(issue: DoctorIssue, fixEnabled: Boolean, onFix: (DoctorIssue) -> Unit) {
     val colors = SceneDeckTheme.colors
     val (icon, tint) =
         when (issue.severity) {
@@ -213,7 +226,7 @@ private fun IssueRow(issue: DoctorIssue, onFix: (DoctorIssue) -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 issue.fix?.let {
-                    TextButton(onClick = { onFix(issue) }) {
+                    TextButton(onClick = { onFix(issue) }, enabled = fixEnabled) {
                         Text(
                             when (it) {
                                 is DoctorFix.RemoveStaleEntry -> "Remove entry"

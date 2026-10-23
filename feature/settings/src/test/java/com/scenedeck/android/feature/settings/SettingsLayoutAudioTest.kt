@@ -7,13 +7,32 @@ import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.designsystem.theme.UiDensity
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsLayoutAudioTest {
+
+    // viewModelScope needs a Main dispatcher on the plain JVM; without one the launched writes
+    // depend on whatever an earlier test left installed.
+    @Before
+    fun setUpMain() {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+    }
+
+    @After
+    fun tearDownMain() {
+        Dispatchers.resetMain()
+    }
 
     private val repository =
         SettingsRepository(
@@ -34,14 +53,14 @@ class SettingsLayoutAudioTest {
         viewModel.setMeterRefresh(MeterRefresh.OFF)
 
         val saved =
-            withTimeout(5_000) {
+            withTimeout(WRITE_TIMEOUT_MS) {
                 repository.settings.first {
                     it.uiDensity == "COMPACT" && it.meterRefresh == MeterRefresh.OFF
                 }
             }
         assertEquals("COMPACT", saved.uiDensity)
         val state =
-            withTimeout(5_000) {
+            withTimeout(WRITE_TIMEOUT_MS) {
                 viewModel.layoutAndAudio.first { it.density == UiDensity.COMPACT }
             }
         assertEquals(MeterRefresh.OFF, state.meterRefresh)
@@ -51,15 +70,17 @@ class SettingsLayoutAudioTest {
     fun allowListTogglesAreAtomicAndClearable(): Unit = runBlocking {
         val viewModel = viewModel()
         listOf("Mic", "Desktop Audio", "Music").forEach { viewModel.setAudioInputAllowed(it, true) }
-        withTimeout(5_000) { repository.settings.first { it.audioAllowList.size == 3 } }
+        withTimeout(WRITE_TIMEOUT_MS) { repository.settings.first { it.audioAllowList.size == 3 } }
 
         viewModel.setAudioInputAllowed("Music", false)
         val afterRemove =
-            withTimeout(5_000) { repository.settings.first { it.audioAllowList.size == 2 } }
+            withTimeout(WRITE_TIMEOUT_MS) {
+                repository.settings.first { it.audioAllowList.size == 2 }
+            }
         assertEquals(setOf("Mic", "Desktop Audio"), afterRemove.audioAllowList)
 
         viewModel.clearAudioAllowList()
-        withTimeout(5_000) { repository.settings.first { it.audioAllowList.isEmpty() } }
+        withTimeout(WRITE_TIMEOUT_MS) { repository.settings.first { it.audioAllowList.isEmpty() } }
     }
 
     @Test
@@ -68,7 +89,8 @@ class SettingsLayoutAudioTest {
         val viewModel = viewModel()
 
         viewModel.loadAudioInputChoices()
-        val choices = withTimeout(5_000) { viewModel.audioInputChoices.first { !it.loading } }
+        val choices =
+            withTimeout(WRITE_TIMEOUT_MS) { viewModel.audioInputChoices.first { !it.loading } }
 
         assertEquals(listOf("Desktop Audio", "Mic", "Old Mic"), choices.names)
     }
@@ -79,8 +101,15 @@ class SettingsLayoutAudioTest {
         val viewModel = viewModel(ready = false)
 
         viewModel.loadAudioInputChoices()
-        val choices = withTimeout(5_000) { viewModel.audioInputChoices.first { !it.loading } }
+        val choices =
+            withTimeout(WRITE_TIMEOUT_MS) { viewModel.audioInputChoices.first { !it.loading } }
 
         assertEquals(listOf("Old Mic"), choices.names)
+    }
+
+    private companion object {
+        // Real DataStore file writes; generous so a CPU-starved parallel quality gate (lint and
+        // many test JVMs at once) cannot time out a correct write.
+        const val WRITE_TIMEOUT_MS = 20_000L
     }
 }

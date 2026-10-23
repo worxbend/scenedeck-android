@@ -55,10 +55,17 @@ internal class WakeableBackoff {
     /** True when a wait was in progress and is now ending; otherwise a no-op. */
     fun wake(): Boolean = pending?.complete(Unit) == true
 
+    /**
+     * Arms the wake signal before the caller publishes its backoff state, so a [wake] racing that
+     * state change is not dropped. The next [await] consumes it.
+     */
+    fun arm() {
+        pending = CompletableDeferred()
+    }
+
     /** Waits [delayMillis] or until [wake]; caller cancellation propagates. */
     suspend fun await(delayMillis: Long) {
-        val signal = CompletableDeferred<Unit>()
-        pending = signal
+        val signal = pending ?: CompletableDeferred<Unit>().also { pending = it }
         try {
             withTimeoutOrNull(delayMillis) { signal.await() }
         } finally {
@@ -174,6 +181,7 @@ internal class ObsSessionRunner(
         while (currentCoroutineContext().isActive) {
             if (attemptSession(host, port, password, progress)) return
             progress.attempt++
+            backoff.arm()
             connectionState.value = ConnectionState.Reconnecting(progress.attempt)
             backoff.await(backoffMillis(progress.attempt))
         }

@@ -64,7 +64,12 @@ class ScreenshotRepositoryTest {
         settings.settings
             .first() // Poll cadence starts after asynchronous preferences are available.
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         var virtualNow = 0L
         repository.nowMs = { virtualNow }
@@ -100,7 +105,12 @@ class ScreenshotRepositoryTest {
     fun disabledSettingStopsPolling() = runTest {
         settings.setScenePreviewsEnabled(false)
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
 
         backgroundScope.launch { repository.thumbnails.collect {} }
@@ -116,7 +126,12 @@ class ScreenshotRepositoryTest {
     fun openingAndLeavingScenesStartsAndStopsPolling() = runTest {
         settings.settings.first() // Await asynchronous DataStore initialization.
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         client.setReady()
         obsState.deckState.first { it.allScenes.size == 3 }
@@ -162,7 +177,12 @@ class ScreenshotRepositoryTest {
             }
         settings.settings.first()
         val obsState =
-            ObsStateRepository(slow, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                slow,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val pollerJob = SupervisorJob(backgroundScope.coroutineContext[Job])
         val pollerScope = CoroutineScope(backgroundScope.coroutineContext + pollerJob)
         val repository = ScreenshotRepository(slow, settings, obsState, pollerScope)
@@ -191,7 +211,12 @@ class ScreenshotRepositoryTest {
     fun removingScenePrunesCachedFrameAndFutureCaptures() = runTest {
         settings.settings.first()
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         repository.nowMs = { testScheduler.currentTime }
         client.setReady()
@@ -214,7 +239,12 @@ class ScreenshotRepositoryTest {
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun rejectsInvalidOversizedBytesAndPixelDimensions() = runTest {
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         assertNull(repository.decodeBitmap(byteArrayOf(1, 2, 3)))
         assertNull(repository.decodeBitmap(ByteArray(2 * 1024 * 1024 + 1)))
@@ -235,7 +265,12 @@ class ScreenshotRepositoryTest {
     fun rejectedCaptureRetainsLastAcceptedFrame() = runTest {
         settings.settings.first()
         val obsState =
-            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                client,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
         repository.nowMs = { testScheduler.currentTime }
         client.setReady()
@@ -279,7 +314,12 @@ class ScreenshotRepositoryTest {
                 }
         settings.settings.first()
         val obsState =
-            ObsStateRepository(slow, RegistryRepository(FakeRegistryDao()), backgroundScope)
+            ObsStateRepository(
+                slow,
+                RegistryRepository(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
         val repository = ScreenshotRepository(slow, settings, obsState, backgroundScope)
         repository.nowMs = { testScheduler.currentTime }
         slow.setReady()

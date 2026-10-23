@@ -239,7 +239,14 @@ constructor(
             pollsSinceRead++
             if (stale.getAndSet(false) || pollsSinceRead >= REFRESH_POLLS) {
                 pollsSinceRead = 0
-                requestResult { client.getVideoSettings() }.getOrNull()?.fps?.let { fps = it }
+                val read = requestResult { client.getVideoSettings() }.getOrNull()?.fps
+                if (read != null) {
+                    fps = read
+                } else if (fps == null) {
+                    // Still unknown: retry on the next 1 Hz poll instead of judging a healthy
+                    // canvas against the 60 fps fallback for the whole refresh period.
+                    stale.set(true)
+                }
             }
             return fps
         }

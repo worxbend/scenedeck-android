@@ -5,10 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -130,8 +135,53 @@ class StudioModeRoborazziTest {
             }
         }
         composeRule.mainClock.advanceTimeBy(500L)
-        composeRule.onNodeWithContentDescription("Virtual camera starting").assertExists()
+        composeRule
+            .onNode(hasContentDescription("Virtual camera") and hasStateDescription("Starting"))
+            .assertIsNotEnabled()
         composeRule.onRoot().captureRoboImage("transport_vcam_starting_dark.png")
+    }
+
+    /** 360dp phone at 1.3x font scale: labels shrink to fit instead of ellipsizing. */
+    @Test
+    @Config(qualifiers = "w360dp-h740dp-xhdpi")
+    fun transportNarrowLargeFontDark() {
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                val density = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density.density, fontScale = 1.3f)
+                ) {
+                    Surface {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        ) {
+                            TransportBar(
+                                streaming = true,
+                                recording = true,
+                                enabled = true,
+                                pulseTally = false,
+                                onToggleStream = {},
+                                onToggleRecord = {},
+                                virtualCamActive = true,
+                            )
+                            TransportBar(
+                                streaming = false,
+                                recording = false,
+                                enabled = true,
+                                pulseTally = false,
+                                onToggleStream = {},
+                                onToggleRecord = {},
+                                virtualCamPending = VirtualCamPending.STARTING,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.onRoot().captureRoboImage("transport_narrow_large_font_dark.png")
     }
 
     @Test

@@ -30,8 +30,15 @@ internal class OnboardingDraftProfile(
         val existing = draftId?.let { profiles.byId(it) }
         val id =
             if (existing != null) {
-                profiles.update(existing.copy(name = displayName, host = host.trim(), port = port))
-                existing.id
+                // Row and credential change together, so a cancelled retry never pairs the new
+                // host with the previous attempt's password.
+                withContext(NonCancellable) {
+                    profiles.update(
+                        existing.copy(name = displayName, host = host.trim(), port = port)
+                    )
+                    secrets.setPassword(existing.id, password?.takeIf { it.isNotBlank() })
+                }
+                return existing.id
             } else {
                 create(displayName, host, port)
             }

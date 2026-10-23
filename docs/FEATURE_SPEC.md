@@ -115,6 +115,8 @@ colors, icons, ordering) lives in a local registry on the device.
   curation and position to the new name in one local transaction (OBS is never
   mutated). If curation already exists for the new name, nothing is migrated: both
   entries are kept, the new name's curation applies and the old entry shows as stale.
+  A stale entry applies to any future scene with that name until it is removed in Doctor
+  or Inventory.
   A scene-list read that raced the rename cannot bring the old name back.
 - **Export/import registry as YAML/JSON** (backup, share between devices). Export carries
   roles (`UNASSIGNED` for none) and positions; import applies the file's order first,
@@ -132,8 +134,12 @@ colors, icons, ordering) lives in a local registry on the device.
 - **Doctor page**: diagnostics over OBS inventory + local registry + graph — unassigned
   roles, stale entries, circular references, hierarchy inversions; severity-graded report.
   Inversions are raised only between explicitly assigned roles (never the implicit Primary
-  default); audio probing visits explicit Primary scenes still in OBS and skips video-only
-  inputs. The page shows running, all-clear and failed states.
+  default), except that any production scene nesting a scene explicitly marked Debug/Archive
+  is always an error; audio probing visits explicit Primary scenes still in OBS and skips
+  video-only inputs. Only scenes removed mid-scan are skipped: timeouts, disconnects and other
+  OBS rejections (including during the graph walk) fail the run, so a partial scan never shows
+  All clear. The page shows running, all-clear and failed states; fixes wait while a re-run is
+  in progress.
 
 ## 8. Mobile-first extensions (beyond desktop parity)
 
@@ -143,7 +149,7 @@ colors, icons, ordering) lives in a local registry on the device.
 | Studio mode (preview/program) + transition control | **SHIPPED M6**: one-tap Studio toggle; deck drives preview (green), TRANSITION + CUT commit to program (red); OBS-side changes from other clients tracked live | M6 ✅ |
 | Scene/source **screenshot preview** (`GetSourceScreenshot`) | **SHIPPED M6**: throttled JPEG thumbnails on deck cards (360 px q50; program/preview 2.5 s, others 10 s; only while Live visible + Ready; "Previews" toggle, default ON) | M6 ✅ |
 | Transition picker + duration + T-bar | **SHIPPED M6/M7**: bottom-sheet picker + debounced duration slider (M6); full-width T-bar: drag the thumb right (position tracks the finger), release past 80% of the travel to fire, spring-back honors MotionLevel, TalkBack custom action fires it (M7) | M6 ✅ M7 ✅ |
-| Virtual camera control | **SHIPPED M7**: direct VCam transport action; active state reads "Stop VCam" on a tertiary fill, Starting…/Stopping… with a spinner until OBS confirms (taps ignored meanwhile) | M7 ✅ |
+| Virtual camera control | **SHIPPED M7**: direct VCam transport action; active state reads "Stop" on a tertiary fill (labels shrink rather than ellipsize on narrow phones), Starting…/Stopping… with a spinner until OBS confirms (taps ignored meanwhile) | M7 ✅ |
 | Scene item visibility toggles | **SHIPPED M7**: "Sources" section in the deck card quick-edit sheet, live via `SceneItemEnableStateChanged` | M7 ✅ |
 | Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
@@ -172,6 +178,9 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
   OBS scene (same discovery rules, allow-list ignored) plus already saved names. Empty =
   every input; the Mixer re-runs discovery when the list changes. Inputs that only exist
   as disabled scene items are not offered (they can still be kept if already saved).
+  Cost: opening the sheet walks every scene and probes each input on the shared serial
+  OBS lane, so on large collections it can delay other requests for a few seconds; the
+  sheet reloads whenever it appears (also after process death).
 - Meter refresh: Smooth (every OBS batch, ~20 Hz), Normal (latest batch per 100 ms),
   Saver (per 250 ms) or Off (meters stop and render empty). Applied client-side to the
   Mixer meter pipeline; OBS keeps sending `InputVolumeMeters` at its fixed ~50 ms cadence

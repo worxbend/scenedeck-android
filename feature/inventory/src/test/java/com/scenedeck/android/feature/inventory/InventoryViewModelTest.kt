@@ -1,10 +1,13 @@
 package com.scenedeck.android.feature.inventory
 
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
+import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsVersionInfo
@@ -13,6 +16,7 @@ import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ScreenshotRequest
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +57,24 @@ class InventoryViewModelTest {
         client = FakeObsClient()
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         viewModel =
-            InventoryViewModel(registry, ObsStateRepository(client, registry, holderScope), client)
+            InventoryViewModel(
+                registry,
+                ObsStateRepository(
+                    client,
+                    registry,
+                    holderScope,
+                    SettingsRepository(
+                        SceneDeckSettingsStore.forTesting(
+                            PreferenceDataStoreFactory.create(
+                                produceFile = {
+                                    File.createTempFile("inventory_settings", ".preferences_pb")
+                                }
+                            )
+                        )
+                    ),
+                ),
+                client,
+            )
     }
 
     @After

@@ -18,7 +18,7 @@ object SceneLinkFeedback {
             SceneSwitchResult.NotConnected ->
                 "Couldn't reach OBS to switch to “${displayName(sceneName)}”."
             SceneSwitchResult.RequestFailed ->
-                "OBS couldn't switch to “${displayName(sceneName)}”. Check that the scene exists."
+                "OBS couldn't switch to “${displayName(sceneName)}” (unknown scene or no response)."
         }
 
     /** Link-supplied names are untrusted: drop control characters and cap the length. */

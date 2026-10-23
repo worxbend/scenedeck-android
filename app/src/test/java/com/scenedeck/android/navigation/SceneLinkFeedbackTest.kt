@@ -24,7 +24,7 @@ class SceneLinkFeedbackTest {
             SceneLinkFeedback.messageFor(SceneSwitchResult.NotConnected, "Cam 1"),
         )
         assertEquals(
-            "OBS couldn't switch to “Ghost”. Check that the scene exists.",
+            "OBS couldn't switch to “Ghost” (unknown scene or no response).",
             SceneLinkFeedback.messageFor(SceneSwitchResult.RequestFailed, "Ghost"),
         )
     }

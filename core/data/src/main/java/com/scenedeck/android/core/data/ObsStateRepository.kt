@@ -62,6 +62,7 @@ constructor(
     private val client: ObsClient,
     private val registry: RegistryRepository,
     @ApplicationScope private val scope: CoroutineScope,
+    private val settings: SettingsRepository,
 ) {
     private val sceneList = MutableStateFlow<List<SceneSummary>>(emptyList())
     private val programScene = MutableStateFlow<String?>(null)
@@ -193,6 +194,19 @@ constructor(
         programScene.update { if (it == old) new else it }
         previewScene.update { if (it == old) new else it }
         requestResult { registry.rename(old, new) }
+        followMixerSelection(old, new)
+    }
+
+    /**
+     * This repository runs from app start, so the saved Mixer selection follows renames even before
+     * Mixer is first opened (one atomic update; a newer selection is left alone).
+     */
+    private suspend fun followMixerSelection(old: String, new: String) {
+        requestResult {
+            settings.update {
+                if (it.mixerSelectedScene == old) it.copy(mixerSelectedScene = new) else it
+            }
+        }
     }
 
     private suspend fun refresh() {
@@ -206,9 +220,14 @@ constructor(
                 mark = renameLog.mark()
                 list = client.getSceneList()
             }
-            // Compare-and-set: a rename recorded before this commits is replayed on the retry.
+            // Compare-and-set against renames only: a rename recorded before this commits is
+            // replayed on the retry. A program change event that lands during the read is still
+            // overwritten by this older answer until the next event or refresh.
             sceneList.update { renameLog.followScenes(list.scenes, mark) }
             programScene.update { renameLog.follow(list.currentProgramScene, mark) }
+            // Renames kept racing every re-read, so the list above is a replay (which keeps the raw
+            // read if replaying would duplicate a name): settle on one more fresh read.
+            if (renameLog.mark() != mark) scope.launch { refresh() }
             // Scene absence on this connection must not delete another host/collection's curation.
             refreshStudio()
         }

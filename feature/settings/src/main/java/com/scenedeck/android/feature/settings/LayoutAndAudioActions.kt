@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -42,6 +43,7 @@ import com.scenedeck.android.core.designsystem.theme.UiDensity
 internal data class LayoutAndAudioActions(
     val onDensityChange: (UiDensity) -> Unit = {},
     val onMeterRefreshChange: (MeterRefresh) -> Unit = {},
+    /** Row tap opens the sheet; inside the sheet the same slot loads the OBS input choices. */
     val onOpenAllowList: () -> Unit = {},
     val onAudioInputAllowedChange: (String, Boolean) -> Unit = { _, _ -> },
     val onClearAllowList: () -> Unit = {},
@@ -167,6 +169,9 @@ internal fun AudioAllowListSheet(
     actions: LayoutAndAudioActions,
     onDismiss: () -> Unit,
 ) {
+    // Loads whenever the sheet appears, including when rememberSaveable reopens it after
+    // recreation, so it never shows stale or empty choices.
+    LaunchedEffect(Unit) { actions.onOpenAllowList() }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         AudioAllowListContent(allowList, choices, actions)
     }

@@ -50,8 +50,9 @@ These hues carry product meaning and adapt per theme but keep their roles:
 - **Program / Live** — red family (tally). Used ONLY for on-air state.
 - **Preview** — green family (studio mode).
 - **Ready / idle** — neutral surface tones.
-- **Stream transport** — blue idle Stream / red active Stop. **LIVE status and stream
-  time** — green; **REC status and recording time** — amber. Pulse only with Full motion.
+- **Stream transport** — blue idle Stream / red active Stop. **LIVE status** — program
+  red; **stream time** — green; **REC status and recording time** — amber. Pulse only with
+  Full motion.
 - **Meter zones** — green < −20 dB, yellow −20…−9 dB, red > −9 dB (OBS semantics).
 - **Warning/Critical thresholds** (stats) — amber at warn, red at crit. FPS and render
   thresholds scale with the OBS canvas frame rate.
@@ -104,7 +105,7 @@ These hues carry product meaning and adapt per theme but keep their roles:
 | **SceneCard** | restrained accent wash, icon + label, numbered position (stable under search), program/preview semantic outline and pill, haptic; press = scale 0.96 spring + ripple; no left rail; thumbnails get top and bottom scrims and a dark icon well |
 | **VolumeMeter** | custom Canvas: OBS-accurate zones, per-channel bars, peak hold line (20 s), loudness notch (~300 ms), pre-fader base square, butter-smooth 60 fps decay animation |
 | **MixerStrip** | vertical fader with dB taper curve, mute with animated strike-through, scope badge chip, lock toggle |
-| **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers; active VCam = tertiary "Stop VCam", pending = spinner + Starting…/Stopping… |
+| **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers; active VCam = tertiary "Stop" (labels shrink to fit narrow phones), pending = spinner + Starting…/Stopping… |
 | **StatusStrip** | persistent bottom: connection and OFF AIR/LIVE/REC state with timers; performance metrics on a second row only while streaming (one 48dp row in compact-height windows) |
 | **StatGauge** | arc gauge with amber/red threshold arcs (FPS, render time, congestion, dropped %) |
 | **TrendChart** | custom Canvas line/area chart, 2-min window, theme-aware grid |
@@ -204,8 +205,10 @@ Standby when idle, LIVE with green stream time and REC with amber recording time
 Simultaneous outputs show both rows; status dots pulse only with Full motion.
 The direct control row contains Stream, Record and VCam. Keep system insets and
 accessible status descriptions. Phone landscape uses a navigation rail and keeps content
-clear of side system bars and cutouts; snackbars use `StudioSnackbarHost`, bottom-aligned
-above the status strip and keyboard. System-bar icons follow the in-app theme. Replay Buffer is excluded from Android.
+and the rail clear of side system bars and cutouts; snackbars use `StudioSnackbarHost`,
+bottom-aligned above the status strip and keyboard. System-bar icons follow the in-app
+theme while bars stay transparent with the system's 3-button contrast scrim. Replay Buffer
+is excluded from Android.
 
 The persistent bottom bar separates connection/output state from performance
 metrics into two compact rows while streaming; standby and recording-only states

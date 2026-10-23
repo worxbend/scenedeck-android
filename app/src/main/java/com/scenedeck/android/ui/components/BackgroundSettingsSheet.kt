@@ -61,6 +61,7 @@ fun BackgroundSettingsSheet(
     var notificationsEnabled by
         remember(context) { mutableStateOf(areNotificationsEnabled(context)) }
     var denial by rememberSaveable { mutableStateOf<NotificationPermissionDenial?>(null) }
+    var rationaleBeforeRequest by rememberSaveable { mutableStateOf(false) }
     val notificationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             notificationsEnabled = areNotificationsEnabled(context)
@@ -68,7 +69,12 @@ fun BackgroundSettingsSheet(
                 denial = null
                 viewModel.setKeepAlive(true)
             } else {
-                denial = classifyDenial(shouldShowNotificationRationale(context))
+                denial =
+                    classifyDenial(
+                        before = rationaleBeforeRequest,
+                        after = shouldShowNotificationRationale(context),
+                        deniedEarlier = denial != null,
+                    )
             }
         }
 
@@ -86,6 +92,7 @@ fun BackgroundSettingsSheet(
         notice = keepAliveNotice(keepAlive, notificationsEnabled, denial),
         onKeepAliveChange = { enabled ->
             if (enabled && needsNotificationPermission(context)) {
+                rationaleBeforeRequest = shouldShowNotificationRationale(context)
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 if (!enabled) denial = null

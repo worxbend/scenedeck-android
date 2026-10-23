@@ -33,6 +33,7 @@ class ObsStateRepositoryTest {
     private lateinit var client: FakeObsClient
     private lateinit var registryDao: FakeRegistryDao
     private lateinit var repository: ObsStateRepository
+    private lateinit var settings: SettingsRepository
 
     @Before
     fun setUp() {
@@ -51,7 +52,8 @@ class ObsStateRepositoryTest {
                     )
             )
         registryDao = FakeRegistryDao()
-        repository = ObsStateRepository(client, RegistryRepository(registryDao), scope)
+        settings = SettingsRepository(SettingsRepositoryTest.newIsolatedStore())
+        repository = ObsStateRepository(client, RegistryRepository(registryDao), scope, settings)
     }
 
     @After
@@ -215,6 +217,21 @@ class ObsStateRepositoryTest {
     }
 
     @Test
+    fun sceneRenameMovesThePersistedMixerSelectionWithoutAMixerScreen(): Unit = runBlocking {
+        settings.setMixerSelectedScene("Cam 1")
+        client.setReady()
+        awaitDeck { it.allScenes.size == 3 }
+
+        // Renames of other scenes leave the selection alone.
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Screen", sceneName = "Display"))
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Cam 1", sceneName = "Camera"))
+
+        val moved =
+            withTimeout(5_000) { settings.settings.first { it.mixerSelectedScene != "Cam 1" } }
+        assertEquals("Camera", moved.mixerSelectedScene)
+    }
+
+    @Test
     fun renamingProgramAndPreviewScenesKeepsTalliesOnTheNewNames(): Unit = runBlocking {
         client.studioModeEnabled = true
         client.previewScene = "Screen"
@@ -273,7 +290,8 @@ class ObsStateRepositoryTest {
                     return answer
                 }
             }
-        val slowRepository = ObsStateRepository(slowClient, RegistryRepository(registryDao), scope)
+        val slowRepository =
+            ObsStateRepository(slowClient, RegistryRepository(registryDao), scope, settings)
         registryDao.upsert(SceneRegistryEntity("Cam 1", role = "SECONDARY"))
         val deckJob = scope.launch { slowRepository.deckState.collect {} }
         slowClient.setReady()
@@ -295,7 +313,13 @@ class ObsStateRepositoryTest {
 
         val deck =
             withTimeout(5_000) {
-                slowRepository.deckState.first { it.allScenes.size == 2 }
+                // Registry entries arrive on their own Room flow; wait for the migrated curation
+                // too, not just the post-read scene list, so the snapshot is fully settled.
+                slowRepository.deckState.first { d ->
+                    d.allScenes.size == 2 &&
+                        d.currentProgramScene == "Camera" &&
+                        d.allScenes.any { it.name == "Camera" && it.role == SceneRole.SECONDARY }
+                }
             }
         assertEquals(setOf("Scene", "Camera"), deck.allScenes.map { it.name }.toSet())
         assertEquals("Camera", deck.currentProgramScene)

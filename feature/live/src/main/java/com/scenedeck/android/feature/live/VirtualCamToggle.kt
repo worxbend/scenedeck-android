@@ -54,3 +54,25 @@ internal class VirtualCamToggle(
         const val DEFAULT_TIMEOUT_MS = 10_000L
     }
 }
+
+/** Button label for the VCam transport action. */
+internal fun virtualCamLabel(active: Boolean, pending: VirtualCamPending?): Int =
+    when (pending) {
+        VirtualCamPending.STARTING -> R.string.vcam_starting
+        VirtualCamPending.STOPPING -> R.string.vcam_stopping
+        null -> if (active) R.string.vcam_stop_short else R.string.vcam_chip
+    }
+
+internal fun virtualCamDescription(active: Boolean, pending: VirtualCamPending?): Int =
+    when {
+        pending != null -> R.string.vcam_name
+        active -> R.string.stop_vcam_cd
+        else -> R.string.start_vcam_cd
+    }
+
+internal fun virtualCamStateDescription(pending: VirtualCamPending?): Int? =
+    when (pending) {
+        VirtualCamPending.STARTING -> R.string.vcam_state_starting
+        VirtualCamPending.STOPPING -> R.string.vcam_state_stopping
+        null -> null
+    }

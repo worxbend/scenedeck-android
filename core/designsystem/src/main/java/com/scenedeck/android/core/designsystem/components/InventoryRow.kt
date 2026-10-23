@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,13 +154,20 @@ private fun StaleBadge() {
 /** Accent dot (tap → accent picker). */
 @Composable
 private fun AccentDot(name: String, accentColor: Color?, onAccentClick: () -> Unit) {
+    // 22dp dot inside a 48dp touch target.
     Box(
         modifier =
+            Modifier.minimumInteractiveComponentSize()
+                .clip(CircleShape)
+                .clickable(onClickLabel = "Change accent color for $name", onClick = onAccentClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
             Modifier.size(22.dp)
                 .clip(CircleShape)
                 .background(accentColor ?: MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable(onClickLabel = "Change accent color for $name", onClick = onAccentClick)
-    )
+        )
+    }
 }
 
 /** Role chip (tap → role menu); outlined when the role is only the implicit default. */

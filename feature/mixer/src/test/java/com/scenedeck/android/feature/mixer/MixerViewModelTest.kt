@@ -208,12 +208,7 @@ class MixerViewModelTest {
         val state = awaitState { it.displayedScene == "Quiet B" && "Quiet B" in it.sceneNames }
         assertTrue(state.notInProgram)
         assertEquals(listOf("Desktop Audio", "Mic/Aux"), state.inputs.map { it.name })
-        assertEquals(
-            "Quiet B",
-            withTimeout(5_000) {
-                settings.settings.first { it.mixerSelectedScene == "Quiet B" }.mixerSelectedScene
-            },
-        )
+        // The saved selection is migrated app-wide by ObsStateRepository (ObsStateRepositoryTest).
     }
 
     private suspend fun awaitState(condition: (MixerUiState) -> Boolean): MixerUiState =

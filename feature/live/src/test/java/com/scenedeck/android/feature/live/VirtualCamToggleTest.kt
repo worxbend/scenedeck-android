@@ -74,10 +74,16 @@ class VirtualCamToggleTest {
         )
         assertEquals(R.string.start_vcam_cd, virtualCamDescription(false, null))
         assertEquals(R.string.stop_vcam_cd, virtualCamDescription(true, null))
+        assertEquals(R.string.vcam_name, virtualCamDescription(false, VirtualCamPending.STARTING))
         assertEquals(
-            R.string.vcam_starting_cd,
-            virtualCamDescription(false, VirtualCamPending.STARTING),
+            R.string.vcam_state_starting,
+            virtualCamStateDescription(VirtualCamPending.STARTING),
         )
+        assertEquals(
+            R.string.vcam_state_stopping,
+            virtualCamStateDescription(VirtualCamPending.STOPPING),
+        )
+        assertEquals(null, virtualCamStateDescription(null))
     }
 
     @Test

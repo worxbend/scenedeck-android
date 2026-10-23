@@ -81,11 +81,16 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     }
 
     /** Removes one entry (e.g. Doctor "remove stale" fix). */
-    suspend fun remove(sceneName: String) = mutationMutex.withLock { dao.delete(sceneName) }
+    /** Removes [sceneName]'s entry and returns it (for undo), read and deleted as one step. */
+    suspend fun remove(sceneName: String): SceneRegistryEntry? = mutationMutex.withLock {
+        dao.byName(sceneName)?.toDomain()?.also { dao.delete(sceneName) }
+    }
 
     /**
      * Restores an entry removed by [remove] (Inventory undo) with its role, accent, icon and saved
-     * position. Curation saved for the same name since the removal wins and is kept.
+     * position. Curation saved for the same name since the removal wins and is kept. The saved
+     * position is restored as-is: after a reorder or import in between it may tie with another
+     * entry, which then sorts by name until the next reorder renumbers densely.
      */
     suspend fun restore(entry: SceneRegistryEntry) = mutationMutex.withLock {
         if (dao.byName(entry.sceneName) == null) dao.upsert(entry.toEntity())

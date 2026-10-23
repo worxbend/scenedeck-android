@@ -1,6 +1,7 @@
 package com.scenedeck.android.feature.stats
 
 import androidx.compose.runtime.Immutable
+import java.util.Locale
 
 /**
  * FPS and render-time gauge thresholds derived from the OBS canvas frame rate [targetFps] (30,
@@ -53,8 +54,8 @@ internal fun frameRateTitle(targetFps: Float?): String =
     if (targetFps == null) {
         "Frame rate"
     } else {
-        "Frame rate · target %s fps".format(formatFps(targetFps))
+        "Frame rate · target %s fps".format(Locale.ROOT, formatFps(targetFps))
     }
 
 private fun formatFps(fps: Float): String =
-    if (fps % 1f == 0f) "%.0f".format(fps) else "%.2f".format(fps)
+    if (fps % 1f == 0f) "%.0f".format(Locale.ROOT, fps) else "%.2f".format(Locale.ROOT, fps)

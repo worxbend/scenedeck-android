@@ -145,6 +145,36 @@ class DoctorChecksTest {
     }
 
     @Test
+    fun unassignedProductionSceneNestingExplicitDebugSceneIsStillForbidden() {
+        val g =
+            graph(
+                nodes =
+                    listOf(
+                        SceneGraphNode("Show", SceneRole.PRIMARY),
+                        SceneGraphNode("Scratch", SceneRole.DEBUG),
+                        SceneGraphNode("Old Intro", SceneRole.ARCHIVE),
+                    ),
+                edges =
+                    listOf(
+                        edge("Show", "Scratch", EdgeVerdict.FORBIDDEN),
+                        edge("Show", "Old Intro", EdgeVerdict.FORBIDDEN),
+                    ),
+            )
+        val issues =
+            DoctorChecks.hierarchyInversions(
+                g,
+                entries =
+                    listOf(
+                        entry("Scratch", SceneRole.DEBUG),
+                        entry("Old Intro", SceneRole.ARCHIVE),
+                    ),
+            )
+        assertEquals(2, issues.size)
+        assertTrue(issues.all { it.severity == DoctorSeverity.ERROR && it.sceneName == "Show" })
+        assertTrue(issues.all { "unassigned" in it.detail })
+    }
+
+    @Test
     fun primaryScenesToProbeSkipStaleAndImplicitScenes() {
         val scenes =
             DoctorChecks.primaryScenesToProbe(

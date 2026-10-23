@@ -257,3 +257,12 @@ val ObsRequestFailedException.isInputWithoutAudio: Boolean
     get() = statusCode == INVALID_RESOURCE_STATE
 
 private const val INVALID_RESOURCE_STATE = "InvalidResourceState"
+
+/**
+ * True when OBS rejected a request because the named resource does not exist (obs-websocket
+ * `ResourceNotFound`, 600), e.g. a scene removed while a scan was running.
+ */
+val ObsRequestFailedException.isResourceNotFound: Boolean
+    get() = statusCode == RESOURCE_NOT_FOUND
+
+private const val RESOURCE_NOT_FOUND = "ResourceNotFound"

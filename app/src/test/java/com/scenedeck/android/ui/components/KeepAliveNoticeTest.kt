@@ -6,15 +6,24 @@ import org.junit.Test
 class KeepAliveNoticeTest {
 
     @Test
-    fun `denial with rationale can be asked again, without rationale is blocked`() {
-        assertEquals(
-            NotificationPermissionDenial.DENIED,
-            classifyDenial(shouldShowRationale = true),
-        )
-        assertEquals(
-            NotificationPermissionDenial.BLOCKED,
-            classifyDenial(shouldShowRationale = false),
-        )
+    fun `denial with rationale can be asked again`() {
+        assertEquals(NotificationPermissionDenial.DENIED, classifyDenial(false, true, false))
+        assertEquals(NotificationPermissionDenial.DENIED, classifyDenial(true, true, true))
+    }
+
+    @Test
+    fun `losing the rationale on this request means dont ask again`() {
+        assertEquals(NotificationPermissionDenial.BLOCKED, classifyDenial(true, false, false))
+    }
+
+    @Test
+    fun `dismissed first prompt is not reported as blocked`() {
+        assertEquals(NotificationPermissionDenial.DENIED, classifyDenial(false, false, false))
+    }
+
+    @Test
+    fun `repeated denial without any rationale is blocked`() {
+        assertEquals(NotificationPermissionDenial.BLOCKED, classifyDenial(false, false, true))
     }
 
     @Test

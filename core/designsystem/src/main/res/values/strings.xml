@@ -25,4 +25,8 @@
     <string name="broadcast_recording_paused">REC PAUSED</string>
     <string name="password_show">Show password</string>
     <string name="password_hide">Hide password</string>
+    <string name="tbar_description">T-bar: slide right past %1$d%% and release to transition</string>
+    <string name="tbar_fire">Fire transition</string>
+    <string name="tbar_slide">Slide to transition</string>
+    <string name="tbar_release">Release to transition</string>
 </resources>

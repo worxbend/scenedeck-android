@@ -41,10 +41,21 @@ fun keepAliveNotice(
     }
 
 /**
- * Classifies a denied request. `shouldShowRequestPermissionRationale` is false after a "Don't ask
- * again" denial (and when the system auto-denies without a prompt), so a denial without rationale
- * means only system settings can help.
+ * Classifies a denied request from `shouldShowRequestPermissionRationale` read before ([before])
+ * and after ([after]) the request, plus whether a request was already denied earlier in this sheet
+ * ([deniedEarlier]).
+ * - Rationale after the request: the system will ask again → DENIED.
+ * - Rationale before but not after: the user just chose "Don't ask again" → BLOCKED.
+ * - No rationale either time is ambiguous: a dismissed first prompt (back, tap outside) also reads
+ *   this way, so it is BLOCKED only once an earlier request was already denied.
  */
-fun classifyDenial(shouldShowRationale: Boolean): NotificationPermissionDenial =
-    if (shouldShowRationale) NotificationPermissionDenial.DENIED
-    else NotificationPermissionDenial.BLOCKED
+fun classifyDenial(
+    before: Boolean,
+    after: Boolean,
+    deniedEarlier: Boolean,
+): NotificationPermissionDenial =
+    when {
+        after -> NotificationPermissionDenial.DENIED
+        before || deniedEarlier -> NotificationPermissionDenial.BLOCKED
+        else -> NotificationPermissionDenial.DENIED
+    }

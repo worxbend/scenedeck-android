@@ -16,12 +16,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -31,11 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.scenedeck.android.core.designsystem.components.broadcastBreathingHalo
 import com.scenedeck.android.core.designsystem.components.broadcastStreamButtonColors
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
@@ -100,10 +104,8 @@ private fun StreamButton(
     ) {
         Icon(SceneIcon.STREAM.imageVector, null, Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(
-            stringResource(if (streaming) R.string.stream_stop_short else R.string.stream_short),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        TransportLabel(
+            stringResource(if (streaming) R.string.stream_stop_short else R.string.stream_short)
         )
     }
 }
@@ -132,17 +134,15 @@ private fun RecordButton(
         if (recording) TallyDot(pulseTally)
         else Icon(SceneIcon.RECORD.imageVector, null, Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(
-            stringResource(if (recording) R.string.record_stop_short else R.string.record_short),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        TransportLabel(
+            stringResource(if (recording) R.string.record_stop_short else R.string.record_short)
         )
     }
 }
 
 /**
- * VCam: neutral tonal when idle, a strong tertiary "Stop VCam" fill while active, and a spinner
- * with Starting…/Stopping… while OBS brings the camera up or down (taps ignored until confirmed).
+ * VCam: neutral tonal when idle, a strong tertiary "Stop" fill while active, and a spinner with
+ * Starting…/Stopping… while OBS brings the camera up or down (taps ignored until confirmed).
  */
 @Composable
 private fun VirtualCameraButton(
@@ -154,6 +154,7 @@ private fun VirtualCameraButton(
 ) {
     val label = virtualCamLabel(active, pending)
     val description = stringResource(virtualCamDescription(active, pending))
+    val pendingState = virtualCamStateDescription(pending)?.let { stringResource(it) }
     val scheme = MaterialTheme.colorScheme
     val colors =
         when {
@@ -178,7 +179,11 @@ private fun VirtualCameraButton(
         modifier =
             modifier.heightIn(min = 48.dp).semantics {
                 contentDescription = description
-                if (pending != null) stateDescription = description
+                // Name + state ("Virtual camera, Starting"), and no actionable no-op while pending.
+                if (pendingState != null) {
+                    stateDescription = pendingState
+                    disabled()
+                }
             },
     ) {
         if (pending != null) {
@@ -191,23 +196,27 @@ private fun VirtualCameraButton(
             Icon(SceneIcon.CAMERA.imageVector, null, Modifier.size(16.dp))
         }
         Spacer(Modifier.width(5.dp))
-        Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        TransportLabel(stringResource(label))
     }
 }
 
-internal fun virtualCamLabel(active: Boolean, pending: VirtualCamPending?): Int =
-    when (pending) {
-        VirtualCamPending.STARTING -> R.string.vcam_starting
-        VirtualCamPending.STOPPING -> R.string.vcam_stopping
-        null -> if (active) R.string.vcam_stop_short else R.string.vcam_chip
-    }
-
-internal fun virtualCamDescription(active: Boolean, pending: VirtualCamPending?): Int =
-    when (pending) {
-        VirtualCamPending.STARTING -> R.string.vcam_starting_cd
-        VirtualCamPending.STOPPING -> R.string.vcam_stopping_cd
-        null -> if (active) R.string.stop_vcam_cd else R.string.start_vcam_cd
-    }
+/**
+ * One-third-width buttons on 360dp phones (and large font scales) shrink their label before they
+ * ever ellipsize it.
+ */
+@Composable
+private fun TransportLabel(text: String) {
+    Text(
+        text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        autoSize =
+            TextAutoSize.StepBased(
+                minFontSize = 9.sp,
+                maxFontSize = LocalTextStyle.current.fontSize,
+            ),
+    )
+}
 
 @Composable
 private fun TallyDot(pulse: Boolean) {

@@ -212,7 +212,7 @@ constructor(
                     is ObsEvent.InputRemoved,
                     is ObsEvent.InputNameChanged -> selectedRefresh.tryEmit(Unit)
 
-                    // MixerRepository migrates the persisted selection; follow it in memory.
+                    // ObsStateRepository migrates the persisted selection; follow it in memory.
                     is ObsEvent.SceneNameChanged -> {
                         selectedScene.update {
                             if (it == event.oldSceneName) event.sceneName else it
@@ -261,8 +261,23 @@ constructor(
         selectedInputs.value = emptyList()
         selectionJob = viewModelScope.launch {
             performAction {
-                if (persist) settings.setMixerSelectedScene(sceneName)
-                discoverSelectedScene(sceneName, version)
+                if (persist) persistSelection(sceneName)
+                discoverSelectedScene(selectedScene.value, version)
+            }
+        }
+    }
+
+    /**
+     * Saves the choice, then re-applies a rename that OBS reported while the write was in flight
+     * (the app-wide rename migration ran before this write and found nothing to move).
+     */
+    private suspend fun persistSelection(sceneName: String?) {
+        settings.setMixerSelectedScene(sceneName)
+        val current = selectedScene.value
+        if (current != sceneName) {
+            settings.update {
+                if (it.mixerSelectedScene == sceneName) it.copy(mixerSelectedScene = current)
+                else it
             }
         }
     }

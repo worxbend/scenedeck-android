@@ -324,12 +324,8 @@ internal fun SettingsContent(
         SettingsPanel {
             MixerSettingsPanel(
                 layoutAndAudio,
-                layoutAndAudioActions.copy(
-                    onOpenAllowList = {
-                        layoutAndAudioActions.onOpenAllowList()
-                        showAllowList = true
-                    }
-                ),
+                // The sheet loads its own choices, also when restored after process death.
+                layoutAndAudioActions.copy(onOpenAllowList = { showAllowList = true }),
             )
         }
         Spacer(Modifier.height(24.dp))

@@ -137,9 +137,23 @@ class DoctorViewModelTest {
     }
 
     /** OBS fixture: Camera nests Lower Third and a video-only color source plus a mic. */
+    @Test
+    fun graphWalkTimeoutFailsTheRunInsteadOfReportingAllClear(): Unit = runBlocking {
+        val client = FakeObsClient().apply { setReady() }
+        client.sceneItemFailure = ObsRequestTimeoutException()
+        val viewModel = DoctorViewModel(RegistryRepository(FakeRegistryDao()), client)
+
+        val state = withTimeout(5_000) { viewModel.uiState.first { it.error != null } }
+
+        assertEquals(DOCTOR_TIMEOUT_MESSAGE, state.error)
+        assertFalse(state.ranOnce)
+        assertTrue(state.issues.isEmpty())
+    }
+
     @Suppress("TooManyFunctions")
     private class FakeObsClient : ObsClient {
         @Volatile var sceneListFailure: Exception? = null
+        @Volatile var sceneItemFailure: Exception? = null
         val itemListRequests: MutableList<String> =
             java.util.Collections.synchronizedList(mutableListOf())
         private val _connectionState =
@@ -167,6 +181,7 @@ class DoctorViewModelTest {
 
         override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> {
             itemListRequests += sceneName
+            sceneItemFailure?.let { throw it }
             return when (sceneName) {
                 "Camera" ->
                     listOf(

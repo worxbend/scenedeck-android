@@ -1,5 +1,6 @@
 package com.scenedeck.android.core.data
 
+import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.obs.ObsClient
 
 /** A node in the scene dependency graph. */
@@ -31,8 +32,27 @@ data class SceneGraph(
  */
 class SceneGraphBuilder(private val client: ObsClient) {
 
+    /** Best-effort graph for display: failed reads leave parts of the graph empty. */
     suspend fun build(registryEntries: List<SceneRegistryEntry>): SceneGraph {
         val scenes = requestResult { client.getSceneList().scenes }.getOrDefault(emptyList())
+        return assemble(scenes, registryEntries, strict = false)
+    }
+
+    /**
+     * Graph for diagnostics over an already-read [scenes] list. Only a scene that vanished mid-walk
+     * (`ResourceNotFound`) is skipped; timeouts, disconnects, protocol errors and other OBS
+     * rejections propagate, so a partial walk can never be reported as all clear.
+     */
+    suspend fun buildStrict(
+        scenes: List<SceneSummary>,
+        registryEntries: List<SceneRegistryEntry>,
+    ): SceneGraph = assemble(scenes, registryEntries, strict = true)
+
+    private suspend fun assemble(
+        scenes: List<SceneSummary>,
+        registryEntries: List<SceneRegistryEntry>,
+        strict: Boolean,
+    ): SceneGraph {
         val sceneNames = scenes.map { it.name }.toSet()
         val entriesByName = linkedMapOf<String, SceneRegistryEntry>()
         registryEntries.forEach { entriesByName.putIfAbsent(it.sceneName, it) }
@@ -40,7 +60,7 @@ class SceneGraphBuilder(private val client: ObsClient) {
             entriesByName[name]?.role ?: SceneRole.PRIMARY
         }
 
-        val walk = EdgeWalk(roleOf)
+        val walk = EdgeWalk(roleOf, strict)
         for (scene in scenes) {
             walk.collect(scene.name, depth = 0)
         }
@@ -69,13 +89,19 @@ class SceneGraphBuilder(private val client: ObsClient) {
      * Per-build traversal context: role lookup, collected edges, and the recursion guard. Keeping
      * them as properties reduces the recursion to just (sceneName, depth).
      */
-    private inner class EdgeWalk(private val roleOf: (String) -> SceneRole) {
+    private inner class EdgeWalk(
+        private val roleOf: (String) -> SceneRole,
+        private val strict: Boolean,
+    ) {
         val edges = mutableListOf<SceneGraphEdge>()
         private val visited = mutableSetOf<String>()
 
         suspend fun collect(sceneName: String, depth: Int) {
             if (depth >= MAX_DEPTH || !visited.add(sceneName)) return
-            val items = requestResult { client.getSceneItemList(sceneName) }.getOrNull() ?: return
+            val items =
+                if (strict) sceneItemsOrNull(client, sceneName)
+                else requestResult { client.getSceneItemList(sceneName) }.getOrNull()
+            if (items == null) return
             for (item in items) {
                 // Scene sources only (inputKind == null, not a group, enabled).
                 if (item.inputKind != null || item.isGroup || !item.enabled) continue

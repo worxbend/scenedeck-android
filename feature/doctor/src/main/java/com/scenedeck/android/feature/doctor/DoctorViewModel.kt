@@ -100,9 +100,11 @@ constructor(
 
     private suspend fun runChecks(connection: ConnectionState) {
         _uiState.value = _uiState.value.copy(connection = connection, running = true, error = null)
-        val obsScenes = client.getSceneList().scenes.map { it.name }
+        val sceneList = client.getSceneList().scenes
+        val obsScenes = sceneList.map { it.name }
         val entries = registry.snapshot()
-        val graph = graphBuilder.build(entries)
+        // Strict: a failed graph read fails the run instead of finishing as a partial all clear.
+        val graph = graphBuilder.buildStrict(sceneList, entries)
         // Only explicitly PRIMARY scenes still present in OBS are reported, so only those are
         // probed; stale entries are a finding of their own and must not abort the scan.
         val primaryScenes = DoctorChecks.primaryScenesToProbe(obsScenes, entries)

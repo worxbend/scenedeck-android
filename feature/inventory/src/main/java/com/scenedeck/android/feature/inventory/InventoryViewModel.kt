@@ -11,12 +11,15 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -86,10 +89,12 @@ constructor(
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
-    private val _removals = MutableSharedFlow<RemovedStaleEntry>(extraBufferCapacity = 1)
+    // Buffered one-shot events: a removal emitted while no screen collects (rotation) still
+    // reaches the next collector, so its Undo is never lost.
+    private val _removals = Channel<RemovedStaleEntry>(Channel.BUFFERED)
 
     /** Stale-entry removals, shown as a snackbar with an Undo action. */
-    val removals: SharedFlow<RemovedStaleEntry> = _removals.asSharedFlow()
+    val removals: Flow<RemovedStaleEntry> = _removals.receiveAsFlow()
 
     /**
      * Registry export/import transfer; file work runs on [viewModelScope] so it survives rotation.
@@ -135,9 +140,8 @@ constructor(
 
     fun removeStale(sceneName: String) {
         launchAction {
-            val removed = registry.byName(sceneName) ?: return@launchAction
-            registry.remove(sceneName)
-            _removals.emit(RemovedStaleEntry(removed))
+            val removed = registry.remove(sceneName) ?: return@launchAction
+            _removals.send(RemovedStaleEntry(removed))
         }
     }
 

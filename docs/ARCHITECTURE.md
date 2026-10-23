@@ -103,7 +103,9 @@ Connections, Settings and Help. The internal Live route remains serialization-co
 Inventory/Settings; Live page reflows grid columns. The shell (`ShellLayout`) switches
 compact-height windows (phone landscape, < 480dp) to a navigation rail with a single-row
 status strip, applies horizontal safe-drawing insets to all content (end edge only beside
-a rail), and re-applies `enableEdgeToEdge` bar styles from the resolved app theme.
+a rail, whose start edge clears display cutouts), and re-applies `enableEdgeToEdge` with
+`SystemBarStyle.auto` whose dark-mode detection follows the resolved app theme (keeps
+transparent bars and the system 3-button contrast scrim).
 
 ## Error & offline UX
 

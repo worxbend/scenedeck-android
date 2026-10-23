@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,13 +33,17 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.core.designsystem.R
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
@@ -96,63 +102,86 @@ fun TBar(
             thumbBase = MaterialTheme.colorScheme.primary,
             previewColor = sceneDeckColors.preview,
         )
+    val description =
+        stringResource(R.string.tbar_description, (TBAR_TRIGGER_THRESHOLD * 100).toInt())
+    val fireLabel = stringResource(R.string.tbar_fire)
+    val hint = stringResource(if (armed) R.string.tbar_release else R.string.tbar_slide)
 
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(TBarHeight)
-                .clearAndSetSemantics {
-                    contentDescription =
-                        "T-bar: slide right past ${(TBAR_TRIGGER_THRESHOLD * 100).toInt()}% " +
-                            "and release to transition"
-                    customActions =
-                        listOf(
-                            CustomAccessibilityAction("Fire transition") {
-                                currentTrigger()
-                                true
-                            }
-                        )
-                }
-                .pointerInput(Unit) {
-                    val thumbPx = ThumbWidth.toPx()
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        val width = size.width.toFloat()
-                        if (!tBarGrabAllowed(down.position.x, width, thumbPx)) {
-                            return@awaitEachGesture
-                        }
-                        down.consume()
-                        dragging = true
-                        dragFraction = tBarFraction(down.position.x, width, thumbPx)
-                        try {
-                            val released =
-                                horizontalDrag(down.id) { change ->
-                                    change.consume()
-                                    dragFraction = tBarFraction(change.position.x, width, thumbPx)
-                                }
-                            if (released && dragFraction >= TBAR_TRIGGER_THRESHOLD) {
-                                currentTrigger()
-                            }
-                        } finally {
-                            dragging = false
-                        }
-                    }
-                },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Canvas(Modifier.matchParentSize()) { drawTBar(armed, displayed, colors) }
-        Text(
-            text = if (armed) "Release to transition" else "Slide to transition",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // The track geometry and gesture are drawn left-to-right (like OBS's T-bar); keep the label on
+    // the same side as the thumb in RTL locales too.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Box(
             modifier =
-                Modifier.padding(start = ThumbWidth + 12.dp)
-                    .alpha(1f - displayed.coerceIn(0f, 0.6f)),
-        )
+                modifier
+                    .fillMaxWidth()
+                    .height(TBarHeight)
+                    // The grab zone starts near the screen edge; keep system back swipes off it.
+                    .systemGestureExclusion()
+                    .clearAndSetSemantics {
+                        contentDescription = description
+                        customActions =
+                            listOf(
+                                CustomAccessibilityAction(fireLabel) {
+                                    currentTrigger()
+                                    true
+                                }
+                            )
+                    }
+                    .tBarDrag(
+                        onDrag = { fraction ->
+                            dragging = true
+                            dragFraction = fraction
+                        },
+                        onEnd = { released ->
+                            if (released && dragFraction >= TBAR_TRIGGER_THRESHOLD) currentTrigger()
+                            dragging = false
+                        },
+                    ),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Canvas(Modifier.matchParentSize()) { drawTBar(armed, displayed, colors) }
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier.padding(start = ThumbWidth + 12.dp)
+                        .alpha(1f - displayed.coerceIn(0f, 0.6f)),
+            )
+        }
     }
 }
+
+/**
+ * Absolute-position drag over the track: [onDrag] gets the thumb fraction from the first down (no
+ * slop loss); [onEnd] reports whether the pointer was released (vs. cancelled). Grabs only on or
+ * near the resting thumb.
+ */
+private fun Modifier.tBarDrag(
+    onDrag: (Float) -> Unit,
+    onEnd: (released: Boolean) -> Unit,
+): Modifier =
+    pointerInput(Unit) {
+        val thumbPx = ThumbWidth.toPx()
+        awaitEachGesture {
+            val down = awaitFirstDown()
+            val width = size.width.toFloat()
+            if (!tBarGrabAllowed(down.position.x, width, thumbPx)) return@awaitEachGesture
+            down.consume()
+            onDrag(tBarFraction(down.position.x, width, thumbPx))
+            var released = false
+            try {
+                released =
+                    horizontalDrag(down.id) { change ->
+                        change.consume()
+                        onDrag(tBarFraction(change.position.x, width, thumbPx))
+                    }
+            } finally {
+                onEnd(released)
+            }
+        }
+    }
 
 private fun tBarSpring(dragging: Boolean, motionLevel: MotionLevel): AnimationSpec<Float> =
     when {

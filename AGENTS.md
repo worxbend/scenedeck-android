@@ -59,7 +59,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - Stats FPS/render thresholds derive from the OBS canvas FPS (`GetVideoSettings`); 60 fps is only the unknown fallback. STREAM LIVE chip is program red, REC chip amber.
 - Default styling: charcoal/azure studio palette; scene grid tiles use restrained accents and theme-aware labels.
 - Scene cards show numbered positions (search keeps deck numbers); drag grips appear only in explicit reorder mode, where captions/a11y describe reordering instead of switching.
-- Studio T-bar is full-width; fraction follows the absolute pointer, fires past 80% on release. VCam shows Stop VCam when active and Starting…/Stopping… until OBS confirms.
+- Studio T-bar is full-width; fraction follows the absolute pointer, fires past 80% on release. VCam shows Stop (tertiary) when active and Starting…/Stopping… until OBS confirms.
 - Inventory: unassigned scenes show an outlined "Unassigned" chip; stale removal offers Undo. Graph edges are deduplicated per parent→child pair and role fills never use program red.
 - Settings density (SceneDeckTheme.spacing), Mixer audio allow-list and meter refresh are persisted in DataStore; meter refresh is client-side sampling.
 - Scene order: saved registry positions first, then OBS order (descending `sceneIndex`), then name; Scenes and Inventory share it. Reorders renumber densely and never assign roles; import applies the file's order so export → import round-trips.
@@ -68,7 +68,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - The living StudioStylebook and docs/DESIGN_SYSTEM.md define the common visual language; connection forms open fully expanded and group identity/server/security with secure password visibility (shared `StudioPasswordField`, also used by onboarding).
 
 - Apply status-bar insets outside main-screen scroll containers; Mixer headers must remain below system icons and cutouts.
-- Compact-height windows use a navigation rail and a single-row status strip; the shell applies horizontal safe-drawing insets (end only beside the rail). Snackbars use StudioSnackbarHost bottom-aligned; system-bar styles follow the resolved app theme.
+- Compact-height windows use a navigation rail and a single-row status strip; the shell applies horizontal safe-drawing insets (end only beside the rail; the rail side clears cutouts). Snackbars use StudioSnackbarHost bottom-aligned; system-bar icons follow the resolved app theme via `SystemBarStyle.auto` (never light/dark styles, which drop the contrast scrim).
 
 ## Quality and reliability contract
 
@@ -78,7 +78,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - Reconnect backoff (1–30 s) is skippable via `retryNow()` (Retry now button, app
   foreground, network available); it only wakes a pending backoff and keeps the attempt count.
 - Latest Mixer discovery wins; Doctor failures must not produce false stale/broken-source findings.
-- Doctor failed runs show a sanitized error, never prior results; inversions need explicit roles.
+- Doctor failed runs (incl. graph-walk timeouts) show a sanitized error, never prior results or All clear; inversions need explicit roles, except production → explicit Debug/Archive.
 - OBS requests have a 10-second admission-and-response deadline, remain bound to their
   originating session, and never retry timed-out writes automatically. Caller cancellation
   propagates; diagnostic failures exclude server comments and transport/parser details.

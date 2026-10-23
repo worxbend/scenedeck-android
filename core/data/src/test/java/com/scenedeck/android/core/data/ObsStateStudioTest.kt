@@ -42,6 +42,7 @@ class ObsStateStudioTest {
                 client,
                 RegistryRepository(FakeRegistryDao()),
                 scope,
+                SettingsRepository(SettingsRepositoryTest.newIsolatedStore()),
             )
     }
 

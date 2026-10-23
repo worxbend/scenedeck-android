@@ -85,25 +85,6 @@ class MixerRepositoryTest {
     }
 
     @Test
-    fun sceneRenameMovesThePersistedSelectedSceneEvenWithoutAMixerScreen() = runTest {
-        settings.setMixerSelectedScene("Main")
-        val client = MediaClient()
-        MixerRepository(client, settings, backgroundScope)
-        client.setReady()
-        runCurrent()
-
-        // Renames of other scenes leave the selection alone.
-        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Intro", sceneName = "Opening"))
-        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Main", sceneName = "Main show"))
-        runCurrent()
-
-        assertEquals(
-            "Main show",
-            settings.settings.first { it.mixerSelectedScene != "Main" }.mixerSelectedScene,
-        )
-    }
-
-    @Test
     fun failedVolumeWriteRollsBackOptimisticPatch() = runTest {
         val client =
             object : MediaClient() {

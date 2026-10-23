@@ -37,6 +37,8 @@ data class GraphNodeSpec(
     val inCycle: Boolean = false,
     /** Label color; must contrast with [color]. */
     val contentColor: Color = Color.White,
+    /** Shape outline for fills close to the page surface (3:1 non-text contrast). */
+    val outlineColor: Color? = null,
 )
 
 /** One styled edge of the rendered graph. */
@@ -204,7 +206,12 @@ private fun GraphNode(
         modifier = modifier.size(width = width, height = NODE_HEIGHT),
         shape = MaterialTheme.shapes.medium,
         color = node.color,
-        border = if (node.inCycle) BorderStroke(2.dp, SceneDeckTheme.colors.recording) else null,
+        border =
+            when {
+                node.inCycle -> BorderStroke(2.dp, SceneDeckTheme.colors.recording)
+                node.outlineColor != null -> BorderStroke(1.dp, node.outlineColor)
+                else -> null
+            },
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(

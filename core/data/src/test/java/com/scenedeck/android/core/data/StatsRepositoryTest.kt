@@ -237,6 +237,23 @@ class StatsRepositoryTest {
     }
 
     @Test
+    fun failedFirstCanvasFrameRateReadRetriesOnTheNextPoll() = runTest {
+        val client = FakeObsClient(statsResponse = statsResponse())
+        client.setReady()
+        val repository = StatsRepository(client, backgroundScope)
+        runCurrent()
+        assertEquals(null, repository.telemetry.value.targetFps)
+        assertEquals(1, client.videoSettingsCalls)
+
+        // Still unknown, so the next 1 Hz poll retries instead of waiting the refresh period.
+        client.videoSettingsResponse = videoSettings(30, 1)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2, client.videoSettingsCalls)
+        assertEquals(30.0, repository.telemetry.value.targetFps)
+    }
+
+    @Test
     fun unknownCanvasFrameRateWhenVideoSettingsUnavailable() = runTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.setReady()

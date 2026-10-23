@@ -93,19 +93,28 @@ object DoctorChecks {
     /**
      * WARNING/ERROR: edges violating the role rules (SUSPICIOUS/FORBIDDEN).
      *
-     * Only edges whose two scenes both carry an explicitly assigned role are reported: a scene
-     * without a registry role is only *implicitly* Primary, so flagging it would turn every nested
-     * scene of a fresh, uncurated collection into noise.
+     * Only verdicts that follow from explicitly assigned roles are reported: a scene without a
+     * registry role is only *implicitly* Primary, so flagging it would turn every nested scene of a
+     * fresh, uncurated collection into noise. Production scenes nesting a scene explicitly marked
+     * Debug/Archive stay FORBIDDEN even when the parent is unassigned, because that verdict depends
+     * on the child's explicit role alone.
      */
     fun hierarchyInversions(
         graph: SceneGraph,
         entries: List<SceneRegistryEntry>,
     ): List<DoctorIssue> {
-        val roleOf = graph.nodes.associate { it.name to it.role }
-        val explicit = entries.filter { it.role != null }.map { it.sceneName }.toSet()
+        // First duplicate entry wins, as in the graph metadata.
+        val explicitRoles =
+            buildMap<String, SceneRole?> {
+                    entries.forEach { if (it.sceneName !in this) put(it.sceneName, it.role) }
+                }
+                .filterValues { it != null }
+        val roleOf = { name: String ->
+            explicitRoles[name]?.name ?: "unassigned, treated as ${SceneRole.PRIMARY}"
+        }
         return graph.edges
             .filter { it.verdict != EdgeVerdict.OK }
-            .filter { it.from in explicit && it.to in explicit }
+            .filter { reportsInversion(it, explicitRoles) }
             .map { edge ->
                 val forbidden = edge.verdict == EdgeVerdict.FORBIDDEN
                 DoctorIssue(
@@ -115,12 +124,24 @@ object DoctorChecks {
                         if (forbidden) "Forbidden scene dependency"
                         else "Surprising scene dependency",
                     detail =
-                        "“${edge.from}” (${roleOf[edge.from]}) depends on " +
-                            "“${edge.to}” (${roleOf[edge.to]}), which the role rules " +
+                        "“${edge.from}” (${roleOf(edge.from)}) depends on " +
+                            "“${edge.to}” (${roleOf(edge.to)}), which the role rules " +
                             (if (forbidden) "forbid." else "flag as suspicious."),
                     sceneName = edge.from,
                 )
             }
+    }
+
+    private fun reportsInversion(
+        edge: SceneGraphEdge,
+        explicitRoles: Map<String, SceneRole?>,
+    ): Boolean {
+        val child = explicitRoles[edge.to]
+        val bothExplicit = edge.from in explicitRoles && child != null
+        val explicitNonProductionChild =
+            edge.verdict == EdgeVerdict.FORBIDDEN &&
+                (child == SceneRole.DEBUG || child == SceneRole.ARCHIVE)
+        return bothExplicit || explicitNonProductionChild
     }
 
     /** INFO: MODULE scenes not referenced by any other scene. */

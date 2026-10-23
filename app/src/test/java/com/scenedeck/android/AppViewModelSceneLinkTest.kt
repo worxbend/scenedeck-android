@@ -61,7 +61,7 @@ class AppViewModelSceneLinkTest {
         vm.onSceneLink("Ghost")
 
         val message = vm.sceneLinkMessage.value
-        assertEquals("OBS couldn't switch to “Ghost”. Check that the scene exists.", message)
+        assertEquals("OBS couldn't switch to “Ghost” (unknown scene or no response).", message)
         vm.onSceneLinkMessageShown(message!!)
         assertNull(vm.sceneLinkMessage.value)
     }
@@ -93,7 +93,7 @@ class AppViewModelSceneLinkTest {
         vm.onSceneLink("Ghost")
         vm.onSceneLinkMessageShown("older message")
         assertEquals(
-            "OBS couldn't switch to “Ghost”. Check that the scene exists.",
+            "OBS couldn't switch to “Ghost” (unknown scene or no response).",
             vm.sceneLinkMessage.value,
         )
     }

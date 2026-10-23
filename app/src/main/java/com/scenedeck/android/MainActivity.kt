@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +44,11 @@ class MainActivity : ComponentActivity() {
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
             val darkTheme = appState.isDarkTheme(isSystemInDarkTheme())
             // Bar icons follow the resolved app theme, not the system night mode.
-            LaunchedEffect(darkTheme) { applySystemBarAppearance(darkTheme) }
+            // Applied when the first frame commits (not a launched coroutine one frame later).
+            DisposableEffect(darkTheme) {
+                applySystemBarAppearance(darkTheme)
+                onDispose {}
+            }
             val sceneLinkMessage by appViewModel.sceneLinkMessage.collectAsStateWithLifecycle()
             // Toast (not a shell snackbar) so deep-link failures surface on every screen,
             // including onboarding.
