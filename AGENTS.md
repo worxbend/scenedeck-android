@@ -72,6 +72,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - Cognitive and cyclomatic complexity checks include Compose; no blanket baselines.
 - Cancellation must propagate from suspend best-effort operations; settings/locks update atomically.
 - Latest Mixer discovery wins; Doctor failures must not produce false stale/broken-source findings.
+- Doctor failed runs show a sanitized error, never prior results; inversions need explicit roles.
 - OBS requests have a 10-second admission-and-response deadline, remain bound to their
   originating session, and never retry timed-out writes automatically. Caller cancellation
   propagates; diagnostic failures exclude server comments and transport/parser details.

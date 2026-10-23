@@ -238,3 +238,14 @@ class ObsRequestFailedException(
     message: String?,
     cause: Throwable? = null,
 ) : Exception("OBS request failed ($statusCode)")
+
+/**
+ * True when OBS rejected an input audio request (`GetInputVolume`, `GetInputMute`, ...) because the
+ * input has no audio capability (obs-websocket `InvalidResourceState`, 604: "The specified input
+ * does not support audio."). Video-only inputs such as color or text sources answer this way; it
+ * describes the source kind, not a broken source.
+ */
+val ObsRequestFailedException.isInputWithoutAudio: Boolean
+    get() = statusCode == INVALID_RESOURCE_STATE
+
+private const val INVALID_RESOURCE_STATE = "InvalidResourceState"

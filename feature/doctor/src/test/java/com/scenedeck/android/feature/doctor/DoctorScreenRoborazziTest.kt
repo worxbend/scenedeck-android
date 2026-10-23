@@ -69,4 +69,28 @@ class DoctorScreenRoborazziTest {
         }
         composeRule.onRoot().captureRoboImage("doctor_report_dark.png")
     }
+
+    @Test
+    fun doctorRunningDark() = captureState("doctor_running_dark.png", DoctorUiState(running = true))
+
+    @Test
+    fun doctorAllClearDark() =
+        captureState("doctor_all_clear_dark.png", DoctorUiState(ranOnce = true))
+
+    @Test
+    fun doctorFailedDark() =
+        captureState("doctor_failed_dark.png", DoctorUiState(error = DOCTOR_FAILED_MESSAGE))
+
+    private fun captureState(fileName: String, state: DoctorUiState) {
+        val ready =
+            state.copy(
+                connection = ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "linux"))
+            )
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface { DoctorContent(uiState = ready, onRefresh = {}, onFix = {}) }
+            }
+        }
+        composeRule.onRoot().captureRoboImage(fileName)
+    }
 }

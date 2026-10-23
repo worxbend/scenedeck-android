@@ -274,6 +274,34 @@ internal class RequestLifecycleTest : ObsClientTestBase() {
     }
 
     @Test
+    fun audioRequestOnVideoOnlyInputIsRecognisedAsWithoutAudio(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            server.enqueueSession()
+            val client = client(timeoutMs = 10_000)
+            client.connect("127.0.0.1", server.port)
+            server.responseFrame = { type, frame ->
+                if (type == "GetInputVolume")
+                    frame.replace(
+                        "\"result\":true,\"code\":100",
+                        "\"result\":false,\"code\":604," +
+                            "\"comment\":\"The specified input does not support audio.\"",
+                    )
+                else frame
+            }
+
+            val failure = runCatching { client.getInputVolume("Color") }.exceptionOrNull()
+            val error = assertIsInstance<ObsRequestFailedException>(failure)
+            assertTrue(error.isInputWithoutAudio)
+            assertTrue(
+                !ObsRequestFailedException("GetInputVolume", "ResourceNotFound", null)
+                    .isInputWithoutAudio
+            )
+            client.disconnect()
+        }
+    }
+
+    @Test
     fun malformedRequestResponseReturnsSafeProtocolFailureAndReleasesRequest(): Unit = runBlocking {
         FakeObsServer().use { server ->
             server.start()

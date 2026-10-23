@@ -120,6 +120,9 @@ colors, icons, ordering) lives in a local registry on the device.
   against role rules to spot surprising dependencies before going live.
 - **Doctor page**: diagnostics over OBS inventory + local registry + graph — unassigned
   roles, stale entries, circular references, hierarchy inversions; severity-graded report.
+  Inversions are raised only between explicitly assigned roles (never the implicit Primary
+  default); audio probing visits explicit Primary scenes still in OBS and skips video-only
+  inputs. The page shows running, all-clear and failed states.
 
 ## 8. Mobile-first extensions (beyond desktop parity)
 
@@ -171,7 +174,8 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 - Pairing rejects ambiguous authorities, duplicate parameters, unexpected paths/fragments,
   invalid ports and oversized input. Scene deep links reject ambiguous authorities/NUL names.
 - Password drafts intentionally do not survive process recreation; credentials stay encrypted.
-- Mixer selection discards obsolete discoveries; Doctor keeps prior results on request failure.
+- Mixer selection discards obsolete discoveries; Doctor drops prior results on a failed run
+  and shows a sanitized error instead.
 - Mixer lifecycle discoveries coalesce separately from immediate mute/volume events.
   Confirmed values and pending writes prevent obsolete failures or discovery reads
   from overwriting newer actions/events; cancellation removes its pending edit.
