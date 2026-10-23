@@ -172,7 +172,7 @@ Rendered examples: `core/designsystem/studio_stylebook_dark.png`,
 | Checkbox/switch | Material 3 theme colors and rounded shapes; parent labels expose toggle semantics without duplicate actions |
 | Inputs | `studioTextFieldColors`: tonal container, quiet outline, accent focus; rounded shape, leading icon, persistent label, helper/error text |
 | Settings | Related controls in rounded tonal panels; varied theme-aware icon wells distinguish appearance, feedback and safety |
-| Connection editor | Fully expanded, scrollable editor sheet; identity/server/security sections; host and port helper text; secure password visibility control and keyboard Next/Done actions |
+| Connection editor | Fully expanded, scrollable editor sheet; identity/server/security sections; host and port helper text; secure password visibility control and keyboard Next/Done actions; the onboarding connect step uses the same field treatment and shared `StudioPasswordField` |
 
 Use the shared components instead of styling a new page independently. Decorative
 colors never imply streaming or recording. Card thumbnails keep their contrast

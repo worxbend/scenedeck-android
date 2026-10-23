@@ -167,6 +167,8 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
   Confirmed values and pending writes prevent obsolete failures or discovery reads
   from overwriting newer actions/events; cancellation removes its pending edit.
 - Onboarding reset cancels the running connection attempt; duplicate attempts are ignored.
+  Retries in one onboarding run update a single draft profile (name/host/port/password,
+  blank clears the stored password) instead of adding duplicates; only its id is saved state.
 - Connected widgets say Connected; their scene list is limited to six items.
 - Widget updates ignore unrelated deck metadata. A Ready empty deck clears cached
   scene actions; disconnected/reconnecting states keep the last-known grid for

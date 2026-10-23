@@ -41,8 +41,6 @@
     <string name="host_help">IP address or hostname, without a port</string>
     <string name="port_help">OBS WebSocket uses port 4455 by default</string>
     <string name="password_help">Stored securely on this device</string>
-    <string name="password_show">Show password</string>
-    <string name="password_hide">Hide password</string>
     <string name="test_success">Connected · OBS %1$s · WebSocket %2$s</string>
     <string name="test_auth_failed">Authentication failed — check the password</string>
     <string name="test_unreachable">Host unreachable — check the address and enable OBS WebSocket</string>

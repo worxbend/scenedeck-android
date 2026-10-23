@@ -6,13 +6,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
+import com.scenedeck.android.core.model.ConnectionError
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,4 +52,24 @@ class OnboardingPreviewRoborazziTest {
     fun sceneDeckLight() = capture(ThemeFamily.SCENEDECK, false, "onboarding_scenedeck_light.png")
 
     @Test fun obsDark() = capture(ThemeFamily.OBS, true, "onboarding_obs_dark.png")
+
+    @Test
+    fun connectStepDark() {
+        composeRule.setContent {
+            SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
+                Surface {
+                    Column(Modifier.fillMaxSize().padding(24.dp)) {
+                        ConnectStep(
+                            connectState = OnboardingConnectState.Failed(ConnectionError.Auth()),
+                            onConnect = { _, _, _, _ -> },
+                            onSuccess = {},
+                            onBack = {},
+                        )
+                    }
+                }
+            }
+        }
+        composeRule.onNodeWithContentDescription("Show password").assertIsDisplayed()
+        composeRule.onRoot().captureRoboImage("onboarding_connect_scenedeck_dark.png")
+    }
 }
