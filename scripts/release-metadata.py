@@ -3,11 +3,25 @@
 
 import os
 import re
+from pathlib import Path
 
 SEMVER = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?")
+VERSION_FILE = Path(__file__).resolve().parent.parent / "fdroid" / "version.properties"
 
 
-def metadata(env):
+def static_version_code(version, properties):
+    """Version code from fdroid/version.properties when it describes this exact version.
+
+    Keeps a tagged GitHub/Play build on the same code as the F-Droid build of that version
+    instead of a run-number code that may sort below it.
+    """
+    values = dict(line.split("=", 1) for line in properties.splitlines() if "=" in line)
+    if values.get("versionName", "").strip() == version:
+        return values.get("versionCode", "").strip()
+    return ""
+
+
+def metadata(env, version_properties=None):
     tagged = env.get("GITHUB_REF_TYPE") == "tag"
     tag = env.get("GITHUB_REF_NAME", "")
     version = tag.removeprefix("v") if tagged else env.get("INPUT_VERSION_NAME", "") or "0.1.0"
@@ -16,7 +30,10 @@ def metadata(env):
     variant = "release" if tagged else env.get("INPUT_VARIANT", "debug")
     if variant not in {"debug", "release"}:
         raise ValueError("Build variant must be debug or release")
-    code = env.get("INPUT_VERSION_CODE", "") or str(1000 + int(env["GITHUB_RUN_NUMBER"]))
+    if version_properties is None:
+        version_properties = VERSION_FILE.read_text() if VERSION_FILE.is_file() else ""
+    static_code = static_version_code(version, version_properties) if tagged else ""
+    code = env.get("INPUT_VERSION_CODE", "") or static_code or str(1000 + int(env["GITHUB_RUN_NUMBER"]))
     if not code.isascii() or not code.isdecimal() or not 1 <= int(code) <= 2_100_000_000:
         raise ValueError("Version code must be an integer between 1 and 2100000000")
     publish = env.get("PLAY_PUBLISH_ENABLED", "false") == "true" if tagged else env.get("INPUT_PUBLISH_PLAY", "false") == "true"

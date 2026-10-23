@@ -6,8 +6,32 @@ metadata = runpy.run_path(str(Path(__file__).with_name('release-metadata.py')))[
 
 
 class ReleaseMetadataTest(unittest.TestCase):
-    def check(self, **overrides):
-        return metadata({'GITHUB_RUN_NUMBER': '42', **overrides})
+    def check(self, version_properties='', **overrides):
+        return metadata({'GITHUB_RUN_NUMBER': '42', **overrides}, version_properties)
+
+    def test_tag_uses_matching_static_version_code(self):
+        props = 'versionName=0.1.4\nversionCode=1010\n'
+        result = self.check(props, GITHUB_REF_TYPE='tag', GITHUB_REF_NAME='v0.1.4')
+        self.assertEqual(result['version_code'], '1010')
+
+    def test_tag_falls_back_to_run_number_when_static_version_differs(self):
+        props = 'versionName=0.1.4\nversionCode=1010\n'
+        result = self.check(props, GITHUB_REF_TYPE='tag', GITHUB_REF_NAME='v0.2.0')
+        self.assertEqual(result['version_code'], '1042')
+
+    def test_manual_runs_ignore_static_version_code(self):
+        props = 'versionName=0.1.0\nversionCode=1010\n'
+        self.assertEqual(self.check(props)['version_code'], '1042')
+
+    def test_static_version_code_is_validated(self):
+        with self.assertRaises(ValueError):
+            self.check('versionName=0.1.4\nversionCode=abc\n', GITHUB_REF_TYPE='tag', GITHUB_REF_NAME='v0.1.4')
+
+    def test_repository_version_file_is_read_by_default(self):
+        props = Path(__file__).resolve().parent.parent.joinpath('fdroid', 'version.properties').read_text()
+        name = next(line.split('=', 1)[1].strip() for line in props.splitlines() if line.startswith('versionName='))
+        result = metadata({'GITHUB_RUN_NUMBER': '42', 'GITHUB_REF_TYPE': 'tag', 'GITHUB_REF_NAME': f'v{name}'})
+        self.assertNotEqual(result['version_code'], '1042')
 
     def test_debug_defaults(self):
         self.assertEqual(self.check(), dict(variant='debug', version_name='0.1.0', version_code='1042', publish_play='false', tagged='false', play_track='internal', play_release_status='draft', upload_play_metadata='false'))

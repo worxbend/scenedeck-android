@@ -177,7 +177,7 @@ For manual runs, the controls are:
 |---|---|
 | `variant` | `debug` or `release`; default `debug` |
 | `version_name` | Optional `X.Y.Z` or `X.Y.Z-prerelease`; default `0.1.0` for manual runs, derived from the tag for tag runs |
-| `version_code` | Optional integer; default `1000 + GITHUB_RUN_NUMBER`; must exceed every previously uploaded Play version |
+| `version_code` | Optional integer; default `1000 + GITHUB_RUN_NUMBER`; must exceed every previously uploaded Play version. Tag runs ignore inputs and use `fdroid/version.properties` `versionCode` when its `versionName` matches the tag, so `vX.Y.Z` and `fdroid-vX.Y.Z` share one version code |
 | `publish_play` | Explicit Play upload; default `false`, requires `release` |
 | `play_track` | `internal`, `beta`, or `production`; default `internal` |
 | `play_release_status` | `draft` or `completed`; default `draft` |
