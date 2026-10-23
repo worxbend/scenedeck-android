@@ -8,11 +8,10 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.scenedeck.android.core.data.DarkMode
-import com.scenedeck.android.core.data.OutputSafety
-import com.scenedeck.android.core.designsystem.theme.MotionLevel
+import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
+import com.scenedeck.android.core.designsystem.theme.UiDensity
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,27 +35,7 @@ class SettingsScreenRoborazziTest {
     ) {
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
-                Surface {
-                    SettingsContent(
-                        currentTheme = family,
-                        onThemeSelect = {},
-                        darkMode = DarkMode.SYSTEM,
-                        onDarkModeChange = {},
-                        motionLevel = MotionLevel.FULL,
-                        onMotionLevelChange = {},
-                        dynamicColor = false,
-                        onDynamicColorChange = {},
-                        haptics = true,
-                        onHapticsChange = {},
-                        keepScreenOn = false,
-                        onKeepScreenOnChange = {},
-                        outputSafety = OutputSafety(),
-                        onConfirmStartStreamChange = {},
-                        onConfirmStopStreamChange = {},
-                        onConfirmStartRecordChange = {},
-                        onConfirmStopRecordChange = {},
-                    )
-                }
+                SettingsFixture(family = family)
             }
         }
         if (showPrivacy) {
@@ -91,4 +70,38 @@ class SettingsScreenRoborazziTest {
 
     @Test
     fun privacyObsDark() = capture(ThemeFamily.OBS, true, "settings_privacy_obs_dark.png", true)
+
+    @Test
+    fun mixerSectionCompactDark() {
+        composeRule.setContent {
+            SceneDeckTheme(darkTheme = true, density = UiDensity.COMPACT) {
+                SettingsFixture(
+                    LayoutAndAudioSettings(
+                        density = UiDensity.COMPACT,
+                        meterRefresh = MeterRefresh.SAVER,
+                        audioAllowList = setOf("Mic/Aux", "Desktop Audio"),
+                    )
+                )
+            }
+        }
+        composeRule.onNodeWithText("Audio allow-list").performScrollTo().assertHasClickAction()
+        composeRule.onRoot().captureRoboImage("settings_mixer_compact_dark.png")
+    }
+
+    @Test
+    fun audioAllowListSheetDark() {
+        composeRule.setContent {
+            SceneDeckTheme(darkTheme = true) {
+                Surface {
+                    AudioAllowListContent(
+                        allowList = setOf("Mic/Aux"),
+                        choices =
+                            AudioInputChoices(names = listOf("Desktop Audio", "Mic/Aux", "Music")),
+                        actions = LayoutAndAudioActions(),
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("settings_audio_allow_list_dark.png")
+    }
 }

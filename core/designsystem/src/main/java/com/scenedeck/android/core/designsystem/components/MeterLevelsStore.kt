@@ -25,4 +25,9 @@ class MeterLevelsStore {
     fun update(batch: List<VolumeMeterReading>) {
         batch.forEach { reading -> holder(reading.inputName).reading.value = reading }
     }
+
+    /** Drops every reading so meters render empty (meter refresh set to off). */
+    fun clear() {
+        holders.values.forEach { it.reading.value = null }
+    }
 }

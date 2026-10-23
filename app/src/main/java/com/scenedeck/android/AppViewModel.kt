@@ -7,6 +7,7 @@ import com.scenedeck.android.background.SceneSwitcher
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
+import com.scenedeck.android.core.designsystem.theme.UiDensity
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.ui.components.StatusStripState
 import com.scenedeck.android.ui.components.toStatusStripState
@@ -47,6 +48,12 @@ constructor(
         settingsRepository.settings
             .map { it.onboardingCompleted }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Layout density for [com.scenedeck.android.core.designsystem.theme.SceneDeckTheme]. */
+    val uiDensity: StateFlow<UiDensity> =
+        settingsRepository.settings
+            .map { UiDensity.fromName(it.uiDensity) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiDensity.COMFORTABLE)
 
     init {
         // Foreground launch re-arms the keep-alive service if the user enabled it

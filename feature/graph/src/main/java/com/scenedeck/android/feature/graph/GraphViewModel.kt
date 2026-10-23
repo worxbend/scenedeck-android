@@ -49,7 +49,8 @@ constructor(
             }
             .transformLatest { (connection, entries) ->
                 if (connection is ConnectionState.Ready) {
-                    emit(GraphUiState(connection = connection, graph = builder.build(entries)))
+                    val graph = builder.build(entries).withDistinctEdges()
+                    emit(GraphUiState(connection = connection, graph = graph))
                 } else {
                     emit(GraphUiState(connection = connection, graph = null))
                 }
@@ -70,6 +71,13 @@ constructor(
     fun childrenOf(name: String): List<String> =
         uiState.value.graph?.edges?.filter { it.from == name }?.map { it.to }.orEmpty()
 }
+
+/**
+ * One edge per parent→child pair. A scene can hold the same nested scene several times (duplicate
+ * scene items); the canvas draws one line for them, so the a11y count and detail lists match it.
+ */
+internal fun SceneGraph.withDistinctEdges(): SceneGraph =
+    copy(edges = edges.distinctBy { it.from to it.to })
 
 private fun affectsSceneGraph(event: ObsEvent): Boolean =
     when (event) {

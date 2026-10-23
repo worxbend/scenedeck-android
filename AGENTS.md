@@ -57,6 +57,8 @@ must pass, and Compose preview(s) for changed screens must render.
 - Mixer mute stays direct; channel options group lock and advanced settings.
 - Stats prioritize key readings and compact tonal gauge panels.
 - Default styling: charcoal/azure studio palette; scene grid tiles use restrained accents and theme-aware labels.
+- Inventory: unassigned scenes show an outlined "Unassigned" chip; stale removal offers Undo. Graph edges are deduplicated per parent→child pair and role fills never use program red.
+- Settings density (SceneDeckTheme.spacing), Mixer audio allow-list and meter refresh are persisted in DataStore; meter refresh is client-side sampling.
 - Scene cards show numbered positions; drag grips appear only in explicit reorder mode.
 - Scene order: saved registry positions first, then OBS order (descending `sceneIndex`), then name; Scenes and Inventory share it. Reorders renumber densely and never assign roles; import applies the file's order so export → import round-trips.
 

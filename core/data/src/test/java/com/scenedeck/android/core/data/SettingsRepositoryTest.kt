@@ -71,6 +71,30 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun densityAndMeterRefreshRoundTrip(): Unit = runBlocking {
+        val defaults = repository.settings.first()
+        assertEquals("COMFORTABLE", defaults.uiDensity)
+        assertEquals(MeterRefresh.SMOOTH, defaults.meterRefresh)
+        assertEquals(emptySet<String>(), defaults.audioAllowList)
+
+        repository.setUiDensity("COMPACT")
+        repository.setMeterRefresh(MeterRefresh.SAVER)
+        repository.update { it.copy(audioAllowList = setOf("Mic/Aux")) }
+
+        val settings = repository.settings.first()
+        assertEquals("COMPACT", settings.uiDensity)
+        assertEquals(MeterRefresh.SAVER, settings.meterRefresh)
+        assertEquals(setOf("Mic/Aux"), settings.audioAllowList)
+    }
+
+    @Test
+    fun corruptMeterRefreshFallsBackToSmooth(): Unit = runBlocking {
+        val store = newIsolatedStore()
+        store.setMeterRefresh("NOPE")
+        assertEquals(MeterRefresh.SMOOTH, SettingsRepository(store).settings.first().meterRefresh)
+    }
+
+    @Test
     fun corruptEnumValueFallsBackToSystem(): Unit = runBlocking {
         val store = newIsolatedStore()
         store.setDarkMode("NOPE")

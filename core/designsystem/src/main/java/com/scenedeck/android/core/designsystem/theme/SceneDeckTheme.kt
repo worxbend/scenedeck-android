@@ -56,6 +56,10 @@ object SceneDeckTheme {
     /** Product-semantic colors (tally, preview, meter zones, warnings) for the current family. */
     val colors: SceneDeckColors
         @Composable get() = LocalSceneDeckColors.current
+
+    /** Density-aware layout spacing (gutters, gaps, row padding). */
+    val spacing: SceneDeckSpacing
+        @Composable get() = LocalSceneDeckSpacing.current
 }
 
 /**
@@ -67,6 +71,7 @@ object SceneDeckTheme {
  * @param dynamicColor "Material You": derive the scheme from the wallpaper on Android 12+,
  *   overriding [family] (semantic colors fall back to the family-independent defaults).
  * @param motionLevel user motion preference, mapped via [motionSchemeFor].
+ * @param density user layout density, exposed as [SceneDeckTheme.spacing].
  */
 @Composable
 fun SceneDeckTheme(
@@ -74,6 +79,7 @@ fun SceneDeckTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     motionLevel: MotionLevel = MotionLevel.FULL,
+    density: UiDensity = UiDensity.COMFORTABLE,
     content: @Composable () -> Unit,
 ) {
     val baseScheme = colorSchemeFor(family, darkTheme)
@@ -91,7 +97,10 @@ fun SceneDeckTheme(
         } else {
             sceneDeckColorsFor(family, darkTheme)
         }
-    CompositionLocalProvider(LocalSceneDeckColors provides semanticColors) {
+    CompositionLocalProvider(
+        LocalSceneDeckColors provides semanticColors,
+        LocalSceneDeckSpacing provides spacingFor(density),
+    ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             shapes = SceneDeckShapes,

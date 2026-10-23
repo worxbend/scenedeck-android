@@ -64,6 +64,22 @@ class RegistryRepositoryTest {
     }
 
     @Test
+    fun restoreReinsertsRemovedEntryWithoutOverwritingNewerCuration(): Unit = runBlocking {
+        repository.update("Ghost", SceneRole.ARCHIVE, 0xFF7E57C2, "FILM")
+        repository.reorder(listOf("Ghost"))
+        val removed = repository.byName("Ghost")!!
+        repository.remove("Ghost")
+        assertNull(repository.byName("Ghost"))
+
+        repository.restore(removed)
+        assertEquals(removed, repository.byName("Ghost"))
+
+        repository.update("Ghost", SceneRole.DEBUG, null, null)
+        repository.restore(removed)
+        assertEquals(SceneRole.DEBUG, repository.byName("Ghost")?.role)
+    }
+
+    @Test
     fun reorderAssignsSequentialSortOrder(): Unit = runBlocking {
         repository.reorder(listOf("B", "A", "C"))
 

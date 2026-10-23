@@ -33,6 +33,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -73,6 +74,39 @@ class InventoryViewModelTest {
         )
         assertTrue(state.scenes.single { it.name == "Ghost" }.stale)
         assertEquals(2, state.unassignedCount) // Screen + Quiet A have no entry
+    }
+
+    @Test
+    fun implicitPrimaryIsNotReportedAsAssigned(): Unit = runBlocking {
+        registry.update("Cam 1", SceneRole.PRIMARY, null, null)
+        registry.update("Ghost", null, 0xFF7E57C2, null)
+        client.setReady()
+
+        val state = awaitState { it.scenes.size == 4 }
+        val byName = state.scenes.associateBy { it.name }
+        assertTrue(byName.getValue("Cam 1").roleAssigned)
+        assertFalse(byName.getValue("Screen").roleAssigned)
+        assertEquals(SceneRole.PRIMARY, byName.getValue("Screen").role) // deck default
+        assertFalse(byName.getValue("Ghost").roleAssigned) // stale and role-less
+    }
+
+    @Test
+    fun removeStaleCanBeUndone(): Unit = runBlocking {
+        registry.update("Ghost", SceneRole.MODULE, 0xFF7E57C2, "FILM")
+        registry.reorder(listOf("Ghost"))
+        val original = registry.byName("Ghost")
+        client.setReady()
+        awaitState { it.scenes.any { scene -> scene.name == "Ghost" } }
+
+        val removal = async(start = CoroutineStart.UNDISPATCHED) { viewModel.removals.first() }
+        viewModel.removeStale("Ghost")
+        val removed = withTimeout(5_000) { removal.await() }
+        awaitState { it.scenes.none { scene -> scene.name == "Ghost" } }
+        assertEquals(original, removed.entry)
+
+        viewModel.undoRemoveStale(removed)
+        awaitState { it.scenes.any { scene -> scene.name == "Ghost" && scene.stale } }
+        assertEquals(original, registry.byName("Ghost"))
     }
 
     @Test

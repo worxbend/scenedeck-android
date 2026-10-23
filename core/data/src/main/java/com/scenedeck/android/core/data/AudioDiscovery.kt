@@ -64,6 +64,20 @@ internal class AudioDiscovery(private val client: ObsClient) {
         }
     }
 
+    /**
+     * Every audio input reachable from [sceneNames] plus the special inputs, ignoring any
+     * allow-list (Settings allow-list editor). One shared walk visits each scene at most once.
+     */
+    suspend fun discoverAll(sceneNames: List<String>): List<DiscoveredInput> {
+        val all = linkedMapOf<String, DiscoveredInput>()
+        discover(activeScene = null, allowList = emptySet()).forEach { all[it.name] = it }
+        val walk = SceneWalk(all, mutableSetOf())
+        sceneNames.forEach { name ->
+            walk.scene(SceneFrame(sceneName = name, path = name, scopeForItems = MixerScope.SCENE))
+        }
+        return all.values.toList()
+    }
+
     /** One recursion frame: the scene being walked, its display path, item scope, and depth. */
     private data class SceneFrame(
         val sceneName: String,

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.DarkMode
+import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.designsystem.components.StudioIconWell
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
@@ -56,6 +57,7 @@ import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
 import com.scenedeck.android.core.designsystem.theme.ThemeSwitcher
+import com.scenedeck.android.core.designsystem.theme.UiDensity
 import com.scenedeck.android.core.designsystem.theme.families.displayName
 
 /**
@@ -80,6 +82,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val outputSafety by viewModel.outputSafety.collectAsStateWithLifecycle()
+    val layoutAndAudio by viewModel.layoutAndAudio.collectAsStateWithLifecycle()
+    val audioInputChoices by viewModel.audioInputChoices.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) {
         viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
@@ -103,6 +107,16 @@ fun SettingsScreen(
             onConfirmStopStreamChange = viewModel::setConfirmStopStream,
             onConfirmStartRecordChange = viewModel::setConfirmStartRecord,
             onConfirmStopRecordChange = viewModel::setConfirmStopRecord,
+            layoutAndAudio = layoutAndAudio,
+            audioInputChoices = audioInputChoices,
+            layoutAndAudioActions =
+                LayoutAndAudioActions(
+                    onDensityChange = viewModel::setDensity,
+                    onMeterRefreshChange = viewModel::setMeterRefresh,
+                    onOpenAllowList = viewModel::loadAudioInputChoices,
+                    onAudioInputAllowedChange = viewModel::setAudioInputAllowed,
+                    onClearAllowList = viewModel::clearAudioAllowList,
+                ),
             modifier = Modifier,
         )
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -130,8 +144,21 @@ internal fun SettingsContent(
     onConfirmStartRecordChange: (Boolean) -> Unit,
     onConfirmStopRecordChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    layoutAndAudio: LayoutAndAudioSettings = LayoutAndAudioSettings(),
+    audioInputChoices: AudioInputChoices = AudioInputChoices(),
+    layoutAndAudioActions: LayoutAndAudioActions = LayoutAndAudioActions(),
 ) {
     var showThemes by rememberSaveable { mutableStateOf(false) }
+    var showAllowList by rememberSaveable { mutableStateOf(false) }
+    if (showAllowList) {
+        AudioAllowListSheet(
+            allowList = layoutAndAudio.audioAllowList,
+            choices = audioInputChoices,
+            actions = layoutAndAudioActions,
+            onDismiss = { showAllowList = false },
+        )
+    }
+    val spacing = SceneDeckTheme.spacing
     val uriHandler = LocalUriHandler.current
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     if (showThemes) {
@@ -158,7 +185,7 @@ internal fun SettingsContent(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = spacing.pageGutter)
     ) {
         Spacer(Modifier.height(16.dp))
         StudioPageHeader(
@@ -222,6 +249,18 @@ internal fun SettingsContent(
         }
         Spacer(Modifier.height(24.dp))
 
+        SectionLabel(stringResource(R.string.section_layout))
+        SettingsPanel {
+            DensityChooser(layoutAndAudio.density, layoutAndAudioActions.onDensityChange)
+            Text(
+                stringResource(R.string.density_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        }
+        Spacer(Modifier.height(24.dp))
+
         SectionLabel(stringResource(R.string.section_motion))
         SettingsPanel {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -281,6 +320,19 @@ internal fun SettingsContent(
             )
         }
         Spacer(Modifier.height(24.dp))
+        SectionLabel(stringResource(R.string.section_mixer))
+        SettingsPanel {
+            MixerSettingsPanel(
+                layoutAndAudio,
+                layoutAndAudioActions.copy(
+                    onOpenAllowList = {
+                        layoutAndAudioActions.onOpenAllowList()
+                        showAllowList = true
+                    }
+                ),
+            )
+        }
+        Spacer(Modifier.height(24.dp))
         SectionLabel(stringResource(R.string.section_output_safety))
         SettingsPanel {
             ToggleRow(
@@ -337,7 +389,10 @@ private fun SettingsPanel(content: @Composable () -> Unit) {
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            Modifier.padding(SceneDeckTheme.spacing.rowPadding),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             content()
         }
     }
@@ -376,9 +431,32 @@ private fun ToggleRow(
 @PreviewLightDark
 @Composable
 private fun SettingsScreenPreview() {
-    SceneDeckTheme {
+    SceneDeckTheme { SettingsFixture() }
+}
+
+@PreviewLightDark
+@Composable
+private fun SettingsScreenCompactPreview() {
+    SceneDeckTheme(density = UiDensity.COMPACT) {
+        SettingsFixture(
+            LayoutAndAudioSettings(
+                density = UiDensity.COMPACT,
+                meterRefresh = MeterRefresh.SAVER,
+                audioAllowList = setOf("Mic/Aux", "Desktop Audio"),
+            )
+        )
+    }
+}
+
+/** Settings with static values for previews and golden shots. */
+@Composable
+internal fun SettingsFixture(
+    layoutAndAudio: LayoutAndAudioSettings = LayoutAndAudioSettings(),
+    family: ThemeFamily = ThemeFamily.SCENEDECK,
+) {
+    Surface {
         SettingsContent(
-            currentTheme = ThemeFamily.SCENEDECK,
+            currentTheme = family,
             onThemeSelect = {},
             darkMode = DarkMode.SYSTEM,
             onDarkModeChange = {},
@@ -395,6 +473,7 @@ private fun SettingsScreenPreview() {
             onConfirmStopStreamChange = {},
             onConfirmStartRecordChange = {},
             onConfirmStopRecordChange = {},
+            layoutAndAudio = layoutAndAudio,
         )
     }
 }

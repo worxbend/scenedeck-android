@@ -58,6 +58,9 @@ class GraphViewModelTest {
             graph.edges.single { it.from == "Show" && it.to == "Scratch" }.verdict,
         )
         assertTrue(graph.cycleMembers.isEmpty())
+        // Duplicate scene items of LowerThird in Show collapse into one edge.
+        assertEquals(2, graph.edges.size)
+        assertEquals("2 connections", graphConnectionsLabel(graph))
     }
 
     @Test
@@ -162,6 +165,15 @@ class GraphViewModelTest {
                             2,
                             1,
                             "Scratch",
+                            enabled = true,
+                            isGroup = false,
+                            inputKind = null,
+                        ),
+                        // Second item of the same nested scene: one drawn edge, one count.
+                        SceneItemInfo(
+                            3,
+                            2,
+                            "LowerThird",
                             enabled = true,
                             isGroup = false,
                             inputKind = null,

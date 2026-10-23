@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
             val stripState by appViewModel.stripState.collectAsStateWithLifecycle()
             val onboardingCompleted by
                 appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
+            val uiDensity by appViewModel.uiDensity.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
 
             SceneDeckTheme(
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
                 darkTheme = appState.isDarkTheme(isSystemInDarkTheme()),
                 dynamicColor = appState.dynamicColor,
                 motionLevel = appState.motionLevel,
+                density = uiDensity,
             ) {
                 SceneDeckApp(
                     appState = appState,

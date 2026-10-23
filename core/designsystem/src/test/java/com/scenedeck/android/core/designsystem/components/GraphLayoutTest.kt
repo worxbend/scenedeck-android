@@ -21,6 +21,32 @@ class GraphLayoutTest {
     }
 
     @Test
+    fun twoColumnsFitAPhoneViewport() {
+        // Pixel-class phone: 412 dp minus 2 × 20 dp gutter.
+        val metrics = graphColumnMetrics(layerCount = 2, availableWidth = 372f)
+        assertTrue(metrics.contentWidth <= 372f)
+        assertEquals(150f, metrics.nodeWidth, 0.01f)
+        assertEquals(metrics.contentWidth, metrics.nodeX(1) + metrics.nodeWidth, 0.01f)
+    }
+
+    @Test
+    fun narrowViewportShrinksNodesBeforeScrolling() {
+        val metrics = graphColumnMetrics(layerCount = 3, availableWidth = 372f)
+        assertTrue(metrics.nodeWidth < 150f)
+        assertTrue(metrics.contentWidth <= 372f)
+    }
+
+    @Test
+    fun wideGraphsScrollWithoutCuttingTheLastColumn() {
+        val metrics = graphColumnMetrics(layerCount = 5, availableWidth = 372f)
+        assertEquals(100f, metrics.nodeWidth, 0.01f)
+        assertEquals(32f, metrics.layerGap, 0.01f)
+        // Content (scrollable) ends exactly at the last node's right edge.
+        assertEquals(metrics.nodeX(4) + metrics.nodeWidth, metrics.contentWidth, 0.01f)
+        assertTrue(metrics.contentWidth > 372f)
+    }
+
+    @Test
     fun cyclesDoNotHangAndGetBoundedLayers() {
         val layout =
             layeredGraphLayout(

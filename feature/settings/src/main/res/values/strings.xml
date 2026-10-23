@@ -33,6 +33,32 @@
     <string name="confirm_start_record_desc">Ask before recording begins</string>
     <string name="confirm_stop_record">Confirm stop recording</string>
     <string name="confirm_stop_record_desc">Ask before the recording is finalized</string>
+    <string name="section_layout">Layout density</string>
+    <string name="density_comfortable">Comfortable</string>
+    <string name="density_compact">Compact</string>
+    <string name="density_desc">Compact tightens page gutters, gaps and row padding; touch targets stay 48 dp</string>
+
+    <string name="section_mixer">Mixer</string>
+    <string name="meter_refresh">Meter refresh</string>
+    <string name="meter_refresh_smooth">Smooth</string>
+    <string name="meter_refresh_balanced">Normal</string>
+    <string name="meter_refresh_saver">Saver</string>
+    <string name="meter_refresh_off">Off</string>
+    <string name="meter_refresh_smooth_desc">Every OBS meter update (about 20 per second)</string>
+    <string name="meter_refresh_balanced_desc">About 10 meter updates per second</string>
+    <string name="meter_refresh_saver_desc">About 4 meter updates per second to save battery</string>
+    <string name="meter_refresh_off_desc">Meters stop updating and stay empty; faders and mute still work</string>
+    <string name="audio_allow_list">Audio allow-list</string>
+    <string name="audio_allow_list_all">All discovered inputs are shown</string>
+    <plurals name="audio_allow_list_count">
+        <item quantity="one">Mixer shows %d chosen input</item>
+        <item quantity="other">Mixer shows %d chosen inputs</item>
+    </plurals>
+    <string name="audio_allow_list_desc">Check inputs to show only those in the Mixer. Leave all unchecked to show every input.</string>
+    <string name="audio_allow_list_empty">Connect to OBS to list its audio inputs.</string>
+    <string name="audio_allow_list_clear">Show all inputs</string>
+    <string name="edit">Edit</string>
+
     <string name="change_theme">Choose</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="privacy_policy_url" translatable="false">https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md</string>

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 
 /** Decorative tones never replace program, preview or output-state semantics. */
 @Composable
@@ -72,7 +73,12 @@ fun StudioPageHeader(
                         listOf(scheme.primary.copy(alpha = 0.07f), Color.Transparent)
                     )
                 )
-                .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                .padding(
+                    start = 12.dp,
+                    end = 8.dp,
+                    top = SceneDeckTheme.spacing.rowPadding,
+                    bottom = SceneDeckTheme.spacing.rowPadding,
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -100,7 +106,7 @@ fun StudioPageHeader(
 @Composable
 fun StudioSectionHeader(title: String, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier.fillMaxWidth().padding(vertical = SceneDeckTheme.spacing.itemGap),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

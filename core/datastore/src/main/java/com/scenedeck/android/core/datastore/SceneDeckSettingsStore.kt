@@ -48,6 +48,10 @@ data class SettingsSnapshot(
     val mixerGrouping: String = "SCOPE",
     /** Scene preview thumbnails on deck cards (M6). */
     val scenePreviewsEnabled: Boolean = true,
+    /** UI density: COMFORTABLE / COMPACT. */
+    val uiDensity: String = "COMFORTABLE",
+    /** Mixer meter refresh: SMOOTH / BALANCED / SAVER / OFF. */
+    val meterRefresh: String = "SMOOTH",
 )
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
@@ -77,6 +81,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         prefs[KEY_MIXER_MODE] = updated.mixerMode
         prefs[KEY_MIXER_GROUPING] = updated.mixerGrouping
         prefs[KEY_SCENE_PREVIEWS_ENABLED] = updated.scenePreviewsEnabled
+        prefs[KEY_UI_DENSITY] = updated.uiDensity
+        prefs[KEY_METER_REFRESH] = updated.meterRefresh
         val profileId = updated.lastUsedProfileId
         if (profileId == null) prefs.remove(KEY_LAST_USED_PROFILE_ID)
         else prefs[KEY_LAST_USED_PROFILE_ID] = profileId
@@ -110,6 +116,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
             mixerSelectedScene = this[KEY_MIXER_SELECTED_SCENE],
             mixerGrouping = valueOrDefault(KEY_MIXER_GROUPING, "SCOPE"),
             scenePreviewsEnabled = valueOrDefault(KEY_SCENE_PREVIEWS_ENABLED, true),
+            uiDensity = valueOrDefault(KEY_UI_DENSITY, "COMFORTABLE"),
+            meterRefresh = valueOrDefault(KEY_METER_REFRESH, "SMOOTH"),
         )
 
     private fun <T> Preferences.valueOrDefault(key: Preferences.Key<T>, default: T): T =
@@ -165,6 +173,10 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         it[KEY_SCENE_PREVIEWS_ENABLED] = value
     }
 
+    suspend fun setUiDensity(value: String) = edit { it[KEY_UI_DENSITY] = value }
+
+    suspend fun setMeterRefresh(value: String) = edit { it[KEY_METER_REFRESH] = value }
+
     private suspend fun edit(transform: (MutablePreferences) -> Unit) {
         dataStore.edit(transform)
     }
@@ -193,5 +205,7 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         private val KEY_MIXER_SELECTED_SCENE = stringPreferencesKey("mixerSelectedScene")
         private val KEY_MIXER_GROUPING = stringPreferencesKey("mixerGrouping")
         private val KEY_SCENE_PREVIEWS_ENABLED = booleanPreferencesKey("scenePreviewsEnabled")
+        private val KEY_UI_DENSITY = stringPreferencesKey("uiDensity")
+        private val KEY_METER_REFRESH = stringPreferencesKey("meterRefresh")
     }
 }
