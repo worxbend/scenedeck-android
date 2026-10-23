@@ -50,7 +50,8 @@ These hues carry product meaning and adapt per theme but keep their roles:
 - **Program / Live** — red family (tally). Used ONLY for on-air state.
 - **Preview** — green family (studio mode).
 - **Ready / idle** — neutral surface tones.
-- **Stream active** — theme accent; **Recording** — red pulse (respect reduced motion).
+- **Stream transport** — blue idle Stream / red active Stop. **LIVE status and stream
+  time** — green; **REC status and recording time** — amber. Pulse only with Full motion.
 - **Meter zones** — green < −20 dB, yellow −20…−9 dB, red > −9 dB (OBS semantics).
 - **Warning/Critical thresholds** (stats) — amber at warn, red at crit.
 
@@ -66,13 +67,15 @@ These hues carry product meaning and adapt per theme but keep their roles:
 
 - Expressive shape scale: scene cards `large` (28dp-ish rounded), mixer strips
   `medium`, buttons `full` (stadium) for transport controls.
-- MaterialShapes (shape-morphing) for the Active-scene card: morphs subtly on
-  activation (with reduced-motion fallback = crossfade).
+- Scene cards retain uniform rounded geometry on activation, with semantic program/preview
+  outlines and restrained press scaling (honor Reduced/Off motion).
 - Tonal elevation over shadows (dark-first design); glow ring for Active/On-air state.
 
 ## 6. Iconography
 
-- Primary set: **Lucide** (via compose-icons) — thin, modern, consistent.
+- Primary set: hand-ported **Lucide-style ImageVector catalogue** in `:core:designsystem`
+  — thin, modern, consistent. The compose-icons Lucide pack is unavailable on Maven
+  Central for the pinned stack; no external icon-pack dependency is required.
   Examples: `radio-tower` stream, `circle-dot`/`disc` record, `clapperboard` scenes,
   `sliders-vertical` mixer, `activity` stats, `layers` inventory, `stethoscope` doctor,
   `waypoints`/`git-branch` graph.
@@ -88,11 +91,11 @@ These hues carry product meaning and adapt per theme but keep their roles:
 
 | Component | Craft details |
 |---|---|
-| **SceneCard** | accent-tinted surface, icon + label, hotkey digit badge, Active = morph + glow ring + haptic; press = scale 0.96 spring + ripple |
+| **SceneCard** | restrained accent wash, icon + label, numbered position, program/preview semantic outline and pill, haptic; press = scale 0.96 spring + ripple; no left rail |
 | **VolumeMeter** | custom Canvas: OBS-accurate zones, per-channel bars, peak hold line (20 s), loudness notch (~300 ms), pre-fader base square, butter-smooth 60 fps decay animation |
 | **MixerStrip** | vertical fader with dB taper curve, mute with animated strike-through, scope badge chip, lock toggle |
-| **TransportBar** | stream/record stadium buttons; recording = pulsing tally dot; elapsed-time counter in mono |
-| **StatusStrip** | persistent bottom: connection dot, FPS, dropped frames (highlights only when dropping), CPU, bitrate |
+| **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers |
+| **StatusStrip** | persistent bottom: connection and OFF AIR/LIVE/REC state with timers; performance metrics on a second row only while streaming |
 | **StatGauge** | arc gauge with amber/red threshold arcs (FPS, render time, congestion, dropped %) |
 | **TrendChart** | custom Canvas line/area chart, 2-min window, theme-aware grid |
 | **EmptyState** | disconnected placeholders with Lucide illustration + reconnect CTA |

@@ -55,12 +55,15 @@ import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsNotConnectedException
 import com.scenedeck.android.core.obs.ObsRequestFailedException
+import com.scenedeck.android.core.obs.ObsRequestProtocolException
+import com.scenedeck.android.core.obs.ObsRequestTimeoutException
 import com.scenedeck.android.core.obs.ScreenshotRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -71,6 +74,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val MAX_CONCURRENT_REQUESTS = 8
@@ -81,7 +87,22 @@ private const val DATA_URI_PREFIX = "base64,"
 
 /** OBS `imageData` is a data URI ("data:image/jpeg;base64,<payload>"). */
 internal fun decodeImageData(imageData: String): ByteArray {
-    val payload = imageData.substringAfter(DATA_URI_PREFIX, imageData)
+    val marker = imageData.indexOf(DATA_URI_PREFIX)
+    val start = if (marker < 0) 0 else marker + DATA_URI_PREFIX.length
+    val payloadLength = imageData.length - start
+    val maxBase64Length = ((ScreenshotRequest.MAX_IMAGE_BYTES + 2L) / 3L) * 4L
+    require(payloadLength <= maxBase64Length) { "OBS screenshot payload exceeds size limit" }
+    val padding =
+        when {
+            imageData.endsWith("==") -> 2
+            imageData.endsWith("=") -> 1
+            else -> 0
+        }
+    val decodedLength = payloadLength * 3L / 4L - padding
+    require(decodedLength in 0..ScreenshotRequest.MAX_IMAGE_BYTES.toLong()) {
+        "OBS screenshot payload exceeds size limit"
+    }
+    val payload = imageData.substring(start)
     return java.util.Base64.getDecoder().decode(payload)
 }
 
@@ -107,8 +128,12 @@ internal class KtobsObsClient(
     eventSubs: ObsEventSubs = ObsEventSubs.All + ObsEventSubs.InputVolumeMeters,
     backoffMillis: (attempt: Int) -> Long = ::exponentialBackoffMillis,
     connectTimeoutMs: Long = 10_000,
+    private val requestTimeoutMs: Long = 10_000,
 ) : ObsClient {
 
+    /** Shared admission lane, also held directly by gated integration tests. */
+    internal val requestSemaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
+    private val protocolDispatcher = Dispatchers.Default.limitedParallelism(1)
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
@@ -126,7 +151,6 @@ internal class KtobsObsClient(
         )
     override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = _volumeMeters.asSharedFlow()
 
-    private val requestSemaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
     private val eventDispatcher = ObsEventDispatcher(_events, _volumeMeters)
     private val sessionRunner =
         ObsSessionRunner(
@@ -134,6 +158,7 @@ internal class KtobsObsClient(
                 httpClient,
                 _connectionState,
                 requestSemaphore,
+                protocolDispatcher,
                 eventDispatcher::dispatch,
             )
             .apply {
@@ -156,17 +181,46 @@ internal class KtobsObsClient(
 
     // ── Requests ────────────────────────────────────────────────────────────
 
-    private suspend fun <T> request(block: suspend (ObsSession) -> T): T =
-        requestSemaphore.withPermit {
-            val s =
-                sessionRunner.session?.takeIf { _connectionState.value is ConnectionState.Ready }
-                    ?: throw ObsNotConnectedException()
+    private suspend fun <T> request(block: suspend (ObsSession) -> T): T {
+        val session =
+            sessionRunner.session?.takeIf { _connectionState.value is ConnectionState.Ready }
+                ?: throw ObsNotConnectedException()
+        // Admission belongs to the same deadline as the response. A caller's cancellation
+        // propagates; only this request's deadline becomes a recoverable failure.
+        val result =
+            withTimeoutOrNull(requestTimeoutMs) {
+                requestSemaphore.withPermit {
+                    requireCurrentSession(session)
+                    val value = requestOnProtocol(session, block)
+                    requireCurrentSession(session)
+                    Result.success(value)
+                }
+            }
+        return (result ?: throw ObsRequestTimeoutException()).getOrThrow()
+    }
+
+    @Suppress(
+        "SwallowedException"
+    ) // Inbound parser messages/causes can contain private response data.
+    private suspend fun <T> requestOnProtocol(
+        session: ObsSession,
+        block: suspend (ObsSession) -> T,
+    ): T =
+        withContext(protocolDispatcher) {
+            requireCurrentSession(session)
             try {
-                block(s)
+                block(session)
             } catch (e: ObsRequestException) {
-                throw ObsRequestFailedException(e.type, e.code.toString(), e.message, e)
+                throw ObsRequestFailedException(e.type, e.code.toString(), null)
+            } catch (_: SerializationException) {
+                throw ObsRequestProtocolException()
             }
         }
+
+    private fun requireCurrentSession(session: ObsSession) {
+        if (sessionRunner.session !== session || _connectionState.value !is ConnectionState.Ready)
+            throw ObsNotConnectedException()
+    }
 
     override suspend fun getVersion() = request { it.getVersion().toDomain() }
 
@@ -272,18 +326,19 @@ internal class KtobsObsClient(
         it.setCurrentSceneTransitionDuration(durationMs)
     }
 
-    override suspend fun getSourceScreenshot(screenshot: ScreenshotRequest): ByteArray = request {
-        val response =
-            it.getSourceScreenshot(
-                /* sourceName = */ screenshot.sourceName,
-                /* sourceUuid = */ null,
-                /* imageFormat = */ screenshot.format,
-                /* imageWidth = */ screenshot.width,
-                /* imageHeight = */ screenshot.height,
-                /* imageCompressionQuality = */ screenshot.compressionQuality,
-            )
-        decodeImageData(response.imageData)
-    }
+    override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray =
+        this.request {
+            val response =
+                it.getSourceScreenshot(
+                    /* sourceName = */ request.sourceName,
+                    /* sourceUuid = */ null,
+                    /* imageFormat = */ request.format,
+                    /* imageWidth = */ request.width,
+                    /* imageHeight = */ request.height,
+                    /* imageCompressionQuality = */ request.compressionQuality,
+                )
+            decodeImageData(response.imageData)
+        }
 
     // ── Power features (M7) ─────────────────────────────────────────────────
 

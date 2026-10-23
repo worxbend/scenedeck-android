@@ -94,10 +94,11 @@ constructor(
                 registry.entries,
                 studio,
             ) { connection, scenes, program, entries, studioSnap ->
+                val entriesByName = entries.associateBy { it.sceneName }
                 val cards =
                     scenes
                         .map { scene ->
-                            val entry = entries.firstOrNull { it.sceneName == scene.name }
+                            val entry = entriesByName[scene.name]
                             SceneCardState(
                                 name = scene.name,
                                 role = entry?.role ?: SceneRole.PRIMARY,

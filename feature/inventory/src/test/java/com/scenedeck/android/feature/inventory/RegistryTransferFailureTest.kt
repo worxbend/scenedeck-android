@@ -33,12 +33,15 @@ class RegistryTransferFailureTest {
             transfer.stage(payload())
             dao.failure = IllegalStateException("storage unavailable")
             transfer.confirmImport()
+            withTimeout(5_000) { dao.started.await() }
             withTimeout(5_000) { transfer.importing.first { !it } }
+            assertEquals(1, dao.writes)
             assertNotNull(transfer.importPreview.value)
             dao.failure = null
             transfer.confirmImport()
             withTimeout(5_000) { transfer.importPreview.first { it == null } }
             assertNull(transfer.importPreview.value)
+            assertEquals(2, dao.writes)
         } finally {
             scope.cancel()
         }
@@ -80,14 +83,16 @@ class RegistryTransferFailureTest {
 
         override suspend fun byName(sceneName: String): SceneRegistryEntity? = null
 
-        override suspend fun upsert(entity: SceneRegistryEntity) {
+        override suspend fun upsert(entity: SceneRegistryEntity) = write()
+
+        override suspend fun upsertAll(entities: List<SceneRegistryEntity>) = write()
+
+        private suspend fun write() {
             writes++
             started.complete(Unit)
             release?.await()
             failure?.let { throw it }
         }
-
-        override suspend fun upsertAll(entities: List<SceneRegistryEntity>) = Unit
 
         override suspend fun deleteStale(validSceneNames: List<String>) = Unit
 

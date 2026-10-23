@@ -24,7 +24,34 @@ coroutines ≥ 1.10.2 — all satisfied by our pins (3.6.0 / 1.11.0 / 1.11.0).
 - Session state machine `Disconnected → Connecting → Identifying → Ready →
   Reconnecting(backoff ≤ 30 s)`; `ObsAuthException` → `Failed(Auth)`, no retry.
 - `Semaphore(8)` around every request (desktop parity).
+- The receiver, typed request continuations and initial GetVersion share one
+  `Dispatchers.Default.limitedParallelism(1)` execution lane. Suspended requests remain
+  concurrent (up to eight); UUID bookkeeping executes serially between suspensions.
+  This avoids ktobs 0.5.0's cancelled-mutex cleanup race without retrying requests or
+  altering the dependency. Receiver confinement is explicit because ktobs launches it
+  in Ktor's WebSocket scope rather than inheriting the caller's dispatcher.
+- Request admission and response share a 10 s deadline. An unanswered live socket cannot
+  permanently occupy the request lane; the deadline maps to `ObsRequestTimeoutException`,
+  while caller cancellation propagates. Requests retain their original session and fail
+  if it has been replaced before admission or completion. Timed-out writes are never
+  retried automatically: OBS may have applied them before its response was lost.
 - Meter events on a dedicated `SharedFlow` (`extraBufferCapacity = 4`,
   `DROP_OLDEST`); all other events on a separate buffered flow.
 - ktobs `ObsRequestException` is mapped to our own `ObsRequestFailedException`
-  so no ktobs type leaks through the `ObsClient` API.
+  with structured request/status fields and no raw server comment/cause, so no ktobs
+  type or private diagnostic leaks through the `ObsClient` API. Connection errors retain
+  safe categories/codes; protocol messages and diagnostic strings redact raw details.
+  Malformed typed request responses become `ObsRequestProtocolException` without retaining
+  parser messages or causes; the session remains usable for subsequent valid responses.
+- Screenshot base64 is limited to 2 MiB of compressed image bytes before allocation.
+  The data layer separately reads image dimensions before allocating pixels. This bounds
+  image-decoder allocations, not the WebSocket frame that has already been received, nor
+  the aggregate memory of every thumbnail in a large current scene collection.
+
+Pinned ktobs 0.5.0 removes request UUIDs in a cancellable mutex-protected finally block.
+All register/remove/cancel-all critical sections contain no suspension while holding that
+mutex. Confining their execution prevents mutex contention, allowing cancelled requests
+to finish cleanup through its uncontended fast path. Recheck this assumption when upgrading
+ktobs. Regression tests inspect the actual waiter store across repeated batches of eight
+timeouts/cancellations, test deadline/permit recovery and delay caller continuations across
+session replacement. Unmatched late responses are ignored by the pinned dependency.

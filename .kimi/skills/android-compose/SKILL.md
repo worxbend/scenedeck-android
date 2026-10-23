@@ -5,9 +5,9 @@ description: Modern Android development with Jetpack Compose for SceneDeck Andro
 
 # Android + Jetpack Compose rules
 
-Compose-first Android development. Snapshot: **Kotlin 2.4.0, Compose BOM 2026.09.00
-(core 1.11.x), material3 stable 1.4.x + Expressive 1.5.x line, AGP 9.x,
-compileSdk/targetSdk 36, minSdk 28.** Versions drift — check
+Compose-first Android development. Current pins: **Kotlin 2.4.20, Compose BOM 2026.09.00
+(core 1.11.x), Material 3 Expressive 1.5.0-alpha29, AGP 9.4.1,
+compileSdk 37, targetSdk 36, minSdk 28.** Versions drift — check
 `gradle/libs.versions.toml` first and treat `docs/TECH_STACK.md` as the source of truth.
 
 ## Core rules
@@ -26,6 +26,9 @@ compileSdk/targetSdk 36, minSdk 28.** Versions drift — check
 6. **Collect with `collectAsStateWithLifecycle()`**, never `collectAsState()`.
 7. **KSP, never kapt.** Gradle Kotlin DSL + `libs.versions.toml` catalog.
    Edge-to-edge by default (`enableEdgeToEdge()`; enforced at targetSdk 35+).
+8. **AGP 9 owns Kotlin for Android modules.** Do not apply `org.jetbrains.kotlin.android`;
+   keep the Compose compiler plugin explicitly versioned with Kotlin. Register variant
+   Kotlin sources through `variant.sources.kotlin`, including the F-Droid variant.
 
 ## Project structure (this repo)
 

@@ -31,6 +31,21 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 - **Stats are poll-only**: `GetStats` + `GetStreamStatus` at 1 Hz for the whole
   connection (2-min ring buffer), not per-screen.
 - **Concurrency**: bound parallel request batches with `Semaphore(8)` (desktop parity).
+  The 10-second request deadline includes permit admission and response wait.
+  Bind requests to the session captured before admission; reject replacement
+  sessions before dispatch/publication and propagate caller cancellation. Do not
+  retry timed-out writes automatically. Typed request blocks, initial GetVersion
+  and the complete receiver/cleanup share one serial execution dispatcher, while
+  up to eight requests remain suspended in flight. ktobs launches its receiver in
+  Ktor's scope, so confinement must be explicit. Repeated concurrent timeout/caller-
+  cancellation regressions inspect zero retained UUID waiters and healthy followups.
+  Recheck the pinned non-suspending UUID critical sections and regressions on upgrades.
+- **Failure privacy**: expose typed safe descriptions, never raw server comments,
+  response/parser payloads or transport causes in diagnostic/UI strings.
+- **Thumbnails**: reject images above 2 MiB compressed before base64 allocation;
+  the data layer additionally validates dimensions and 1,048,576 pixels before
+  bitmap allocation. These guards do not bound received WebSocket frame size or
+  total cached images across scenes.
 
 ## Requests the app uses
 
@@ -40,7 +55,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 | Scenes | `GetSceneList`, `GetCurrentProgramScene`, `SetCurrentProgramScene`, `GetSceneItemList` (groups incl.), `GetSceneItemEnabled`, `SetSceneItemEnabled` (M7) |
 | Studio (M6) | `GetStudioModeEnabled`, `SetStudioModeEnabled`, `Get/SetCurrentPreviewScene`, `TriggerStudioModeTransition`, `Get/SetCurrentSceneTransition`, `SetCurrentSceneTransitionDuration` |
 | Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection` |
-| Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `ToggleVirtualCam` (M7), `ToggleReplayBuffer`, `SaveReplayBuffer` (M7) |
+| Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `ToggleVirtualCam` (M7) |
 | Audio | `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
 | Media (M7) | `GetMediaInputStatus`, `TriggerMediaInputAction` |
 | Sources (M6) | `GetSourceScreenshot` (JPEG, throttled) |

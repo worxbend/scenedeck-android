@@ -8,18 +8,20 @@ import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -56,6 +58,7 @@ data class MixerState(
  * algorithm in [AudioDiscovery]).
  */
 @Singleton
+@OptIn(FlowPreview::class)
 @Suppress("TooManyFunctions") // cohesive OBS-audio surface; splitting would scatter one concern
 class MixerRepository
 @Inject
@@ -66,9 +69,11 @@ constructor(
 ) {
     private val discovery = AudioDiscovery(client)
     private val discoveryMutex = Mutex()
-    private val volumeMutationLock = Any()
-    private val volumeRevision = AtomicLong()
-    private val volumeVersions = mutableMapOf<String, Long>()
+    private val controlLock = Any()
+    private var controlRevision = 0L
+    private val volumeControls = mutableMapOf<String, OptimisticControl<Double>>()
+    private val muteControls = mutableMapOf<String, OptimisticControl<Boolean>>()
+    private val discoveryRequests = MutableStateFlow(0L)
 
     private val discovered = MutableStateFlow<List<DiscoveredInput>>(emptyList())
     private val activeScene = MutableStateFlow<String?>(null)
@@ -113,23 +118,31 @@ constructor(
 
     init {
         scope.launch {
-            client.connectionState.collectLatest { state ->
-                when (state) {
-                    is ConnectionState.Ready -> refreshDiscovery()
-                    ConnectionState.Disconnected -> {
+            client.connectionState.collect { state ->
+                synchronized(controlLock) {
+                    requestDiscovery()
+                    if (state !is ConnectionState.Ready) {
                         discovered.value = emptyList()
                         activeScene.value = null
                         _sceneNames.value = emptyList()
+                        volumeControls.clear()
+                        muteControls.clear()
                     }
-
-                    else -> Unit
                 }
             }
         }
         scope.launch {
+            discoveryRequests
+                .debounce {
+                    if (client.connectionState.value is ConnectionState.Ready) REFRESH_DEBOUNCE_MS
+                    else 0L
+                }
+                .collectLatest { refreshDiscovery(it) }
+        }
+        scope.launch {
             client.events.collect { event ->
                 when (event) {
-                    is ObsEvent.CurrentProgramSceneChanged -> refreshDiscovery()
+                    is ObsEvent.CurrentProgramSceneChanged -> requestDiscovery()
 
                     is ObsEvent.SceneItemEnableStateChanged,
                     is ObsEvent.SceneCreated,
@@ -138,12 +151,10 @@ constructor(
                     is ObsEvent.SceneListChanged,
                     is ObsEvent.InputCreated,
                     is ObsEvent.InputRemoved,
-                    is ObsEvent.InputNameChanged -> refreshDiscovery()
+                    is ObsEvent.InputNameChanged -> requestDiscovery()
 
                     is ObsEvent.InputMuteStateChanged ->
-                        updateInput(event.inputName) {
-                            it.copy(muted = event.muted)
-                        }
+                        observeInputMute(event.inputName, event.muted)
 
                     is ObsEvent.InputVolumeChanged ->
                         previewInputVolume(event.inputName, event.volumeMul)
@@ -157,7 +168,7 @@ constructor(
             settings.settings
                 .map { it.audioAllowList }
                 .distinctUntilChanged()
-                .collectLatest { refreshDiscovery() }
+                .collect { requestDiscovery() }
         }
         scope.launch {
             // Poll only while connected AND subscribed; mixerState emissions (e.g. per-frame
@@ -193,17 +204,42 @@ constructor(
         }
     }
 
-    suspend fun refreshDiscovery() = discoveryMutex.withLock {
+    private fun requestDiscovery() =
+        synchronized(controlLock) {
+            discoveryRequests.value++
+        }
+
+    suspend fun refreshDiscovery() = refreshDiscovery(discoveryRequests.value)
+
+    private suspend fun refreshDiscovery(generation: Long) = discoveryMutex.withLock {
         if (client.connectionState.value !is ConnectionState.Ready) return@withLock
+        val startedAt = synchronized(controlLock) { controlRevision }
         val list = requestResult { client.getSceneList() }.getOrNull() ?: return@withLock
         val inputs = discoverScene(list.currentProgramScene)
-        if (client.connectionState.value !is ConnectionState.Ready) return@withLock
-        activeScene.value = list.currentProgramScene
-        _sceneNames.value = list.scenes.map { it.name }
-        synchronized(volumeMutationLock) {
-            volumeVersions
-                .clear() // New discovery is authoritative; old writes cannot roll it back.
-            discovered.value = inputs
+        currentCoroutineContext().ensureActive()
+        synchronized(controlLock) {
+            if (
+                client.connectionState.value !is ConnectionState.Ready ||
+                    discoveryRequests.value != generation
+            )
+                return@synchronized
+            activeScene.value = list.currentProgramScene
+            _sceneNames.value = list.scenes.map { it.name }
+            val names = inputs.mapTo(mutableSetOf()) { it.name }
+            volumeControls.keys.retainAll(names)
+            muteControls.keys.retainAll(names)
+            discovered.value = inputs.map { input ->
+                val volume =
+                    volumeControls.getOrPut(input.name) {
+                        OptimisticControl(input.volumeMul, startedAt)
+                    }
+                val mute =
+                    muteControls.getOrPut(input.name) { OptimisticControl(input.muted, startedAt) }
+                input.copy(
+                    volumeMul = volume.observe(input.volumeMul, startedAt),
+                    muted = mute.observe(input.muted, startedAt),
+                )
+            }
         }
     }
 
@@ -212,46 +248,68 @@ constructor(
         discovery.discover(sceneName, settings.settings.first().audioAllowList)
 
     suspend fun setInputVolume(inputName: String, volumeMul: Double) {
-        val (previous, revision) =
-            synchronized(volumeMutationLock) {
-                val previous = discovered.value.firstOrNull { it.name == inputName }?.volumeMul
-                val revision = volumeRevision.incrementAndGet()
-                volumeVersions[inputName] = revision
-                updateInput(inputName) { it.copy(volumeMul = volumeMul) }
-                previous to revision
+        val revision =
+            synchronized(controlLock) {
+                val revision = ++controlRevision
+                volumeControls[inputName]?.begin(revision, volumeMul)?.let { value ->
+                    updateInput(inputName) { it.copy(volumeMul = value) }
+                }
+                revision
             }
-        requestResult { client.setInputVolume(inputName, volumeMul) }
-            .onFailure { rollbackVolume(inputName, previous, revision) }
-            .getOrThrow()
-    }
-
-    private fun rollbackVolume(inputName: String, previous: Double?, revision: Long) {
-        synchronized(volumeMutationLock) {
-            if (previous != null && volumeVersions[inputName] == revision) {
-                updateInput(inputName) { it.copy(volumeMul = previous) }
+        var succeeded = false
+        try {
+            client.setInputVolume(inputName, volumeMul)
+            succeeded = true
+        } finally {
+            synchronized(controlLock) {
+                volumeControls[inputName]?.complete(revision, succeeded)?.let { value ->
+                    updateInput(inputName) { it.copy(volumeMul = value) }
+                }
             }
         }
     }
 
     /** Local preview or OBS event supersedes any older optimistic write. */
     fun previewInputVolume(inputName: String, volumeMul: Double) {
-        synchronized(volumeMutationLock) {
-            volumeVersions[inputName] = volumeRevision.incrementAndGet()
+        synchronized(controlLock) {
+            val revision = ++controlRevision
+            volumeControls
+                .getOrPut(inputName) { OptimisticControl(volumeMul, revision) }
+                .observe(volumeMul, revision)
             updateInput(inputName) { it.copy(volumeMul = volumeMul) }
         }
     }
 
+    private fun observeInputMute(inputName: String, muted: Boolean) {
+        synchronized(controlLock) {
+            val revision = ++controlRevision
+            muteControls
+                .getOrPut(inputName) { OptimisticControl(muted, revision) }
+                .observe(muted, revision)
+            updateInput(inputName) { it.copy(muted = muted) }
+        }
+    }
+
     suspend fun setInputMute(inputName: String, muted: Boolean) {
-        val previous = discovered.value.firstOrNull { it.name == inputName }?.muted
-        updateInput(inputName) { it.copy(muted = muted) }
-        requestResult { client.setInputMute(inputName, muted) }
-            .onFailure {
-                // Roll back the optimistic patch; OBS events will re-sync the true value later.
-                if (previous != null) {
-                    updateInput(inputName) { input -> input.copy(muted = previous) }
+        val revision =
+            synchronized(controlLock) {
+                val revision = ++controlRevision
+                muteControls[inputName]?.begin(revision, muted)?.let { value ->
+                    updateInput(inputName) { it.copy(muted = value) }
+                }
+                revision
+            }
+        var succeeded = false
+        try {
+            client.setInputMute(inputName, muted)
+            succeeded = true
+        } finally {
+            synchronized(controlLock) {
+                muteControls[inputName]?.complete(revision, succeeded)?.let { value ->
+                    updateInput(inputName) { it.copy(muted = value) }
                 }
             }
-            .getOrThrow()
+        }
     }
 
     suspend fun setLocked(inputName: String, locked: Boolean) {
@@ -316,5 +374,6 @@ constructor(
 
         /** Media-status poll cadence; mirrored in MixerRepositoryTest. */
         const val MEDIA_POLL_MS = 2_000L
+        const val REFRESH_DEBOUNCE_MS = 300L
     }
 }

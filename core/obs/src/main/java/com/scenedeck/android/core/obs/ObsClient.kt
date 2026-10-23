@@ -19,6 +19,7 @@ import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.model.TransitionListSnapshot
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.internal.KtobsObsClient
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,10 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * Typical use: `connect(...)` → collect [connectionState]/[events]/[volumeMeters] → call suspend
  * requests while [ConnectionState.Ready].
+ *
+ * Requests include admission and response in a bounded deadline, fail when their original session
+ * is superseded, and never retry automatically. A timed-out write may have reached OBS;
+ * [ObsRequestTimeoutException] reports an unknown outcome, not permission to repeat the write.
  */
 @Suppress("TooManyFunctions") // the OBS request surface is intentionally broad
 interface ObsClient {
@@ -188,6 +193,12 @@ interface ObsClient {
 /** Thrown when a request is issued while the session is not [ConnectionState.Ready]. */
 class ObsNotConnectedException : IllegalStateException("Not connected to OBS")
 
+/** Request admission or response exceeded its deadline; caller cancellation stays cancellation. */
+class ObsRequestTimeoutException : IOException("OBS request timed out")
+
+/** OBS returned a response that cannot be decoded; no server data or parser cause is retained. */
+class ObsRequestProtocolException : IOException("Unable to decode OBS protocol response")
+
 /**
  * Parameters for [ObsClient.getSourceScreenshot] (OBS `GetSourceScreenshot`). Defaults capture a
  * 360 px-wide JPEG at quality 50.
@@ -198,7 +209,12 @@ data class ScreenshotRequest(
     val compressionQuality: Int = 50,
     val width: Int? = 360,
     val height: Int? = null,
-)
+) {
+    companion object {
+        /** Maximum compressed image bytes accepted before base64/image decoding. */
+        const val MAX_IMAGE_BYTES: Int = 2 * 1024 * 1024
+    }
+}
 
 /**
  * OBS answered a request with `result: false`. [statusCode] is the obs-websocket
@@ -206,9 +222,12 @@ data class ScreenshotRequest(
  */
 private const val NOT_IMPLEMENTED = "ObsClient member not implemented (added in M6)"
 
+@Suppress(
+    "UNUSED_PARAMETER"
+) // Keep constructor compatibility without retaining private diagnostics.
 class ObsRequestFailedException(
     val requestType: String,
     val statusCode: String,
     message: String?,
     cause: Throwable? = null,
-) : Exception("Request '$requestType' failed ($statusCode): $message", cause)
+) : Exception("OBS request failed ($statusCode)")

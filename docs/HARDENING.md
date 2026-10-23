@@ -126,3 +126,52 @@ Final dependency/report follow-up: **379 tests, zero failures** and the complete
 local quality pipeline passed with patched AGP build-tool dependencies. Detekt SARIF
 runs have distinct module categories. The persistent DROP counter uses stream
 output drops rather than render/encoder skipped frames.
+
+## Performance/security review — 2026-10-04
+
+The approved multi-agent review uses small, independently challenged changes rather
+than new architectural layers. The skill inventory, proposal ledger and source
+reviews are recorded in `tasks/reports/`.
+
+| Area | Implemented guarantee and regression evidence |
+|---|---|
+| OBS requests | A 10-second admission/response deadline includes dispatcher admission; shared serial request/initial-read/receiver execution avoids the pinned cleanup race while preserving eight suspended in-flight requests; repeated deadline/cancellation batches retain zero UUID waiters, queued/late work cannot cross sessions and writes are not retried automatically |
+| Diagnostics | Public connection/request/parser failures and transport UI messages exclude marked server comments, payloads and arbitrary transport causes while retaining useful typed categories |
+| Thumbnails | At most two awaited capture jobs, no per-scene waiter backlog, relevant configuration deduplication, removed-scene pruning, 2 MiB compressed-byte and 1,048,576-pixel guards before allocation |
+| Mixer writes | Confirmed values plus pending tokens handle overlapping success/failure/cancellation and newer OBS events/discovery without obsolete rollback |
+| Mixer discovery | Conflated, 300 ms debounced discovery leaves direct mute/volume reduction responsive; read-start revisions preserve later events/actions |
+| Registry | Deletion shares the mutation mutex; indexed bulk mutations preserve import/default/order behavior with one snapshot read and one batch write |
+| Metadata joins | Deck/graph reducers build one index; graph roles preserve the first duplicate public-list entry and existing verdicts |
+| Widgets | Distinct six-scene/program/connection/readiness projection; Ready empty clears stale actions, unready preserves the grid, explicit refresh remains unconditional |
+| Guidance | Kotlin/SDK/icon/status/card snapshots match current stack and studio UX; Replay Buffer remains excluded |
+
+The pre-change local gate passed. Focused widget/transport regression verification
+passed **15 tests with zero failures** across four suites. Fresh focused OBS
+verification passed **48 tests with zero failures**, including three batches of
+eight deadlines and three batches of eight caller cancellations, actual UUID-store
+cleanup and healthy followups. Fresh data verification passed **135 tests with zero
+failures**, including native SDK 34 image bounds/retention. The first run exposed
+the pinned concurrency defect and drove the serial-lane remedy. The first full gate
+then identified five static-analysis findings; equivalent source cleanup and the
+Inventory bulk-write test-fixture correction pass final verification.
+
+The complete JDK 21/uv quality script and explicit `assembleDebug testDebugUnitTest`
+command passed. The final XML matrix contains **426 tests across 85 suites, zero
+failures/errors/skips**, including **111 Roborazzi render tests across 22 suites**.
+Formatting, Detekt, all applicable Android Lint checks and debug assembly passed.
+Semgrep ran seven rules on 203 selected production source artifacts with zero
+findings/errors; target-list and JSON evidence includes the new untracked
+OptimisticControl source. Its generic tracked-only summary is misleading: default
+test-directory exclusions account for the 130 skipped source files. Gitleaks found
+no leaks in 30 history commits or the working tree. Exact evidence and earlier
+corrections are recorded in `tasks/reports/FINAL_REVIEW_v1.md`.
+
+The evidence demonstrates bounded scheduled thumbnail work and deterministic
+DAO-call reductions, not measured frame-time, latency or device-heap gains.
+Thumbnail bytes/pixels are bounded per image; received WebSocket frames and total
+cached memory across eligible scenes are not globally capped. Pending Mixer tokens
+scale with live writes until completion/deadline. Hosted CodeQL and device/runtime
+profiling remain separate from the local checks.
+Pinned ktobs UUID critical sections contain no suspension while holding their mutex.
+Serial execution avoids contention so cancelled requests can use the cleanup fast
+path; recheck this dependency assumption and the concurrent regressions on upgrades.

@@ -8,6 +8,7 @@ import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.SpecialInputs
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -158,6 +159,192 @@ class MixerRepositoryTest {
         val reverted =
             repository.mixerState.first { s -> !s.inputs.single { it.name == "Music" }.muted }
         assertTrue(!reverted.inputs.single { it.name == "Music" }.muted)
+    }
+
+    @Test
+    fun delayedFailedMuteCannotUndoNewerSuccessfulWriteOrEvent() = runTest {
+        for (useEvent in listOf(false, true)) {
+            val gate = CompletableDeferred<Unit>()
+            var calls = 0
+            val client =
+                object : MediaClient() {
+                    override suspend fun setInputMute(inputName: String, muted: Boolean) {
+                        if (++calls == 1) {
+                            gate.await()
+                            throw IOException("old request failed")
+                        }
+                    }
+                }
+            val repository = MixerRepository(client, settings, backgroundScope)
+            client.setReady()
+            repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
+            val older = async { runCatching { repository.setInputMute("Music", true) } }
+            runCurrent()
+            if (useEvent) client.emit(ObsEvent.InputMuteStateChanged("Music", true))
+            else repository.setInputMute("Music", true)
+            runCurrent()
+            gate.complete(Unit)
+            assertTrue(older.await().isFailure)
+            runCurrent()
+            assertEquals(true, repository.mixerState.value.inputs.single().muted)
+        }
+    }
+
+    @Test
+    fun cancellingMuteWritePropagatesAndRestoresConfirmedValue() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val client =
+            object : MediaClient() {
+                override suspend fun setInputMute(inputName: String, muted: Boolean) {
+                    entered.complete(Unit)
+                    CompletableDeferred<Unit>().await()
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.inputs.isNotEmpty() }
+        val write = async { repository.setInputMute("Music", true) }
+        entered.await()
+        write.cancel()
+        try {
+            write.await()
+            error("Expected cancellation")
+        } catch (expected: CancellationException) {}
+        runCurrent()
+        assertEquals(false, repository.mixerState.value.inputs.single().muted)
+    }
+
+    @Test
+    fun blockedDiscoveryDoesNotDelayOrOverwriteNewerControlEvents() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        val finished = CompletableDeferred<Unit>()
+        var block = false
+        val client =
+            object : MediaClient() {
+                override suspend fun getInputVolume(inputName: String): Double {
+                    if (block) {
+                        entered.complete(Unit)
+                        gate.await()
+                    }
+                    return 1.0
+                }
+
+                override suspend fun getInputMute(inputName: String): Boolean {
+                    if (block) finished.complete(Unit)
+                    return false
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.inputs.isNotEmpty() }
+        // Keep the WhileSubscribed projection active while a real DataStore read suspends.
+        val collector = backgroundScope.launch { repository.mixerState.collect {} }
+        runCurrent()
+        block = true
+        client.emit(ObsEvent.SceneListChanged(listOf(SceneSummary("Main", 0))))
+        advanceTimeBy(301)
+        entered.await()
+        client.emit(ObsEvent.InputMuteStateChanged("Music", true))
+        client.emit(ObsEvent.InputVolumeChanged("Music", 0.25, -12.0))
+        runCurrent()
+        assertEquals(true, repository.mixerState.value.inputs.single().muted)
+        assertEquals(0.25, repository.mixerState.value.inputs.single().volumeMul, 0.0)
+        gate.complete(Unit)
+        finished.await()
+        runCurrent()
+        assertEquals(true, repository.mixerState.value.inputs.single().muted)
+        assertEquals(0.25, repository.mixerState.value.inputs.single().volumeMul, 0.0)
+        collector.cancel()
+    }
+
+    @Test
+    fun lifecycleBurstsCoalesceToOneDiscovery() = runTest {
+        var reads = 0
+        var refreshed: CompletableDeferred<Unit>? = null
+        val client =
+            object : MediaClient() {
+                override suspend fun getSpecialInputs(): SpecialInputs {
+                    reads++
+                    refreshed?.complete(Unit)
+                    return SpecialInputs()
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.inputs.isNotEmpty() }
+        val baseline = reads
+        val signal = CompletableDeferred<Unit>()
+        refreshed = signal
+        repeat(100) { client.emit(ObsEvent.InputCreated("New$it", "audio")) }
+        runCurrent()
+        assertEquals(baseline, reads)
+        advanceTimeBy(301)
+        runCurrent()
+        signal.await()
+        assertEquals(baseline + 1, reads)
+    }
+
+    @Test
+    fun latestDiscoveryCancelsObsoleteSceneAndPublishesOnlyCurrentSelection() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val client =
+            object : MediaClient() {
+                override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> {
+                    if (sceneName == "Old") {
+                        entered.complete(Unit)
+                        try {
+                            CompletableDeferred<Unit>().await()
+                        } catch (cancellation: CancellationException) {
+                            cancelled.complete(Unit)
+                            throw cancellation
+                        }
+                    }
+                    return super.getSceneItemList(sceneName)
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.activeScene == "Main" }
+        val published = mutableListOf<String?>()
+        backgroundScope.launch { repository.mixerState.collect { published += it.activeScene } }
+        client.sceneListSnapshot = SceneListSnapshot("Old", listOf(SceneSummary("Old", 0)))
+        client.emit(ObsEvent.CurrentProgramSceneChanged("Old"))
+        advanceTimeBy(301)
+        entered.await()
+        client.sceneListSnapshot = SceneListSnapshot("New", listOf(SceneSummary("New", 0)))
+        client.emit(ObsEvent.CurrentProgramSceneChanged("New"))
+        advanceTimeBy(301)
+        cancelled.await()
+        repository.mixerState.first { it.activeScene == "New" }
+        assertTrue("Obsolete discovery never publishes", "Old" !in published)
+    }
+
+    @Test
+    fun authoritativeDiscoveryCannotBeUndoneByPriorMuteFailure() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var observedMute = false
+        val client =
+            object : MediaClient() {
+                override suspend fun getInputMute(inputName: String) = observedMute
+
+                override suspend fun setInputMute(inputName: String, muted: Boolean) {
+                    gate.await()
+                    throw IOException("old request failed")
+                }
+            }
+        val repository = MixerRepository(client, settings, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.inputs.isNotEmpty() }
+        val write = async { runCatching { repository.setInputMute("Music", true) } }
+        runCurrent()
+        observedMute = true
+        repository.refreshDiscovery()
+        gate.complete(Unit)
+        assertTrue(write.await().isFailure)
+        runCurrent()
+        assertEquals(true, repository.mixerState.value.inputs.single().muted)
     }
 
     /** One media-kind input ("Music") in the single program scene. */

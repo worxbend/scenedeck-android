@@ -37,7 +37,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - Scene-name search preserves the All/Deck filter; reorder is disabled while searching.
 - Current **program scene** highlighted (Active state); others show Ready state.
 - Tap card → `SetCurrentProgramScene`. Haptic feedback + animated state flip.
-- Uniform card tiles use an accent rail, icon well and separate scene/state labels.
+- Uniform card tiles use an icon well, numbered positions and separate scene/state
+  labels, with no accent rail; grips appear only in explicit reorder mode.
 - Per-scene optional **accent color** and **icon** (local metadata).
 - Scene card order = user-defined drag order, persisted locally. Enable Reorder scenes
   in scene options to expose grips; scene taps do not switch OBS during reordering.
@@ -82,7 +83,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - Trend charts (FPS, render time), per-sample skipped/missed frame bars, counter cards
   (CPU, memory, bitrate, frame totals); rolling bitrate from consecutive byte counters.
 - 2-minute ring-buffer history kept for the whole connection, not just while page open.
-- FPS + dropped frames always visible in the global status strip on every page.
+- FPS + dropped frames appear in the global status strip on every main page while
+  streaming; standby and recording-only sessions retain output status/timers.
 
 ## 6. Inventory page (local scene registry)
 
@@ -150,8 +152,25 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
   invalid ports and oversized input. Scene deep links reject ambiguous authorities/NUL names.
 - Password drafts intentionally do not survive process recreation; credentials stay encrypted.
 - Mixer selection discards obsolete discoveries; Doctor keeps prior results on request failure.
+- Mixer lifecycle discoveries coalesce separately from immediate mute/volume events.
+  Confirmed values and pending writes prevent obsolete failures or discovery reads
+  from overwriting newer actions/events; cancellation removes its pending edit.
 - Onboarding reset cancels the running connection attempt; duplicate attempts are ignored.
 - Connected widgets say Connected; their scene list is limited to six items.
+- Widget updates ignore unrelated deck metadata. A Ready empty deck clears cached
+  scene actions; disconnected/reconnecting states keep the last-known grid for
+  connect-then-act. Explicit placement/refresh still retries the current state.
+- OBS requests fail after a 10-second admission-and-response deadline and remain
+  bound to their originating session. Timeout does not automatically retry writes;
+  failure messages exclude server comments and arbitrary transport/parser details.
+  Concurrent deadline/cancellation batches release pending response waiters without
+  reducing the eight-request in-flight limit.
+- Screenshot previews await at most two capture jobs per batch and prune removed
+  scene entries. Each thumbnail is limited to 2 MiB compressed and 1,048,576 pixels
+  before bitmap allocation. Cached thumbnail memory scales with eligible scenes;
+  the guard does not impose a WebSocket frame-size limit.
+- Local registry deletions serialize with other mutations; bulk updates preserve
+  import merges, curation ordering and default roles while avoiding per-name reads.
 - Stream button reads Stream when idle and Stop when active; active halo respects motion settings.
 - Elapsed timers stay visible on phones: green stream, amber recording.
 - Newer Android backup/data-transfer rules explicitly exclude all app data.

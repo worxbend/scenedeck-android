@@ -3,9 +3,17 @@ package com.scenedeck.android.core.data
 import android.graphics.Bitmap
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
+import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
+import com.scenedeck.android.core.obs.ScreenshotRequest
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -16,11 +24,14 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -125,6 +136,160 @@ class ScreenshotRepositoryTest {
         assertTrue(repository.thumbnails.value.isEmpty())
     }
 
+    @Test
+    fun slowCapturesHaveNoWaitingCoroutineBacklogOrUnrelatedRestarts() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var cancellations = 0
+        val slow =
+            object :
+                FakeObsClient(
+                    sceneListSnapshot =
+                        SceneListSnapshot(
+                            "Scene0",
+                            (0 until 100).map { SceneSummary("Scene$it", it) },
+                        )
+                ) {
+                override suspend fun getSourceScreenshot(request: ScreenshotRequest): ByteArray {
+                    screenshotCalls += request.sourceName
+                    try {
+                        gate.await()
+                    } catch (cancelled: CancellationException) {
+                        cancellations++
+                        throw cancelled
+                    }
+                    return makeJpeg()
+                }
+            }
+        settings.settings.first()
+        val obsState =
+            ObsStateRepository(slow, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val pollerJob = SupervisorJob(backgroundScope.coroutineContext[Job])
+        val pollerScope = CoroutineScope(backgroundScope.coroutineContext + pollerJob)
+        val repository = ScreenshotRepository(slow, settings, obsState, pollerScope)
+        repository.nowMs = { testScheduler.currentTime }
+        slow.setReady()
+        obsState.deckState.first { it.allScenes.size == 100 }
+        val collector = backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        assertEquals(2, slow.screenshotCalls.size)
+        val initialJobs = descendantCount(pollerJob)
+        assertTrue("No per-scene waiting job fanout", initialJobs < 32)
+        settings.setHaptics(false)
+        settings.settings.first { !it.haptics }
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(2, slow.screenshotCalls.size)
+        assertEquals(initialJobs, descendantCount(pollerJob))
+        assertEquals(0, cancellations)
+        collector.cancel()
+        runCurrent()
+        assertEquals(2, cancellations)
+        assertTrue(repository.thumbnails.value.isEmpty())
+    }
+
+    @Test
+    fun removingScenePrunesCachedFrameAndFutureCaptures() = runTest {
+        settings.settings.first()
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        repository.nowMs = { testScheduler.currentTime }
+        client.setReady()
+        obsState.deckState.first { it.allScenes.size == 3 }
+        backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        assertEquals(3, repository.thumbnails.value.size)
+        client.emit(ObsEvent.SceneListChanged(listOf(SceneSummary("Hot", 0))))
+        obsState.deckState.first { it.allScenes.size == 1 }
+        runCurrent()
+        assertEquals(setOf("Hot"), repository.thumbnails.value.keys)
+        client.screenshotCalls.clear()
+        advanceTimeBy(12_000)
+        runCurrent()
+        assertTrue(client.screenshotCalls.all { it == "Hot" })
+    }
+
+    @Test
+    @Config(sdk = [34])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun rejectsInvalidOversizedBytesAndPixelDimensions() = runTest {
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        assertNull(repository.decodeBitmap(byteArrayOf(1, 2, 3)))
+        assertNull(repository.decodeBitmap(ByteArray(2 * 1024 * 1024 + 1)))
+        val huge = Bitmap.createBitmap(2048, 1024, Bitmap.Config.ARGB_8888)
+        huge.eraseColor(0xFF336699.toInt())
+        val bytes =
+            java.io
+                .ByteArrayOutputStream()
+                .apply { huge.compress(Bitmap.CompressFormat.PNG, 100, this) }
+                .toByteArray()
+        assertNull(repository.decodeBitmap(bytes))
+        assertTrue(repository.decodeBitmap(makeJpeg()) != null)
+    }
+
+    @Test
+    @Config(sdk = [34])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun rejectedCaptureRetainsLastAcceptedFrame() = runTest {
+        settings.settings.first()
+        val obsState =
+            ObsStateRepository(client, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        repository.nowMs = { testScheduler.currentTime }
+        client.setReady()
+        obsState.deckState.first { it.allScenes.size == 3 }
+        backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        val accepted = repository.thumbnails.value
+        assertEquals(3, accepted.size)
+        client.screenshotBytes = byteArrayOf(1, 2, 3)
+        advanceTimeBy(12_000)
+        runCurrent()
+        assertEquals(accepted, repository.thumbnails.value)
+    }
+
+    @Test
+    fun slowProgramAndPreviewCapturesDoNotStarveColdScene() = runTest {
+        val slow =
+            object :
+                    FakeObsClient(
+                        sceneListSnapshot =
+                            SceneListSnapshot(
+                                "Program",
+                                listOf(
+                                    SceneSummary("Program", 0),
+                                    SceneSummary("Preview", 1),
+                                    SceneSummary("Cold", 2),
+                                ),
+                            )
+                    ) {
+                    override suspend fun getSourceScreenshot(
+                        request: ScreenshotRequest
+                    ): ByteArray {
+                        screenshotCalls += request.sourceName
+                        delay(3_000)
+                        return makeJpeg()
+                    }
+                }
+                .apply {
+                    studioModeEnabled = true
+                    previewScene = "Preview"
+                }
+        settings.settings.first()
+        val obsState =
+            ObsStateRepository(slow, RegistryRepository(FakeRegistryDao()), backgroundScope)
+        val repository = ScreenshotRepository(slow, settings, obsState, backgroundScope)
+        repository.nowMs = { testScheduler.currentTime }
+        slow.setReady()
+        obsState.deckState.first { it.previewScene == "Preview" && it.allScenes.size == 3 }
+        backgroundScope.launch { repository.thumbnails.collect {} }
+        advanceTimeBy(6_001)
+        runCurrent()
+        assertTrue(slow.screenshotCalls.toSet().containsAll(setOf("Program", "Preview", "Cold")))
+    }
+
     private fun makeJpeg(): ByteArray {
         val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(0xFF336699.toInt())
@@ -132,6 +297,8 @@ class ScreenshotRepositoryTest {
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, stream)
         return stream.toByteArray()
     }
+
+    private fun descendantCount(job: Job): Int = job.children.sumOf { 1 + descendantCount(it) }
 
     private class FakeRegistryDao : SceneRegistryDao {
         private val entities = MutableStateFlow<Map<String, SceneRegistryEntity>>(emptyMap())

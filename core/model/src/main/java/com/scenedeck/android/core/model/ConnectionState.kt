@@ -23,14 +23,22 @@ sealed interface ConnectionState {
 /** Typed connection failures. */
 sealed interface ConnectionError {
     /** Authentication failed (bad password / password required). Never retried. */
-    data class Auth(val message: String? = null) : ConnectionError
+    data class Auth(val message: String? = null) : ConnectionError {
+        override fun toString(): String = "Auth(message=<redacted>)"
+    }
 
     /** Host unreachable, connection refused, DNS failure, timeout. */
-    data class Unreachable(val cause: Throwable? = null) : ConnectionError
+    data class Unreachable(val cause: Throwable? = null) : ConnectionError {
+        override fun toString(): String = "Unreachable(cause=<redacted>)"
+    }
 
     /** Server violated the protocol (unexpected op codes, bad RPC version). */
-    data class Protocol(val message: String) : ConnectionError
+    data class Protocol(val message: String) : ConnectionError {
+        override fun toString(): String = "Protocol(message=<redacted>)"
+    }
 
     /** Server closed the session (carries the obs-websocket close code/reason). */
-    data class Closed(val code: Int, val reason: String) : ConnectionError
+    data class Closed(val code: Int, val reason: String) : ConnectionError {
+        override fun toString(): String = "Closed(code=$code, reason=<redacted>)"
+    }
 }

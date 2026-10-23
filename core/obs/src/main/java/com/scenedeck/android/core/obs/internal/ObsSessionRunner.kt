@@ -15,6 +15,7 @@ import com.scenedeck.android.core.obs.ObsNotConnectedException
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -69,6 +70,7 @@ internal class ObsSessionRunner(
     private val httpClient: HttpClient,
     private val connectionState: MutableStateFlow<ConnectionState>,
     private val requestSemaphore: Semaphore,
+    private val protocolDispatcher: CoroutineDispatcher,
     private val dispatchEvent: (ObsSession, EventOpCode) -> Unit,
 ) {
 
@@ -208,7 +210,9 @@ internal class ObsSessionRunner(
                 var failure: Throwable? = null
                 var closeReason: ObsCloseReason? = null
                 try {
-                    runDefaultReceiver(s)
+                    // ktobs launches its receiver in Ktor's WebSocket scope. Explicitly confine
+                    // its UUID cancellation/dispatch with typed requests, including cleanup.
+                    withContext(protocolDispatcher) { runDefaultReceiver(s) }
                 } catch (e: ClosedReceiveChannelException) {
                     failure = e
                     closeReason =
@@ -289,7 +293,9 @@ internal class ObsSessionRunner(
         // Prove the request lane and collect session info in one round-trip.
         val version =
             withTimeout(connectTimeoutMs) {
-                requestSemaphore.withPermit { s.getVersion().toDomain() }
+                requestSemaphore.withPermit {
+                    withContext(protocolDispatcher) { s.getVersion().toDomain() }
+                }
             }
         connectionState.value = ConnectionState.Ready(version)
         onReady()
@@ -300,17 +306,19 @@ private fun ObsAuthException.toConnectionError(): ConnectionError =
     when (val k = kind) {
         is AuthError.InvalidRpc ->
             ConnectionError.Protocol("Unsupported OBS RPC version ${k.endpointVersion}")
-        is AuthError.Unexpected -> ConnectionError.Auth(k.reason?.message)
-        else -> ConnectionError.Auth(message)
+        is AuthError.Unexpected -> ConnectionError.Auth("OBS rejected authentication")
+        else -> ConnectionError.Auth("Check the OBS password")
     }
 
 private fun Throwable.toConnectionError(): ConnectionError =
     when (this) {
         is ObsAuthException -> toConnectionError()
         is SessionLostException ->
-            closeReason?.let { ConnectionError.Closed(it.code.toInt(), it.message) }
-                ?: ConnectionError.Unreachable(cause ?: this)
-        is SerializationException -> ConnectionError.Protocol(message ?: "Protocol decode error")
-        is TimeoutCancellationException -> ConnectionError.Unreachable(this)
-        else -> ConnectionError.Unreachable(this)
+            closeReason?.let {
+                ConnectionError.Closed(it.code.toInt(), "OBS WebSocket session closed")
+            } ?: ConnectionError.Unreachable()
+        is SerializationException ->
+            ConnectionError.Protocol("Unable to decode OBS protocol response")
+        is TimeoutCancellationException -> ConnectionError.Unreachable()
+        else -> ConnectionError.Unreachable()
     }

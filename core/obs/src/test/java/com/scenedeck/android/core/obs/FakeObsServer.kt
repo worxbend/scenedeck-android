@@ -67,6 +67,20 @@ internal class FakeObsServer(
     /** Extra delay before answering a given requestType (responses stay async). */
     var responseDelayMs: (requestType: String) -> Long = { 0L }
 
+    /** Return false to simulate a live socket that never answers a request. */
+    var shouldRespond: (requestType: String) -> Boolean = { true }
+
+    /** Override fixture data to exercise malformed or unexpected server responses. */
+    var responseData: (requestType: String, fixture: String?) -> String? = { _, fixture -> fixture }
+
+    /**
+     * Transform a complete response, including status failures, without changing the fixture set.
+     */
+    var responseFrame: (requestType: String, frame: String) -> String = { _, frame -> frame }
+
+    /** Server-controlled authentication failure text must never become public diagnostics. */
+    var authenticationFailureReason: String = "Authentication failed."
+
     private val activeSockets = CopyOnWriteArrayList<WebSocket>()
 
     val port: Int
@@ -146,7 +160,7 @@ internal class FakeObsServer(
             if (password != null) {
                 val auth = data["authentication"]?.jsonPrimitive?.content
                 if (auth != expectedAuthResponse(password, salt, challenge)) {
-                    webSocket.close(CLOSE_AUTH_FAILED, "Authentication failed.")
+                    webSocket.close(CLOSE_AUTH_FAILED, authenticationFailureReason)
                     return
                 }
             }
@@ -161,13 +175,21 @@ internal class FakeObsServer(
             val id = data["requestId"]!!.jsonPrimitive.content
             receivedRequests += type
 
-            val responseData = RESPONSE_FIXTURES[type]?.let { fixture("responses/$it") }
+            if (!shouldRespond(type)) return
+            val responseData =
+                this@FakeObsServer.responseData(
+                    type,
+                    RESPONSE_FIXTURES[type]?.let { fixture("responses/$it") },
+                )
             val dataPart = if (responseData != null) ",\"responseData\":$responseData" else ""
             val frame =
-                template("response.json")
-                    .replace("%TYPE%", type)
-                    .replace("%ID%", id)
-                    .replace("%DATA%", dataPart)
+                this@FakeObsServer.responseFrame(
+                    type,
+                    template("response.json")
+                        .replace("%TYPE%", type)
+                        .replace("%ID%", id)
+                        .replace("%DATA%", dataPart),
+                )
 
             val delay = responseDelayMs(type)
             if (delay <= 0) {

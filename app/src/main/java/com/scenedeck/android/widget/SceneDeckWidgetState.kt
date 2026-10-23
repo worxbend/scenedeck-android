@@ -5,7 +5,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.action.ActionParameters
+import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.model.ConnectionState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /** Glance preference keys + the scene-tap action parameter (one definition site). */
 object SceneDeckWidgetKeys {
@@ -30,6 +34,34 @@ fun connectionLabelFor(state: ConnectionState): String =
         is ConnectionState.Failed -> "Failed"
         ConnectionState.Disconnected -> "Offline"
     }
+
+/** Only widget-visible changes schedule persistence and a Glance recomposition. */
+internal fun Flow<DeckState>.widgetUpdates(): Flow<WidgetUpdate> = map {
+    it.toWidgetUpdate()
+}
+    .distinctUntilChanged()
+
+internal fun DeckState.toWidgetUpdate(): WidgetUpdate =
+    WidgetUpdate(
+        snapshot =
+            WidgetSnapshot(
+                sceneNames = scenes.take(SceneDeckWidgetKeys.MAX_SCENES).map { it.name },
+                programScene = currentProgramScene,
+                connectionLabel = connectionLabelFor(connectionState),
+            ),
+        ready = connectionState is ConnectionState.Ready,
+    )
+
+internal data class WidgetUpdate(val snapshot: WidgetSnapshot, val ready: Boolean) {
+    fun writeTo(prefs: MutablePreferences) {
+        if (ready) {
+            snapshot.writeTo(prefs)
+        } else {
+            // Keep cold-start scene actions until an authoritative connected deck replaces them.
+            prefs[SceneDeckWidgetKeys.connectionLabel] = snapshot.connectionLabel
+        }
+    }
+}
 
 /** Snapshot written into each widget's Glance preferences by the updater. */
 data class WidgetSnapshot(

@@ -2,6 +2,8 @@ package com.scenedeck.android.core.obs
 
 import app.cash.turbine.test
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.obs.internal.decodeImageData
+import java.util.Base64
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -98,6 +100,20 @@ internal class StudioModeTest : ObsClientTestBase() {
 
             client.disconnect()
         }
+    }
+
+    @Test
+    fun screenshotPayloadSizeBoundaryAndUnpaddedBase64() {
+        val accepted = ByteArray(ScreenshotRequest.MAX_IMAGE_BYTES) { 42 }
+        val encoded = Base64.getEncoder().encodeToString(accepted)
+        assertArrayEquals(accepted, decodeImageData("data:image/jpeg;base64,$encoded"))
+        assertArrayEquals(accepted, decodeImageData(encoded.trimEnd('=')))
+
+        val rejected = ByteArray(ScreenshotRequest.MAX_IMAGE_BYTES + 1) { 42 }
+        val oversized = Base64.getEncoder().encodeToString(rejected)
+        assertFails<IllegalArgumentException> { decodeImageData(oversized) }
+        assertFails<IllegalArgumentException> { decodeImageData(oversized.trimEnd('=')) }
+        assertFails<IllegalArgumentException> { decodeImageData("A".repeat(encoded.length + 4)) }
     }
 
     @Test

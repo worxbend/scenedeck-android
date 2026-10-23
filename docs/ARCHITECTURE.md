@@ -54,7 +54,18 @@ one module owns the wire protocol.**
 - **Event lane**: single `MutableSharedFlow` (buffered, `DROP_OLDEST` for high-volume
   `InputVolumeMeters` ~50 ms cadence — mirrors desktop's `try_send` drop policy).
 - **Request lane**: suspend functions with bounded parallelism (`Semaphore(8)`, same
-  as desktop) for batch reads like audio discovery.
+  as desktop) for batch reads like audio discovery. A 10-second deadline covers
+  permit admission and response waiting. Requests capture the originating session
+  before admission and reject a replacement session before dispatch/publication.
+  Timeout and protocol failures are typed and sanitized; caller cancellation
+  propagates and timed-out writes are not automatically retried. Typed request
+  blocks, initial GetVersion and the complete receiver/cleanup explicitly share
+  one `Dispatchers.Default.limitedParallelism(1)` execution lane. Up to eight
+  requests remain suspended in flight; serial bookkeeping avoids the pinned
+  ktobs cancelled-mutex cleanup race. Repeated eight-request deadline/caller-
+  cancellation regressions verify zero retained UUID waiters and healthy followups.
+  Recheck that UUID critical sections do not suspend when upgrading ktobs; the
+  receiver runs in Ktor's scope and requires explicit confinement.
 - **Event subscription**: `ALL | INPUT_VOLUME_METERS` (meters require explicit opt-in).
 - **Stats poller**: 1 Hz `GetStats` + `GetStreamStatus` while connected, independent of
   which screen is visible (desktop keeps a 2-min ring buffer for the whole session —
@@ -102,13 +113,36 @@ updates. Mixer selection cancels obsolete discovery and only publishes the lates
 selection. Doctor refresh replaces previous checks; failed reads retain prior results
 rather than classifying every entry as stale. Disconnection clears studio metadata.
 
+Mixer lifecycle refreshes feed a conflated, 300 ms debounced discovery lane;
+mute/volume events continue reducing immediately while discovery is suspended.
+Confirmed control values and pending write tokens reconcile overlapping writes.
+Failure/cancellation removes only its own token. Discovery observations preserve
+newer events/actions and supply rollback baselines for pending edits.
+
+Thumbnail polling projects only readiness, visibility, preview preference and scene
+selection before restarting. Each batch awaits at most two capture child jobs,
+including request admission and decode; hot scenes retain priority with a cold-scene
+slot to prevent starvation. Removed names prune frame/throttle entries. The OBS
+boundary rejects compressed images above 2 MiB before base64 allocation, and the
+data layer validates positive dimensions and at most 1,048,576 pixels before bitmap
+allocation. These per-image/work bounds do not cap the received WebSocket frame or
+aggregate cached frames across the current scene collection.
+
+Registry deletion shares the existing mutation mutex. Bulk mutations read one
+snapshot, index it and write a batch while preserving duplicate-import merge/count
+semantics and default ordering. Deck/graph reducers index metadata once; the public
+graph builder preserves the first duplicate registry entry.
+
 Password drafts stay in memory, outside saved-state Bundles, and secret-bearing
 models redact their diagnostic strings. Keystore writes verify synchronous persistence
 on IO. Pending OBS connect and socket/client resources close when their owning job is
 cancelled. QR camera dismissal releases only its owned camera use cases.
 
 Widget input counts are bounded before allocation; updates serialize, reread current
-state and isolate removed-widget failures. Foreground-service work is confined to Main;
+state and isolate removed-widget failures. A distinct projection of six visible
+Primary scenes, program scene, connection label and readiness avoids unrelated
+writes. Ready with an empty deck clears cached actions; unready preserves the cached
+grid. Explicit placement/refresh `poke()` remains unconditional. Foreground-service work is confined to Main;
 failed foreground startup cannot reconnect, and Android15 dataSync timeouts disconnect.
 
 Profile metadata/credential writes use a coordinated persistence boundary with

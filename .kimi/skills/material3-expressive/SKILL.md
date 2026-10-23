@@ -18,9 +18,11 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
   Dracula, Solarized Dark, Stream Red, Studio Purple, Sunset Coral, Mint Control,
   High Contrast, Material You (dynamic color, Android 12+). Each = light + dark
   `ColorScheme`; never hardcode a color in a feature module.
-- **Semantic colors are product law**: Program/Live = red tally family; Preview =
-  green; Recording = red pulse; meter zones green/yellow/red at −20/−9 dB; stats
-  warnings amber→red. These must read correctly in every family.
+- **Semantic colors are product law**: Program scene = red tally family; Preview =
+  green. Stream transport = blue idle Stream / red active Stop; elapsed stream time
+  and LIVE status = green, recording time and REC status = amber. Meter zones are
+  green/yellow/red at −20/−9 dB; stats warnings amber→red. Keep text readable in light
+  themes with shared `BroadcastControls` colors.
 
 ## Typography
 
@@ -29,9 +31,10 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
 
 ## Shape, elevation, components
 
-- Scene cards: large expressive rounding; transport buttons: stadium (`full`);
-  mixer strips: medium. Tonal elevation, not shadows. Active scene card = shape morph
-  (MaterialShapes) + accent glow ring; reduced-motion fallback = crossfade.
+- Scene cards: uniform 24dp rounded tiles, numbered positions, icon wells and subtle
+  outlines; no left accent rail. Program/preview borders and pills retain their semantic
+  colors. Drag grips appear only in explicit reorder mode. Transport buttons: stadium
+  (`full`); mixer strips: medium. Tonal elevation, not shadows.
 - Signature custom components (Canvas): `VolumeMeter` (OBS-accurate zones, per-channel
   bars, 20 s peak-hold line, ~300 ms loudness notch, pre-fader base square, smooth
   decay), `StatGauge` (arc with amber/red threshold arcs), `TrendChart`.
@@ -39,13 +42,16 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
 ## Motion
 
 - `MotionScheme.expressive()` default; springs for card press (scale ~0.96) and faders.
-- Motion is semantic: scene activation, tally pulse (1 Hz), meter decay. No decorative
-  animation. Honor settings: Full / Reduced / Off + system animator scale.
+- Motion is semantic: scene activation, tally pulse, meter decay. The active Stream
+  breathing halo and output-status pulses run only with Full motion. Honor Full /
+  Reduced / Off and system animator scale; use static controls for Reduced/Off.
 
 ## Iconography
 
-- Primary: **Lucide** via compose-icons (`radio-tower`, `disc`, `clapperboard`,
-  `sliders-vertical`, `activity`, `layers`, `stethoscope`, `waypoints`, …).
+- Primary: hand-ported **Lucide-style ImageVector** catalogue in `:core:designsystem`
+  (`radio-tower`, `disc`, `clapperboard`, `sliders-vertical`, `activity`, `layers`,
+  `stethoscope`, `waypoints`, …). The compose-icons Lucide pack is unavailable on
+  Maven Central for the pinned stack; do not add it as a dependency.
   Secondary: Material Symbols Rounded for gaps.
 - User-assignable scene icon catalogue lives in `:core:designsystem/icons/SceneIcons.kt`.
 
@@ -59,3 +65,12 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
 5. Reduced-motion path verified; recording tally pulse disabled when reduced.
 6. High-frequency values (meters, counters) read in draw phase, not composition.
 7. Contrast verified per theme family (High Contrast family must pass AAA for states).
+
+## Shared studio components
+
+- Use `StudioPageHeader`, `StudioSectionHeader`, `StudioIconWell` and `StudioChrome`
+  control colors; consult the living `StudioStylebook` before adding a new treatment.
+- Keep status-bar insets outside main-screen scroll containers. Connection forms open
+  fully expanded, group identity/server/security and keep password drafts out of saved state.
+- Persistent status distinguishes connection from OFF AIR / LIVE / REC; output state
+  is unknown when disconnected, and performance metrics appear only while streaming.

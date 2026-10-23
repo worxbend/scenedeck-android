@@ -34,8 +34,10 @@ class SceneGraphBuilder(private val client: ObsClient) {
     suspend fun build(registryEntries: List<SceneRegistryEntry>): SceneGraph {
         val scenes = requestResult { client.getSceneList().scenes }.getOrDefault(emptyList())
         val sceneNames = scenes.map { it.name }.toSet()
+        val entriesByName = linkedMapOf<String, SceneRegistryEntry>()
+        registryEntries.forEach { entriesByName.putIfAbsent(it.sceneName, it) }
         val roleOf = { name: String ->
-            registryEntries.firstOrNull { it.sceneName == name }?.role ?: SceneRole.PRIMARY
+            entriesByName[name]?.role ?: SceneRole.PRIMARY
         }
 
         val walk = EdgeWalk(roleOf)

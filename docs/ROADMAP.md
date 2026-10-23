@@ -16,12 +16,12 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 - Create project: Gradle Kotlin DSL, `libs.versions.toml` per `docs/TECH_STACK.md`,
   all modules from `docs/ARCHITECTURE.md` (empty but wired).
-- Hilt, KSP, Compose BOM 2026.09.00, Kotlin 2.4.0, edge-to-edge, splash screen.
+- Hilt, KSP, Compose BOM 2026.09.00, Kotlin 2.4.20, edge-to-edge, splash screen.
 - `:core:designsystem`: M3 Expressive theme wrapper, **all theme families**
   (dark+light each), typography (Inter/JetBrains Mono), shape system, Lucide icons
-  via compose-icons, `SceneIcons` catalogue enum.
+  as hand-ported vectors, `SceneIcons` catalogue enum.
 - Nav3 shell with all destinations stubbed + status strip scaffold.
-- detekt + ktlint + GitHub Actions (build, lint, unit tests); Roborazzi set up.
+- Detekt + ktfmt + GitHub Actions (build, lint, unit tests); Roborazzi set up.
 - App icon v1 (adaptive + monochrome).
 - **Exit:** CI green; stub app runs on phone + tablet; theme switcher demo screen
   cycles all families; Roborazzi goldens committed.
@@ -61,13 +61,13 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 **Goal:** the scene-switching surface — parity with desktop Live page, but tactile.
 
-- `SceneCard` grid (adaptive columns), Active morph + glow + haptic, tap →
+- `SceneCard` grid (adaptive columns), uniform geometry + active tally + haptic, tap →
   `SetCurrentProgramScene`, drag-to-reorder with persistence.
 - Scene roles: `Primary` filter drives the deck (Inventory-lite inside settings until M5).
 - Accent colors + scene icons per card; long-press quick-edit sheet.
 - TransportBar: start/stop stream + record with **Output Safety** confirmations,
   elapsed counters, pulsing record tally, transitional states.
-- Global StatusStrip: connection, FPS, dropped frames, CPU, bitrate.
+- Global StatusStrip: connection and output status/timers; performance metrics while streaming.
 - Baseline profile; deck scroll + tap latency macrobenchmark budget (<16 ms UI).
 - **Exit:** run a real show from the phone: 10+ scene switches, stream start/stop,
   zero jank in Macrobenchmark; TalkBack pass.
@@ -199,3 +199,24 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 - Add static F-Droid version metadata, dedicated release tags and automatic updates.
 - Verify the packaging recipe with F-Droid tooling and prepare the inclusion merge request.
+
+## Performance/security/clean-code review — 2026-10-04
+
+- Inventory available skills and apply compatible Kotlin, architecture, security and
+  refactoring guidance through an approved plan and independently reviewed slices.
+- Bound OBS request admission/response lifetime and session ownership; sanitize
+  connection, response/parser and transport UI failures without automatic write retries.
+- Correct the verified ktobs concurrent-cancellation cleanup race by confining typed
+  requests, initial reads and receiver cleanup to one serial execution lane while
+  preserving eight suspended in-flight requests; repeat UUID-store regressions.
+- Admit at most two thumbnail capture jobs per awaited batch, prune removed scenes,
+  and guard compressed bytes/pixel allocation. Aggregate cache memory remains
+  proportional to current eligible scenes; device latency/heap profiling is deferred.
+- Reconcile confirmed Mixer values with pending writes and coalesce discovery
+  separately from immediate control events.
+- Serialize registry deletion, batch indexed mutations and index deck/graph joins
+  while preserving first-duplicate graph and import/order behavior.
+- Deduplicate widget projections and clear stale actions on a Ready empty deck;
+  synchronize repository skill/design guidance with the existing product contract.
+- Verify meaningful concurrency/resource/operation-count regressions and the full
+  JDK 21/uv gate. Review evidence and deferred findings live in `tasks/reports/`.

@@ -54,8 +54,9 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
 
     /** Persists a deck order: [orderedSceneNames] get sortOrder 0..n, others keep theirs. */
     suspend fun reorder(orderedSceneNames: List<String>) = mutationMutex.withLock {
+        val existingByName = dao.observeAll().first().associateBy { it.sceneName }
         val entities = orderedSceneNames.mapIndexed { index, name ->
-            val existing = dao.byName(name)
+            val existing = existingByName[name]
             SceneRegistryEntity(
                 sceneName = name,
                 role = existing?.role ?: SceneRole.PRIMARY.name,
@@ -68,13 +69,13 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     }
 
     /** Removes registry entries whose scene no longer exists in OBS. */
-    suspend fun deleteStale(validSceneNames: List<String>) {
-        if (validSceneNames.isEmpty()) return // never nuke the registry on a failed read
+    suspend fun deleteStale(validSceneNames: List<String>) = mutationMutex.withLock {
+        if (validSceneNames.isEmpty()) return@withLock // never nuke the registry on a failed read
         dao.deleteStale(validSceneNames)
     }
 
     /** Removes one entry (e.g. Doctor "remove stale" fix). */
-    suspend fun remove(sceneName: String) = dao.delete(sceneName)
+    suspend fun remove(sceneName: String) = mutationMutex.withLock { dao.delete(sceneName) }
 
     /** Current entries as a one-shot list (export). */
     suspend fun snapshot(): List<SceneRegistryEntry> = entries.first()
@@ -83,11 +84,18 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
     suspend fun assignRoleToUnassigned(obsSceneNames: List<String>, role: SceneRole) =
         mutationMutex.withLock {
             val existing = dao.observeAll().first().map { it.sceneName }.toSet()
-            obsSceneNames
-                .filter { it !in existing }
-                .forEach { name ->
-                    updateLocked(name, role, accentColorArgb = null, iconName = null)
-                }
+            val entities =
+                obsSceneNames
+                    .distinct()
+                    .filter { it !in existing }
+                    .map { name ->
+                        SceneRegistryEntity(
+                            sceneName = name,
+                            role = role.name,
+                            sortOrder = Int.MAX_VALUE,
+                        )
+                    }
+            dao.upsertAll(entities)
         }
 
     /**
@@ -99,10 +107,12 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
         mutationMutex.withLock {
             var inserted = 0
             var updated = 0
+            val byName = dao.observeAll().first().associateBy { it.sceneName }.toMutableMap()
+            val changes = linkedMapOf<String, SceneRegistryEntity>()
             imported.forEach { entry ->
-                val existing = dao.byName(entry.sceneName)
+                val existing = byName[entry.sceneName]
                 if (existing == null) inserted++ else updated++
-                dao.upsert(
+                val entity =
                     SceneRegistryEntity(
                         sceneName = entry.sceneName,
                         role = entry.role.name,
@@ -110,8 +120,10 @@ class RegistryRepository @Inject constructor(private val dao: SceneRegistryDao) 
                         iconName = entry.iconName ?: existing?.iconName,
                         sortOrder = existing?.sortOrder ?: entry.sortOrder,
                     )
-                )
+                byName[entry.sceneName] = entity
+                changes[entry.sceneName] = entity
             }
+            dao.upsertAll(changes.values.toList())
             inserted to updated
         }
 }

@@ -70,8 +70,27 @@ must pass, and Compose preview(s) for changed screens must render.
 - Cognitive and cyclomatic complexity checks include Compose; no blanket baselines.
 - Cancellation must propagate from suspend best-effort operations; settings/locks update atomically.
 - Latest Mixer discovery wins; Doctor failures must not produce false stale/broken-source findings.
+- OBS requests have a 10-second admission-and-response deadline, remain bound to their
+  originating session, and never retry timed-out writes automatically. Caller cancellation
+  propagates; diagnostic failures exclude server comments and transport/parser details.
+  Typed requests, initial GetVersion and the complete receiver share one serial protocol
+  execution lane while up to eight requests remain suspended in flight. Recheck the pinned
+  ktobs non-suspending UUID critical-section assumption and cleanup regressions on upgrades.
+- Thumbnail polling admits at most two capture jobs per awaited batch, prunes removed
+  scenes, and rejects images above 2 MiB compressed or 1,048,576 pixels before bitmap
+  allocation. Cached memory still scales with eligible scenes; do not claim measured
+  device performance without profiling.
+- Mixer mute/volume use confirmed values plus pending write tokens; obsolete failures
+  cannot roll back newer actions/events. Discovery is coalesced separately from immediate
+  event reduction.
+- Registry deletion shares the mutation mutex; bulk mutations use one indexed snapshot
+  and bulk write, preserving duplicate-import and ordering semantics. Graph metadata
+  indexes preserve the first duplicate entry.
 - Password drafts never enter saved-state Bundles; diagnostic strings redact credentials.
 - Widget counts are bounded before allocation; foreground startup failure/timeouts disconnect safely.
+- Widgets deduplicate their six visible scenes, program scene and connection projection;
+  Ready with no scenes clears stale actions, while unready preserves the cached grid.
+  Explicit widget refresh remains unconditional.
 - Stream transport: blue idle Stream, red Stop while active; Full motion breathing halo only.
 - Timers remain visible; green stream, amber recording with readable light-theme contrast.
 - Connection operations expose sanitized failures, preserve failed-save drafts and gate duplicate writes; blank edit-test credentials reuse encrypted storage.

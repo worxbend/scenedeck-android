@@ -1,5 +1,8 @@
 package com.scenedeck.android.core.data
 
+import com.scenedeck.android.core.model.SceneListSnapshot
+import com.scenedeck.android.core.model.SceneSummary
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -72,5 +75,24 @@ class SceneGraphCycleTest {
         val edges =
             (0 until 10000).map { SceneGraphEdge("Scene$it", "Scene${it + 1}", EdgeVerdict.OK) }
         assertTrue(findCycleMembers(nodes, edges).isEmpty())
+    }
+
+    @Test
+    fun indexedRoleLookupRetainsFirstDuplicateAndPrimaryDefault() = runTest {
+        val client =
+            FakeObsClient(
+                sceneListSnapshot =
+                    SceneListSnapshot("A", listOf(SceneSummary("A", 0), SceneSummary("B", 1)))
+            )
+        val graph =
+            SceneGraphBuilder(client)
+                .build(
+                    listOf(
+                        SceneRegistryEntry("A", SceneRole.MODULE),
+                        SceneRegistryEntry("A", SceneRole.ARCHIVE),
+                    )
+                )
+        assertEquals(SceneRole.MODULE, graph.nodes.single { it.name == "A" }.role)
+        assertEquals(SceneRole.PRIMARY, graph.nodes.single { it.name == "B" }.role)
     }
 }

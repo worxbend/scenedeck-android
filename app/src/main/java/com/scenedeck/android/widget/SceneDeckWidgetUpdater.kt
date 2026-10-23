@@ -35,7 +35,7 @@ constructor(
     fun start() {
         if (!started.compareAndSet(false, true)) return
         scope.launch {
-            deck.deckState.collect { pushCurrent() }
+            deck.deckState.widgetUpdates().collect { pushCurrent() }
         }
     }
 
@@ -45,30 +45,18 @@ constructor(
     }
 
     private suspend fun pushCurrent() = updateMutex.withLock {
-        val state = deck.deckState.value
-        val snapshot =
-            WidgetSnapshot(
-                sceneNames = state.scenes.take(SceneDeckWidgetKeys.MAX_SCENES).map { it.name },
-                programScene = state.currentProgramScene,
-                connectionLabel = connectionLabelFor(state.connectionState),
-            )
+        val update = deck.deckState.value.toWidgetUpdate()
         // A removed/broken widget must not terminate the long-lived deck collector.
-        coroutineResult { push(snapshot) }
+        coroutineResult { push(update) }
         Unit
     }
 
-    private suspend fun push(snapshot: WidgetSnapshot) {
+    private suspend fun push(update: WidgetUpdate) {
         val glanceIds = GlanceAppWidgetManager(context).getGlanceIds(SceneDeckWidget::class.java)
         glanceIds.forEach { glanceId ->
             coroutineResult {
                 updateAppWidgetState(context, glanceId) { prefs ->
-                    if (snapshot.sceneNames.isEmpty()) {
-                        // Offline / pre-connect: keep the last known grid so a cold tap can
-                        // still connect-then-act; only the header label goes stale-truthful.
-                        prefs[SceneDeckWidgetKeys.connectionLabel] = snapshot.connectionLabel
-                    } else {
-                        snapshot.writeTo(prefs)
-                    }
+                    update.writeTo(prefs)
                 }
                 SceneDeckWidget().update(context, glanceId)
             }

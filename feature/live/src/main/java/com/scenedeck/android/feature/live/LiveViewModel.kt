@@ -324,13 +324,6 @@ constructor(
         }
     }
 
-    private fun Throwable.toTransportMessage(what: String): String =
-        when (this) {
-            is ObsRequestFailedException ->
-                "OBS refused to control the $what: ${message ?: statusCode}"
-            else -> "Couldn't control the $what: ${message ?: "connection error"}"
-        }
-
     init {
         viewModelScope.launch {
             client.connectionState.collect { connection ->
@@ -354,3 +347,10 @@ constructor(
         const val DURATION_DEBOUNCE_MS = 200L
     }
 }
+
+/** Server comments and transport exceptions may contain credentials or private endpoint data. */
+internal fun Throwable.toTransportMessage(what: String): String =
+    when (this) {
+        is ObsRequestFailedException -> "OBS refused to control the $what. Check OBS and try again."
+        else -> "Couldn't control the $what. Check the OBS connection and try again."
+    }
