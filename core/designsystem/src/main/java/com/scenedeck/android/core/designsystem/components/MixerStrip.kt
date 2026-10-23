@@ -117,7 +117,7 @@ fun MixerStrip(
                 FaderTrack(
                     volumeMul = volumeMul,
                     enabled = !locked,
-                    contentDescription = "Volume fader for $name, ${formatDb(db)}",
+                    contentDescription = faderDescription(name, formatDb(db), locked),
                     onPreview = onVolumePreview,
                     onCommit = { value ->
                         if (hapticsEnabled)
@@ -298,3 +298,9 @@ private fun MixerOptionsMenu(
         }
     }
 }
+
+/**
+ * Fader TalkBack label; a locked channel says so, since its fader ignores drags and adjustments.
+ */
+internal fun faderDescription(name: String, level: String, locked: Boolean): String =
+    if (locked) "Volume fader for $name, $level, locked" else "Volume fader for $name, $level"

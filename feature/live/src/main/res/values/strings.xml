@@ -11,6 +11,11 @@
     <string name="vcam_chip">VCam</string>
     <string name="start_vcam_cd">Start virtual camera</string>
     <string name="stop_vcam_cd">Stop virtual camera</string>
+    <string name="vcam_stop_short">Stop VCam</string>
+    <string name="vcam_starting">Starting…</string>
+    <string name="vcam_stopping">Stopping…</string>
+    <string name="vcam_starting_cd">Virtual camera starting</string>
+    <string name="vcam_stopping_cd">Virtual camera stopping</string>
 
     <string name="confirm_start_stream_title">Start stream?</string>
     <string name="confirm_start_stream_body">Go live with the current settings?</string>

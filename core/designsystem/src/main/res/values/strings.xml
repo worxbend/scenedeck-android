@@ -16,6 +16,7 @@
     <string name="scene_switching">Switching…</string>
     <string name="scene_tap_preview">Tap to preview</string>
     <string name="scene_tap_switch">Tap to switch</string>
+    <string name="scene_drag_to_move">Drag grip to move</string>
     <string name="broadcast_live">LIVE</string>
     <string name="broadcast_recording">REC</string>
     <string name="broadcast_standby">Standby</string>

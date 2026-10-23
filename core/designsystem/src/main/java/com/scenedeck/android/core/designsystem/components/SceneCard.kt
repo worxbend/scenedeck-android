@@ -60,8 +60,9 @@ private val IconChipSize = 36.dp
 
 /**
  * Studio deck tile: uniform card grid, softly tinted surfaces, one icon and readable scene/status
- * labels. Thumbnails retain a dark scrim; placeholder tiles use theme-aware foregrounds. Program
- * and preview retain semantic tally colors.
+ * labels. Thumbnails retain top and bottom scrims so the number, icon well and labels stay legible;
+ * placeholder tiles use theme-aware foregrounds. Program and preview retain semantic tally colors.
+ * Captions and TalkBack labels follow the tap action: switch, preview, or none in [reordering].
  */
 @Composable
 fun SceneCard(
@@ -80,6 +81,8 @@ fun SceneCard(
     sceneNumber: Int? = null,
     motionLevel: MotionLevel = MotionLevel.FULL,
     studioMode: Boolean = false,
+    /** Deck reorder mode: taps do nothing, the caller shows a drag grip instead. */
+    reordering: Boolean = false,
 ) {
     val colors = SceneDeckTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
@@ -100,19 +103,18 @@ fun SceneCard(
     val shape = RoundedCornerShape(CardRadius)
     val minimumHeight = 148.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
 
-    val stateDescription =
-        when {
-            active -> "on air, current program scene"
-            preview -> "on preview, double-tap to transition"
-            else -> "ready, double-tap to switch"
-        }
+    val description =
+        sceneCardDescription(
+            label,
+            SceneCardMode(active, preview, pending, studioMode, reordering),
+        )
 
     @OptIn(ExperimentalFoundationApi::class)
     Surface(
         modifier =
             modifier
                 .semantics {
-                    contentDescription = "Scene $label, $stateDescription"
+                    contentDescription = description
                     role = Role.Button
                 }
                 .graphicsLayer {
@@ -151,10 +153,7 @@ fun SceneCard(
             SceneCardLabels(
                 label,
                 icon,
-                active,
-                preview,
-                pending,
-                studioMode,
+                SceneCardMode(active, preview, pending, studioMode, reordering),
                 thumbnail != null,
                 sceneNumber,
                 stateColor,
@@ -203,14 +202,18 @@ private fun CardPlaceholder(accent: Color) {
     )
 }
 
-/** Tonal icon chip (top-start). */
+/** Tonal icon chip (top-start); over a thumbnail it sits on a dark well to stay legible. */
 @Composable
-private fun IconChip(icon: ImageVector, accent: Color, foreground: Color) {
+private fun IconChip(icon: ImageVector, accent: Color, foreground: Color, onThumbnail: Boolean) {
     Box(
         modifier =
             Modifier.size(IconChipSize)
                 .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(alpha = 0.14f)),
+                .then(
+                    if (onThumbnail) Modifier.background(Color.Black.copy(alpha = 0.45f))
+                    else Modifier
+                )
+                .background(accent.copy(alpha = if (onThumbnail) 0.28f else 0.14f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -289,15 +292,17 @@ private fun SceneCardArtwork(thumbnail: ImageBitmap?, highlighted: Boolean, stat
     } else {
         CardPlaceholder(accent = stateColor)
     }
-    // Layer 2: bottom scrim for label readability.
+    // Layer 2: top scrim (number + icon well) and bottom scrim (labels) over bright frames.
     if (thumbnail != null)
         Box(
             modifier =
                 Modifier.fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.55f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.75f),
+                            0f to Color.Black.copy(alpha = 0.6f),
+                            0.35f to Color.Black.copy(alpha = 0.12f),
+                            0.55f to Color.Black.copy(alpha = 0.12f),
+                            1f to Color.Black.copy(alpha = 0.78f),
                         )
                     )
         )
@@ -307,10 +312,7 @@ private fun SceneCardArtwork(thumbnail: ImageBitmap?, highlighted: Boolean, stat
 private fun SceneCardLabels(
     label: String,
     icon: ImageVector,
-    active: Boolean,
-    preview: Boolean,
-    pending: Boolean,
-    studioMode: Boolean,
+    mode: SceneCardMode,
     hasThumbnail: Boolean,
     sceneNumber: Int?,
     stateColor: Color,
@@ -322,14 +324,19 @@ private fun SceneCardLabels(
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconChip(icon = icon, accent = stateColor, foreground = foreground)
+            IconChip(
+                icon = icon,
+                accent = stateColor,
+                foreground = foreground,
+                onThumbnail = hasThumbnail,
+            )
             Spacer(Modifier.weight(1f))
             sceneNumber?.let { number ->
                 Text(
                     number.toString().padStart(2, '0'),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = foreground.copy(alpha = 0.55f),
+                    color = foreground.copy(alpha = if (hasThumbnail) 0.9f else 0.55f),
                 )
             }
         }
@@ -344,37 +351,24 @@ private fun SceneCardLabels(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))
-            SceneCardCaption(active, preview, pending, studioMode, hasThumbnail, stateColor)
+            SceneCardCaption(mode, hasThumbnail, stateColor)
         }
     }
 }
 
 @Composable
-private fun SceneCardCaption(
-    active: Boolean,
-    preview: Boolean,
-    pending: Boolean,
-    studioMode: Boolean,
-    hasThumbnail: Boolean,
-    stateColor: Color,
-) {
+private fun SceneCardCaption(mode: SceneCardMode, hasThumbnail: Boolean, stateColor: Color) {
     val colors = SceneDeckTheme.colors
-    if (active || preview) {
+    if (mode.active || mode.preview) {
         StatePill(
-            text = stringResource(if (active) R.string.scene_program else R.string.scene_preview),
+            text =
+                stringResource(if (mode.active) R.string.scene_program else R.string.scene_preview),
             color = stateColor,
-            contentColor = if (active) colors.onProgram else colors.onPreview,
+            contentColor = if (mode.active) colors.onProgram else colors.onPreview,
         )
     } else {
         Text(
-            text =
-                stringResource(
-                    when {
-                        pending -> R.string.scene_switching
-                        studioMode -> R.string.scene_tap_preview
-                        else -> R.string.scene_tap_switch
-                    }
-                ),
+            text = stringResource(sceneCardCaption(mode)),
             style = MaterialTheme.typography.labelSmall,
             color =
                 if (hasThumbnail) Color.White.copy(alpha = 0.8f)

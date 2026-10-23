@@ -26,7 +26,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -82,6 +81,7 @@ fun LiveScreen(
     val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
     val previewsEnabled by viewModel.previewsEnabled.collectAsStateWithLifecycle()
     val sceneItemsVersion by viewModel.sceneItemsVersion.collectAsStateWithLifecycle()
+    val virtualCamPending by viewModel.virtualCamPending.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -114,6 +114,7 @@ fun LiveScreen(
                     onTransitionDurationChange = viewModel::setTransitionDuration,
                     previewsEnabled = previewsEnabled,
                     onPreviewsToggle = viewModel::togglePreviews,
+                    virtualCamPending = virtualCamPending,
                 )
 
             else ->
@@ -198,6 +199,7 @@ internal fun LiveDeckContent(
     onTransitionDurationChange: (Int) -> Unit,
     previewsEnabled: Boolean,
     onPreviewsToggle: (Boolean) -> Unit,
+    virtualCamPending: VirtualCamPending? = null,
 ) {
     var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
 
@@ -210,8 +212,10 @@ internal fun LiveDeckContent(
     // Reorder corrupts the full scene order when only a subset is visible, so it is
     // disabled while the Deck filter (or a search) narrows the list.
     val reorderAllowed = !deckOnly && searchQuery.isBlank()
-    val visibleScenes =
-        filterScenes(if (deckOnly) deckState.scenes else deckState.allScenes, searchQuery)
+    val baseScenes = if (deckOnly) deckState.scenes else deckState.allScenes
+    // Numbers come from the unfiltered list so a search never renumbers the deck.
+    val positions = remember(baseScenes) { scenePositions(baseScenes) }
+    val visibleScenes = filterScenes(baseScenes, searchQuery)
     var orderedScenes by remember { mutableStateOf(visibleScenes) }
     val gridState = rememberLazyGridState()
     val reorderableState =
@@ -257,6 +261,7 @@ internal fun LiveDeckContent(
             onToggleRecord = onRecordClick,
             virtualCamActive = telemetry.virtualCamActive,
             onToggleVirtualCam = onToggleVirtualCam,
+            virtualCamPending = virtualCamPending,
         )
         if (deckState.studioMode) {
             Spacer(Modifier.height(8.dp))
@@ -301,7 +306,7 @@ internal fun LiveDeckContent(
                 ReorderableItem(reorderableState, key = scene.name) { isDragging ->
                     DeckSceneTile(
                         scene,
-                        orderedScenes.indexOf(scene) + 1,
+                        positions[scene.name] ?: (orderedScenes.indexOf(scene) + 1),
                         isDragging,
                         reorderMode && reorderAllowed,
                         searchQuery.isBlank(),
@@ -450,6 +455,7 @@ private fun DeckSceneTile(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
+    // Reorder mode shows grips instead of numbers (positions change while dragging).
     val position = if (reorderMode) null else sceneNumber
     val dragScale = if (isDragging) 1.04f else 1f
     val dragAlpha = if (isDragging) 0.9f else 1f
@@ -473,6 +479,7 @@ private fun DeckSceneTile(
             sceneNumber = position,
             motionLevel = motionLevel,
             studioMode = studioMode,
+            reordering = reorderMode,
             icon = sceneIconFor(scene.iconName),
             active = scene.isActive,
             preview = scene.isPreview,
@@ -512,25 +519,21 @@ private fun DeckFilterSection(
     onFinishReordering: () -> Unit,
     listEmpty: Boolean,
 ) {
+    // Focus only when the user opens search, not when saved state restores it open.
+    var focusOnOpen by remember { mutableStateOf(false) }
     DeckFilters(
         deckOnly,
         onDeckOnlyChange,
         sceneCount,
         searchOpen,
-        onSearchToggle,
+        {
+            focusOnOpen = !searchOpen
+            onSearchToggle()
+        },
         reorderMode,
         onFinishReordering,
     )
-    if (searchOpen) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            label = { Text(stringResource(R.string.search_scenes)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            shape = MaterialTheme.shapes.large,
-        )
-    }
+    if (searchOpen) SceneSearchField(searchQuery, onSearchChange, focusOnOpen)
     if (listEmpty) {
         val emptyMessage =
             when {

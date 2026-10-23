@@ -58,7 +58,8 @@ must pass, and Compose preview(s) for changed screens must render.
 - Stats prioritize key readings and compact tonal gauge panels.
 - Stats FPS/render thresholds derive from the OBS canvas FPS (`GetVideoSettings`); 60 fps is only the unknown fallback. STREAM LIVE chip is program red, REC chip amber.
 - Default styling: charcoal/azure studio palette; scene grid tiles use restrained accents and theme-aware labels.
-- Scene cards show numbered positions; drag grips appear only in explicit reorder mode.
+- Scene cards show numbered positions (search keeps deck numbers); drag grips appear only in explicit reorder mode, where captions/a11y describe reordering instead of switching.
+- Studio T-bar is full-width; fraction follows the absolute pointer, fires past 80% on release. VCam shows Stop VCam when active and Starting…/Stopping… until OBS confirms.
 - Scene order: saved registry positions first, then OBS order (descending `sceneIndex`), then name; Scenes and Inventory share it. Reorders renumber densely and never assign roles; import applies the file's order so export → import round-trips.
 
 - Use StudioPageHeader/StudioSectionHeader/StudioIconWell and shared control colors from StudioChrome; scene cards have no left accent rail.

@@ -27,6 +27,15 @@ class SceneSearchTest {
     }
 
     @Test
+    fun deckPositionsStayStableWhileFiltering() {
+        val positions = scenePositions(scenes)
+        val filtered = filterScenes(scenes, "camera a")
+        assertEquals(listOf("Camera A"), filtered.map { it.name })
+        assertEquals(listOf(3), filtered.map { positions.getValue(it.name) })
+        assertEquals(mapOf("Camera B" to 1, "Break [live]" to 2, "Camera A" to 3), positions)
+    }
+
+    @Test
     fun blankQueryReturnsOriginalCollection() {
         assertSame(scenes, filterScenes(scenes, "  "))
     }
