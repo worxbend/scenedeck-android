@@ -15,6 +15,8 @@ import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.ProfileRepository
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.StatsRepository
+import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.model.ConnectionState
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.atomic.AtomicBoolean
@@ -24,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -44,6 +47,7 @@ class ObsSessionService : Service() {
     @Inject lateinit var deck: ObsStateRepository
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var profiles: ProfileRepository
+    @Inject lateinit var stats: StatsRepository
 
     private val logic = SessionServiceLogic()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -56,16 +60,21 @@ class ObsSessionService : Service() {
             combine(
                     sessionHolder.connectionState,
                     deck.deckState,
-                ) { connection, deckState ->
-                    connection to deckState.currentProgramScene
+                    stats.telemetry,
+                ) { connection, deckState, telemetry ->
+                    connection to
+                        notificationText(connection, deckState.currentProgramScene, telemetry)
                 }
-                .collect { (connection, program) ->
+                // Telemetry ticks at 1 Hz with changing byte counters; only re-post when the
+                // rendered text (second-granular timecodes) or the connection actually changes.
+                .distinctUntilChanged()
+                .collect { (connection, text) ->
                     if (
                         logic.onConnectionState(connection) == SessionServiceLogic.Effect.SHUTDOWN
                     ) {
                         shutdown()
                     } else {
-                        updateNotification(connection, program)
+                        updateNotification(text)
                     }
                 }
         }
@@ -114,8 +123,11 @@ class ObsSessionService : Service() {
         val notification =
             SessionNotification.build(
                 this,
-                sessionHolder.connectionState.value,
-                deck.deckState.value.currentProgramScene,
+                notificationText(
+                    sessionHolder.connectionState.value,
+                    deck.deckState.value.currentProgramScene,
+                    stats.telemetry.value,
+                ),
             )
         return try {
             ServiceCompat.startForeground(
@@ -156,7 +168,7 @@ class ObsSessionService : Service() {
         }
     }
 
-    private fun updateNotification(state: ConnectionState, program: String?) {
+    private fun updateNotification(text: String) {
         if (stopping.get()) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -168,7 +180,7 @@ class ObsSessionService : Service() {
             NotificationManagerCompat.from(this)
                 .notify(
                     SessionNotification.NOTIFICATION_ID,
-                    SessionNotification.build(this, state, program),
+                    SessionNotification.build(this, text),
                 )
         }
     }
@@ -184,6 +196,24 @@ class ObsSessionService : Service() {
     }
 
     companion object {
+        /**
+         * Output readings only count while the telemetry snapshot belongs to a Ready session, so a
+         * stale or disconnected snapshot never reads as idle (status bar contract).
+         */
+        internal fun notificationText(
+            connection: ConnectionState,
+            programScene: String?,
+            telemetry: Telemetry,
+        ): String {
+            val outputsKnown = telemetry.connection is ConnectionState.Ready
+            return SessionNotification.textFor(
+                connection,
+                programScene,
+                stream = telemetry.stream.takeIf { outputsKnown },
+                record = telemetry.record.takeIf { outputsKnown },
+            )
+        }
+
         const val ACTION_START = "com.scenedeck.android.action.SESSION_START"
         const val ACTION_DISCONNECT = "com.scenedeck.android.action.SESSION_DISCONNECT"
 

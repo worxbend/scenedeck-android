@@ -125,7 +125,7 @@ colors, icons, ordering) lives in a local registry on the device.
 | Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
 | Media controls (play/pause media sources) | **SHIPPED M7**: play/pause/restart + state chip on media-kind mixer strips (2 s poll) | M7 ✅ |
-| Quick-volume notification / foreground service | **SHIPPED M7**: keep-alive foreground service (dataSync, STICKY, timeout handling) + ongoing notification with live state + Disconnect action; `scenedeck://scene/{name}` deep link for automation | M7 ✅ |
+| Quick-volume notification / foreground service | **SHIPPED M7**: keep-alive foreground service (dataSync, STICKY, timeout handling) + ongoing notification with connection, LIVE/REC output time (never a guessed idle) and program scene + Disconnect action; denied/blocked notification permission is explained with a notification-settings shortcut; `scenedeck://scene/{name}` deep link for automation with sanitized failure toasts (no profile, not connected, rejected switch) | M7 ✅ |
 
 Explicitly **out of scope** (same as desktop): input creation/editing, filters,
 scene item transforms, scripting, Twitch/StreamElements integration (v1).

@@ -101,6 +101,8 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Persistent status bar shows OFF AIR / LIVE with stream time / REC with record time on all main tabs; disconnected output state is unknown, never assumed idle.
 - Persistent performance metrics appear only while streaming, never in standby or recording-only mode.
+- Keep-alive notification mirrors the status bar (LIVE/REC times, OFF AIR only when both outputs are known); denied notification permission is explained, blocked permission links to app notification settings; Keep-alive & background is listed under More.
+- Scene deep-link failures (no profile, not connected, rejected switch) show a sanitized toast; success stays silent.
 
 - AGP build-tool security minimums are constrained on the root buildscript `classpath`,
   with catalog versions documented in TECH_STACK.md; avoid forcing those jars into

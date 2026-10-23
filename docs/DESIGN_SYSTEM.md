@@ -136,7 +136,7 @@ is on air. The status strip adapts secondary telemetry to available width.
 The polish pass adds collapsible scene search, aligned mixer fader baselines and
 channel options for lock/advanced settings. Stats gauges sit in tonal panels with
 a capped diameter; progress arcs leave numeric readouts clear. More includes
-explained destinations and an explicit Session behavior entry. Offline states
+explained destinations and an explicit Keep-alive & background entry. Offline states
 remain scrollable on short screens and permit opening connection settings while reconnecting.
 
 ## 12. Reference-inspired studio refresh

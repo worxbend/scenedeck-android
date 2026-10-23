@@ -2,11 +2,13 @@ package com.scenedeck.android
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +37,15 @@ class MainActivity : ComponentActivity() {
             val onboardingCompleted by
                 appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
+            val sceneLinkMessage by appViewModel.sceneLinkMessage.collectAsStateWithLifecycle()
+            // Toast (not a shell snackbar) so deep-link failures surface on every screen,
+            // including onboarding.
+            LaunchedEffect(sceneLinkMessage) {
+                sceneLinkMessage?.let { message ->
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                    appViewModel.onSceneLinkMessageShown(message)
+                }
+            }
 
             SceneDeckTheme(
                 family = appState.themeFamily,
