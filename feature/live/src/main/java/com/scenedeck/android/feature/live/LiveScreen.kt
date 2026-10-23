@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +58,7 @@ import com.scenedeck.android.core.designsystem.components.BroadcastStatus
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.SceneCard
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
 import com.scenedeck.android.core.designsystem.components.studioFilterChipColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
@@ -123,10 +123,7 @@ fun LiveScreen(
                 )
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
     confirmation?.let { pending ->

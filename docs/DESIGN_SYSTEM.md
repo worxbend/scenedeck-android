@@ -98,7 +98,7 @@ These hues carry product meaning and adapt per theme but keep their roles:
 | **VolumeMeter** | custom Canvas: OBS-accurate zones, per-channel bars, peak hold line (20 s), loudness notch (~300 ms), pre-fader base square, butter-smooth 60 fps decay animation |
 | **MixerStrip** | vertical fader with dB taper curve, mute with animated strike-through, scope badge chip, lock toggle |
 | **TransportBar** | Stream/Record/VCam stadium actions; active Stream breathing halo only with Full motion; green stream and amber record mono timers |
-| **StatusStrip** | persistent bottom: connection and OFF AIR/LIVE/REC state with timers; performance metrics on a second row only while streaming |
+| **StatusStrip** | persistent bottom: connection and OFF AIR/LIVE/REC state with timers; performance metrics on a second row only while streaming (one 48dp row in compact-height windows) |
 | **StatGauge** | arc gauge with amber/red threshold arcs (FPS, render time, congestion, dropped %) |
 | **TrendChart** | custom Canvas line/area chart, 2-min window, theme-aware grid |
 | **EmptyState** | disconnected placeholders with Lucide illustration + reconnect CTA |
@@ -194,7 +194,9 @@ The Scenes header owns output status and timers in its trailing area: neutral
 Standby when idle, LIVE with green stream time and REC with amber recording time.
 Simultaneous outputs show both rows; status dots pulse only with Full motion.
 The direct control row contains Stream, Record and VCam. Keep system insets and
-accessible status descriptions. Replay Buffer is excluded from Android.
+accessible status descriptions. Phone landscape uses a navigation rail and keeps content
+clear of side system bars and cutouts; snackbars use `StudioSnackbarHost`, bottom-aligned
+above the status strip and keyboard. System-bar icons follow the in-app theme. Replay Buffer is excluded from Android.
 
 The persistent bottom bar separates connection/output state from performance
 metrics into two compact rows while streaming; standby and recording-only states

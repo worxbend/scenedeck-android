@@ -1,9 +1,15 @@
 package com.scenedeck.android.ui.components
 
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
@@ -14,6 +20,7 @@ import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -103,6 +110,51 @@ class StatusStripRoborazziTest {
     }
 
     @Test
+    fun compactKeepsLiveMetricsOnOneRow() {
+        val state =
+            StatusStripState(
+                connection = ready,
+                fps = 60.0,
+                bitrateKbps = 6000,
+                stream = stream(true),
+                record = record(true),
+            )
+        composeRule.setContent {
+            SceneDeckTheme {
+                StatusStrip(
+                    state,
+                    Modifier.testTag(STRIP),
+                    animateConnection = false,
+                    compact = true,
+                )
+            }
+        }
+        composeRule.onNodeWithContentDescription("LIVE, elapsed 00:12:34").assertExists()
+        composeRule.onNodeWithContentDescription("REC, elapsed 00:04:18").assertExists()
+        composeRule.onNodeWithText("FPS").assertExists()
+        assertTrue(composeRule.onNodeWithTag(STRIP).getUnclippedBoundsInRoot().height <= 48.dp)
+    }
+
+    @Test
+    fun compactRecordingOnlyStaysSingleRow() {
+        val state =
+            StatusStripState(connection = ready, stream = stream(false), record = record(true))
+        composeRule.setContent {
+            SceneDeckTheme {
+                StatusStrip(
+                    state,
+                    Modifier.testTag(STRIP),
+                    animateConnection = false,
+                    compact = true,
+                )
+            }
+        }
+        composeRule.onNodeWithText("OFF AIR").assertExists()
+        composeRule.onNodeWithText("FPS").assertDoesNotExist()
+        assertTrue(composeRule.onNodeWithTag(STRIP).getUnclippedBoundsInRoot().height <= 48.dp)
+    }
+
+    @Test
     fun obsThemeLive() {
         render(true, false, "status_live_obs.png", family = ThemeFamily.OBS)
         composeRule.onNodeWithContentDescription("LIVE, elapsed 00:12:34").assertExists()
@@ -137,6 +189,8 @@ private fun stream(active: Boolean) =
     StreamStatus(active, false, "00:12:34.000", 754000, 0, 0.0, 0, 0)
 
 private fun record(active: Boolean) = RecordStatus(active, false, "00:04:18.000", 258000, 0)
+
+private const val STRIP = "strip"
 
 private val ready = ConnectionState.Ready(ObsVersionInfo("31.0", "5.6", 1, "test"))
 

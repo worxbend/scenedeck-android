@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -42,6 +43,7 @@ import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.InventoryRow
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
@@ -161,61 +163,68 @@ internal fun InventoryContent(
     }
     PersistSceneOrder(reorderableState.isAnyItemDragging, orderedScenes, onReorder)
 
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
-        Spacer(Modifier.height(16.dp))
-        StudioPageHeader("Inventory", "Scene roles, colors & deck order", SceneDeckIcons.Inventory)
-        Spacer(Modifier.height(16.dp))
+    Box(modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
+            Spacer(Modifier.height(16.dp))
+            StudioPageHeader(
+                "Inventory",
+                "Scene roles, colors & deck order",
+                SceneDeckIcons.Inventory,
+            )
+            Spacer(Modifier.height(16.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        ) {
-            OutlinedButton(onClick = onBulkAssign, enabled = uiState.unassignedCount > 0) {
-                Text("Unassigned → Secondary")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            ) {
+                OutlinedButton(onClick = onBulkAssign, enabled = uiState.unassignedCount > 0) {
+                    Text("Unassigned → Secondary")
+                }
+                OutlinedButton(onClick = onExport) { Text("Export") }
+                OutlinedButton(onClick = onImport) { Text("Import") }
             }
-            OutlinedButton(onClick = onExport) { Text("Export") }
-            OutlinedButton(onClick = onImport) { Text("Import") }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "${uiState.scenes.size} scenes · ${uiState.unassignedCount} unassigned",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${uiState.scenes.size} scenes · ${uiState.unassignedCount} unassigned",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
 
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(orderedScenes, key = { it.name }) { scene ->
-                ReorderableItem(reorderableState, key = scene.name) { _ ->
-                    InventoryRow(
-                        name = scene.name,
-                        icon = sceneIconForInventory(scene.entry?.iconName),
-                        roleLabel =
-                            if (scene.unassigned) "Unassigned"
-                            else scene.role.name.lowercase().replaceFirstChar { it.uppercase() },
-                        accentColor = scene.entry?.accentColorArgb?.let { Color(it) },
-                        stale = scene.stale,
-                        onIconClick = { iconEditorFor = scene.name },
-                        onRoleClick = { roleMenuFor = scene.name },
-                        onAccentClick = { accentEditorFor = scene.name },
-                        onRemoveStale = { onRemoveStale(scene.name) },
-                        leadingContent = {
-                            DragGripDots(
-                                sceneName = scene.name,
-                                modifier = Modifier.draggableHandle(),
-                            )
-                        },
-                    )
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(orderedScenes, key = { it.name }) { scene ->
+                    ReorderableItem(reorderableState, key = scene.name) { _ ->
+                        InventoryRow(
+                            name = scene.name,
+                            icon = sceneIconForInventory(scene.entry?.iconName),
+                            roleLabel =
+                                if (scene.unassigned) "Unassigned"
+                                else
+                                    scene.role.name.lowercase().replaceFirstChar { it.uppercase() },
+                            accentColor = scene.entry?.accentColorArgb?.let { Color(it) },
+                            stale = scene.stale,
+                            onIconClick = { iconEditorFor = scene.name },
+                            onRoleClick = { roleMenuFor = scene.name },
+                            onAccentClick = { accentEditorFor = scene.name },
+                            onRemoveStale = { onRemoveStale(scene.name) },
+                            leadingContent = {
+                                DragGripDots(
+                                    sceneName = scene.name,
+                                    modifier = Modifier.draggableHandle(),
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }
-    }
 
-    SnackbarHost(hostState = snackbarHostState)
+        StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+    }
 
     // Role menu.
     val roleTarget = roleMenuFor

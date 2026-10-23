@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,10 +36,13 @@ class MainActivity : ComponentActivity() {
             val onboardingCompleted by
                 appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
+            val darkTheme = appState.isDarkTheme(isSystemInDarkTheme())
+            // Bar icons follow the resolved app theme, not the system night mode.
+            LaunchedEffect(darkTheme) { applySystemBarAppearance(darkTheme) }
 
             SceneDeckTheme(
                 family = appState.themeFamily,
-                darkTheme = appState.isDarkTheme(isSystemInDarkTheme()),
+                darkTheme = darkTheme,
                 dynamicColor = appState.dynamicColor,
                 motionLevel = appState.motionLevel,
             ) {

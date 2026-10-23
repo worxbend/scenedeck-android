@@ -26,7 +26,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,6 +49,7 @@ import com.scenedeck.android.core.designsystem.components.MediaControls
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.designsystem.components.MixerStrip
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
 import com.scenedeck.android.core.designsystem.components.studioSegmentedButtonColors
 import com.scenedeck.android.core.designsystem.components.studioTextFieldColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -114,7 +114,7 @@ fun MixerScreen(
                 )
         }
 
-        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+        StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
     LaunchedEffect(uiState.connection) {

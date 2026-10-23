@@ -3,9 +3,18 @@ package com.scenedeck.android
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +41,7 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import androidx.window.core.layout.WindowSizeClass
 import com.scenedeck.android.core.designsystem.components.StudioIconWell
 import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
 import com.scenedeck.android.core.designsystem.components.StudioTone
@@ -41,8 +50,10 @@ import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.feature.onboarding.OnboardingScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
+import com.scenedeck.android.navigation.ShellLayout
 import com.scenedeck.android.navigation.icon
 import com.scenedeck.android.navigation.label
+import com.scenedeck.android.navigation.shellLayout
 import com.scenedeck.android.ui.components.BackgroundSettingsSheet
 import com.scenedeck.android.ui.components.KeepScreenOnEffect
 import com.scenedeck.android.ui.components.StatusStrip
@@ -72,6 +83,10 @@ fun SceneDeckApp(
         false ->
             Surface(modifier = modifier.fillMaxSize()) {
                 OnboardingScreen(
+                    modifier =
+                        Modifier.windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                        ),
                     onFinished = {},
                     onSkip = onOnboardingSkip,
                 )
@@ -115,16 +130,10 @@ private fun SceneDeckShell(
 
     // Single NavDisplay call site: pushing routes never removes it from composition, so
     // per-entry remember/rememberSaveable state and ViewModelStores survive.
+    val layout = rememberShellLayout(fullScreen)
     NavigationSuiteScaffold(
         modifier = modifier,
-        layoutType =
-            if (fullScreen) {
-                NavigationSuiteType.None
-            } else {
-                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(
-                    currentWindowAdaptiveInfo()
-                )
-            },
+        layoutType = layout.navigationType,
         navigationSuiteItems = {
             SceneDeckDestination.primary.forEach { destination ->
                 item(
@@ -142,22 +151,27 @@ private fun SceneDeckShell(
             )
         },
     ) {
-        Column(Modifier.fillMaxSize()) {
-            NavDisplay(
-                backStack = backStack,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                onBack = { backStack.removeLastOrNull() },
-                entryProvider = sceneDeckEntryProvider(appState, backStack, selectTopLevel),
-            )
-            if (!fullScreen) {
+        ShellContent(
+            layout = layout,
+            navDisplay = { displayModifier ->
+                NavDisplay(
+                    backStack = backStack,
+                    modifier = displayModifier,
+                    onBack = { backStack.removeLastOrNull() },
+                    entryProvider = sceneDeckEntryProvider(appState, backStack, selectTopLevel),
+                )
+            },
+            statusStrip = { stripInsets ->
                 StatusStrip(
                     state = stripState,
                     onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
                     onConnectionLongClick = { backgroundSheetOpen = true },
                     animateConnection = appState.motionLevel == MotionLevel.FULL,
+                    compact = layout.compactStatusStrip,
+                    windowInsets = stripInsets,
                 )
-            }
-        }
+            },
+        )
     }
 
     if (backgroundSheetOpen) {
@@ -178,6 +192,56 @@ private fun SceneDeckShell(
             },
         )
     }
+}
+
+/**
+ * Screen area plus the persistent status strip. Side navigation owns the start inset, so content
+ * pads only the end edge there (both edges otherwise). The strip, or the bottom bar under it, owns
+ * the bottom system-bar inset; full-screen routes have no strip and keep every inset.
+ */
+@Composable
+private fun ShellContent(
+    layout: ShellLayout,
+    navDisplay: @Composable (Modifier) -> Unit,
+    statusStrip: @Composable (WindowInsets) -> Unit,
+) {
+    val showStrip = layout.showStatusStrip
+    Column(Modifier.fillMaxSize().windowInsetsPadding(layout.contentHorizontalInsets())) {
+        val displayModifier = Modifier.weight(1f).fillMaxWidth()
+        navDisplay(
+            if (showStrip) displayModifier.consumeWindowInsets(BottomSystemBars)
+            else displayModifier
+        )
+        if (showStrip) {
+            statusStrip(if (layout.bottomNavigation) WindowInsets(0) else BottomSystemBars)
+        }
+    }
+}
+
+/** Bottom system bars and cutout, excluding the IME so screens keep their `imePadding()`. */
+private val BottomSystemBars: WindowInsets
+    @Composable
+    get() = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Bottom)
+
+@Composable
+private fun ShellLayout.contentHorizontalInsets(): WindowInsets =
+    WindowInsets.safeDrawing.only(
+        if (sideNavigation) WindowInsetsSides.End else WindowInsetsSides.Horizontal
+    )
+
+@Composable
+private fun rememberShellLayout(fullScreen: Boolean): ShellLayout {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val compactHeight =
+        !adaptiveInfo.windowSizeClass.isHeightAtLeastBreakpoint(
+            WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND
+        )
+    return shellLayout(
+        defaultType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo),
+        fullScreen = fullScreen,
+        compactHeight = compactHeight,
+        tabletop = adaptiveInfo.windowPosture.isTabletop,
+    )
 }
 
 private val SceneDeckDestination.description: String
