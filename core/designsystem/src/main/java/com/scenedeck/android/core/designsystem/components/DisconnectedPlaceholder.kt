@@ -16,9 +16,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -31,12 +34,23 @@ import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 
-/** Shared offline surface; content stays reachable on short screens and at large font sizes. */
+/**
+ * App-provided "Retry now" action that skips the remaining reconnect backoff. Provided once at the
+ * app root so every feature's [DisconnectedPlaceholder] offers it without plumbing a callback
+ * through each screen; `null` (default, previews) hides the action.
+ */
+val LocalRetryNow: ProvidableCompositionLocal<(() -> Unit)?> = staticCompositionLocalOf { null }
+
+/**
+ * Shared offline surface; content stays reachable on short screens and at large font sizes. While
+ * [ConnectionState.Reconnecting], [onRetryNow] (when available) is the primary action.
+ */
 @Composable
 fun DisconnectedPlaceholder(
     connectionState: ConnectionState,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
+    onRetryNow: (() -> Unit)? = LocalRetryNow.current,
 ) {
     val waiting =
         connectionState is ConnectionState.Connecting ||
@@ -88,16 +102,37 @@ fun DisconnectedPlaceholder(
             CircularProgressIndicator(modifier = Modifier.size(28.dp))
             Spacer(Modifier.height(16.dp))
         }
-        Button(onClick = onConnect, modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth()) {
-            Text(
-                stringResource(
-                    if (waiting || connectionState is ConnectionState.Failed)
-                        R.string.obs_open_connections
-                    else R.string.obs_connect_action
-                )
-            )
-        }
+        PlaceholderActions(
+            connectionState = connectionState,
+            waiting = waiting,
+            onConnect = onConnect,
+            onRetryNow = onRetryNow.takeIf { connectionState is ConnectionState.Reconnecting },
+        )
     }
+}
+
+@Composable
+private fun PlaceholderActions(
+    connectionState: ConnectionState,
+    waiting: Boolean,
+    onConnect: () -> Unit,
+    onRetryNow: (() -> Unit)?,
+) {
+    val buttonModifier = Modifier.widthIn(max = 360.dp).fillMaxWidth()
+    val connectLabel =
+        stringResource(
+            if (waiting || connectionState is ConnectionState.Failed) R.string.obs_open_connections
+            else R.string.obs_connect_action
+        )
+    if (onRetryNow == null) {
+        Button(onClick = onConnect, modifier = buttonModifier) { Text(connectLabel) }
+        return
+    }
+    Button(onClick = onRetryNow, modifier = buttonModifier) {
+        Text(stringResource(R.string.obs_retry_now))
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(onClick = onConnect, modifier = buttonModifier) { Text(connectLabel) }
 }
 
 @PreviewLightDark
@@ -105,6 +140,16 @@ fun DisconnectedPlaceholder(
 private fun OfflinePreview() {
     SceneDeckTheme {
         Surface { DisconnectedPlaceholder(ConnectionState.Disconnected, {}) }
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun ReconnectingPreview() {
+    SceneDeckTheme {
+        Surface {
+            DisconnectedPlaceholder(ConnectionState.Reconnecting(6), {}, onRetryNow = {})
+        }
     }
 }
 

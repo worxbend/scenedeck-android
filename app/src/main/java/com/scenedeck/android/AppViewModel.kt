@@ -64,6 +64,11 @@ constructor(
         }
     }
 
+    /** "Retry now": skip the remaining OBS reconnect backoff (no-op outside backoff). */
+    fun retryNow() {
+        sessionHolder.retryNow()
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch { settingsRepository.setOnboardingCompleted(true) }
     }

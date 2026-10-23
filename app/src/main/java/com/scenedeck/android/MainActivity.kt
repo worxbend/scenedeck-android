@@ -8,13 +8,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.scenedeck.android.core.designsystem.components.LocalRetryNow
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.navigation.SceneLinkParser
 import dagger.hilt.android.AndroidEntryPoint
@@ -49,6 +52,7 @@ class MainActivity : ComponentActivity() {
                     appViewModel.onSceneLinkMessageShown(message)
                 }
             }
+            val retryNow = remember { { appViewModel.retryNow() } }
 
             SceneDeckTheme(
                 family = appState.themeFamily,
@@ -56,17 +60,19 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = appState.dynamicColor,
                 motionLevel = appState.motionLevel,
             ) {
-                SceneDeckApp(
-                    appState = appState,
-                    connectionState = connectionState,
-                    stripState = stripState,
-                    onboardingCompleted = onboardingCompleted,
-                    skipToConnections = skipToConnections,
-                    onOnboardingSkip = {
-                        skipToConnections = true
-                        appViewModel.completeOnboarding()
-                    },
-                )
+                CompositionLocalProvider(LocalRetryNow provides retryNow) {
+                    SceneDeckApp(
+                        appState = appState,
+                        connectionState = connectionState,
+                        stripState = stripState,
+                        onboardingCompleted = onboardingCompleted,
+                        skipToConnections = skipToConnections,
+                        onOnboardingSkip = {
+                            skipToConnections = true
+                            appViewModel.completeOnboarding()
+                        },
+                    )
+                }
             }
         }
     }

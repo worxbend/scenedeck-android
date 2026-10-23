@@ -24,6 +24,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - **Multiple named connection profiles** (mobile improvement over desktop's single
   target): e.g. "Home PC", "Studio rig", with quick-switch and a last-used default.
 - Auto-reconnect with backoff; connection state always visible (top bar + status strip).
+  The reconnecting screen offers **Retry now**; returning to the foreground or regaining
+  network also retries immediately.
 - Show OBS version + WebSocket version after connect (`GetVersion`).
 - Switch OBS **profiles** and **scene collections** from dropdowns (visible only when
   connected; observe profile/collection change events).

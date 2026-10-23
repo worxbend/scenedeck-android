@@ -180,6 +180,8 @@ internal class KtobsObsClient(
 
     override suspend fun disconnect() = sessionRunner.disconnect()
 
+    override fun retryNow(): Boolean = sessionRunner.backoff.wake()
+
     // ── Requests ────────────────────────────────────────────────────────────
 
     private suspend fun <T> request(block: suspend (ObsSession) -> T): T {
