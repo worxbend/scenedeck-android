@@ -144,10 +144,14 @@ constructor(
                 when (event) {
                     is ObsEvent.CurrentProgramSceneChanged -> requestDiscovery()
 
+                    is ObsEvent.SceneNameChanged -> {
+                        followSceneRename(event.oldSceneName, event.sceneName)
+                        requestDiscovery()
+                    }
+
                     is ObsEvent.SceneItemEnableStateChanged,
                     is ObsEvent.SceneCreated,
                     is ObsEvent.SceneRemoved,
-                    is ObsEvent.SceneNameChanged,
                     is ObsEvent.SceneListChanged,
                     is ObsEvent.InputCreated,
                     is ObsEvent.InputRemoved,
@@ -200,6 +204,18 @@ constructor(
 
                     else -> Unit
                 }
+            }
+        }
+    }
+
+    /**
+     * Keeps the persisted Mixer SELECTED scene on its new name, also while no Mixer screen is open
+     * (one atomic settings transaction; a selection changed meanwhile is left alone).
+     */
+    private suspend fun followSceneRename(oldName: String, newName: String) {
+        requestResult {
+            settings.update {
+                if (it.mixerSelectedScene == oldName) it.copy(mixerSelectedScene = newName) else it
             }
         }
     }

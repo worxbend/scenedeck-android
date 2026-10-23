@@ -13,7 +13,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -228,7 +230,7 @@ class RegistryRepositoryTest {
         repository.reorder(listOf("Intro", "Cam 1"))
         repository.update("Cam 1", SceneRole.SECONDARY, 0xFF7E57C2, "CAMERA")
 
-        repository.rename("Cam 1", "Camera")
+        assertTrue(repository.rename("Cam 1", "Camera"))
 
         assertNull(repository.byName("Cam 1"))
         assertEquals(
@@ -242,10 +244,35 @@ class RegistryRepositoryTest {
         repository.update("Old", SceneRole.ARCHIVE, null, null)
         repository.update("New", SceneRole.PRIMARY, null, "STAR")
 
-        repository.rename("Old", "New")
+        assertFalse(repository.rename("Old", "New"))
 
         assertEquals(SceneRole.ARCHIVE, repository.byName("Old")?.role)
         assertEquals("STAR", repository.byName("New")?.iconName)
+    }
+
+    @Test
+    fun renameWithoutCurationOrToItselfChangesNothing(): Unit = runBlocking {
+        repository.update("Cam 1", SceneRole.SECONDARY, null, null)
+
+        assertFalse(repository.rename("Unknown", "Other"))
+        assertFalse(repository.rename("Cam 1", "Cam 1"))
+
+        assertEquals(listOf("Cam 1"), repository.snapshot().map { it.sceneName })
+    }
+
+    @Test
+    fun renameIsOneAtomicChangeForObservers(): Unit = runBlocking {
+        repository.reorder(listOf("Intro", "Cam 1", "Outro"))
+
+        repository.entries
+            .map { list -> list.map { it.sceneName } }
+            .test {
+                assertEquals(listOf("Intro", "Cam 1", "Outro"), awaitItem())
+                repository.rename("Cam 1", "Camera")
+                // Never both rows, never neither: the move lands in one transaction.
+                assertEquals(listOf("Intro", "Camera", "Outro"), awaitItem())
+                expectNoEvents()
+            }
     }
 
     @Test

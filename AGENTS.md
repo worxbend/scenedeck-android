@@ -84,6 +84,8 @@ must pass, and Compose preview(s) for changed screens must render.
 - Mixer mute/volume use confirmed values plus pending write tokens; obsolete failures
   cannot roll back newer actions/events. Discovery is coalesced separately from immediate
   event reduction.
+- OBS scene renames update deck/tallies/Mixer selection at once and move curation in one
+  locked registry transaction; an existing entry for the new name wins and both are kept.
 - Registry deletion shares the mutation mutex; bulk mutations use one indexed snapshot
   and bulk write, preserving duplicate-import and ordering semantics. Graph metadata
   indexes preserve the first duplicate entry.

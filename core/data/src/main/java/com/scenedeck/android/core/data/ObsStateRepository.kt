@@ -69,6 +69,7 @@ constructor(
     private val previewScene = MutableStateFlow<String?>(null)
     private val currentTransition = MutableStateFlow<CurrentTransition?>(null)
     private val transitions = MutableStateFlow<List<TransitionInfo>>(emptyList())
+    private val renameLog = SceneRenameLog()
 
     private data class StudioSnapshot(
         val studioMode: Boolean,
@@ -134,6 +135,7 @@ constructor(
                 when (state) {
                     is ConnectionState.Ready -> refresh()
                     ConnectionState.Disconnected -> {
+                        renameLog.clear()
                         sceneList.value = emptyList()
                         programScene.value = null
                         studioMode.value = false
@@ -178,9 +180,15 @@ constructor(
         }
     }
 
-    /** OBS sends no SceneListChanged for renames; follow them locally and move curation. */
+    /**
+     * OBS sends no SceneListChanged (nor program/preview change) for renames; follow them locally
+     * so taps target the new name, then move the local curation. The log is written before the
+     * state so a concurrent read's compare-and-set retry replays it (see [refresh]).
+     */
     private suspend fun applyRename(event: ObsEvent.SceneNameChanged) {
         val (old, new) = event.oldSceneName to event.sceneName
+        if (old == new) return
+        renameLog.record(old, new)
         sceneList.update { list -> list.map { if (it.name == old) it.copy(name = new) else it } }
         programScene.update { if (it == old) new else it }
         previewScene.update { if (it == old) new else it }
@@ -189,9 +197,18 @@ constructor(
 
     private suspend fun refresh() {
         requestResult {
-            val list = client.getSceneList()
-            sceneList.value = list.scenes
-            programScene.value = list.currentProgramScene
+            var mark = renameLog.mark()
+            var list = client.getSceneList()
+            // A read that raced a rename may predate it: re-read (OBS answers after the events it
+            // already sent), and replay the renames only if they keep racing.
+            var rereads = 0
+            while (renameLog.mark() != mark && rereads++ < MAX_RENAME_REREADS) {
+                mark = renameLog.mark()
+                list = client.getSceneList()
+            }
+            // Compare-and-set: a rename recorded before this commits is replayed on the retry.
+            sceneList.update { renameLog.followScenes(list.scenes, mark) }
+            programScene.update { renameLog.follow(list.currentProgramScene, mark) }
             // Scene absence on this connection must not delete another host/collection's curation.
             refreshStudio()
         }
@@ -201,7 +218,9 @@ constructor(
         requestResult {
             studioMode.value = client.getStudioModeEnabled()
             if (studioMode.value) {
-                previewScene.value = client.getCurrentPreviewScene()
+                val mark = renameLog.mark()
+                val preview = client.getCurrentPreviewScene()
+                previewScene.update { renameLog.follow(preview, mark) }
             } else {
                 previewScene.value = null
             }
@@ -247,4 +266,8 @@ constructor(
         client.setSceneItemEnabled(sceneName, sceneItemId, enabled)
 
     suspend fun getSceneItemList(sceneName: String) = client.getSceneItemList(sceneName)
+
+    private companion object {
+        const val MAX_RENAME_REREADS = 2
+    }
 }

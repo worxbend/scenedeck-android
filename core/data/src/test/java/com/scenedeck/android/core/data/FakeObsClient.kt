@@ -55,7 +55,7 @@ internal open class FakeObsClient(
 
     override suspend fun disconnect() = Unit
 
-    override suspend fun getSceneList(): SceneListSnapshot = sceneListSnapshot
+    open override suspend fun getSceneList(): SceneListSnapshot = sceneListSnapshot
 
     override suspend fun setCurrentProgramScene(sceneName: String) {
         sceneSwitchCalls += sceneName

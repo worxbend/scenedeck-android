@@ -5,15 +5,18 @@ import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -209,6 +212,97 @@ class ObsStateRepositoryTest {
         assertEquals("CAMERA", deck.allScenes.first().iconName)
         assertEquals(SceneRole.SECONDARY, deck.allScenes.first().role)
         assertNull(registryDao.byName("Cam 1"))
+    }
+
+    @Test
+    fun renamingProgramAndPreviewScenesKeepsTalliesOnTheNewNames(): Unit = runBlocking {
+        client.studioModeEnabled = true
+        client.previewScene = "Screen"
+        client.setReady()
+        awaitDeck { it.previewScene == "Screen" && it.allScenes.size == 3 }
+
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Scene", sceneName = "Main"))
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Screen", sceneName = "Display"))
+
+        val deck = awaitDeck { it.previewScene == "Display" && it.currentProgramScene == "Main" }
+        assertEquals(listOf("Display", "Cam 1", "Main"), deck.allScenes.map { it.name })
+        assertEquals("Main", deck.allScenes.single { it.isActive }.name)
+        assertEquals("Display", deck.allScenes.single { it.isPreview }.name)
+
+        // A tap on the renamed card targets OBS by its new name.
+        repository.setCurrentProgramScene(deck.allScenes.single { it.isActive }.name)
+        assertEquals(listOf("Main"), client.sceneSwitchCalls)
+    }
+
+    @Test
+    fun renameOntoAnExistingEntryKeepsBothEntries(): Unit = runBlocking {
+        registryDao.upsert(SceneRegistryEntity("Cam 1", role = "SECONDARY", iconName = "CAMERA"))
+        // Stale curation left behind by an older scene that used the new name.
+        registryDao.upsert(SceneRegistryEntity("Camera", role = "ARCHIVE"))
+        client.setReady()
+        awaitDeck { it.allScenes.size == 3 }
+
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Cam 1", sceneName = "Camera"))
+
+        val deck = awaitDeck { deck -> deck.allScenes.any { it.name == "Camera" } }
+        assertEquals(SceneRole.ARCHIVE, deck.allScenes.single { it.name == "Camera" }.role)
+        assertEquals("CAMERA", registryDao.byName("Cam 1")?.iconName)
+        assertEquals("ARCHIVE", registryDao.byName("Camera")?.role)
+    }
+
+    @Test
+    fun renameWhileSceneListReadIsInFlightIsNotUndoneByItsResult(): Unit = runBlocking {
+        val readStarted = CompletableDeferred<Unit>()
+        val releaseRead = CompletableDeferred<Unit>()
+        val slowClient =
+            object :
+                FakeObsClient(
+                    sceneListSnapshot =
+                        SceneListSnapshot(
+                            currentProgramScene = "Cam 1",
+                            scenes = listOf(SceneSummary("Scene", 0), SceneSummary("Cam 1", 1)),
+                        )
+                ) {
+                var reads = 0
+
+                override suspend fun getSceneList(): SceneListSnapshot {
+                    reads++
+                    val answer = super.getSceneList() // answered before the rename
+                    readStarted.complete(Unit)
+                    releaseRead.await()
+                    return answer
+                }
+            }
+        val slowRepository = ObsStateRepository(slowClient, RegistryRepository(registryDao), scope)
+        registryDao.upsert(SceneRegistryEntity("Cam 1", role = "SECONDARY"))
+        val deckJob = scope.launch { slowRepository.deckState.collect {} }
+        slowClient.setReady()
+        withTimeout(5_000) {
+            readStarted.await()
+            (slowClient.events as MutableSharedFlow<ObsEvent>).subscriptionCount.first { it > 0 }
+        }
+
+        slowClient.sceneListSnapshot =
+            SceneListSnapshot(
+                currentProgramScene = "Camera",
+                scenes = listOf(SceneSummary("Scene", 0), SceneSummary("Camera", 1)),
+            )
+        slowClient.emit(ObsEvent.SceneNameChanged(oldSceneName = "Cam 1", sceneName = "Camera"))
+        withTimeout(5_000) {
+            registryDao.observeAll().first { it.any { e -> e.sceneName == "Camera" } }
+        }
+        releaseRead.complete(Unit)
+
+        val deck =
+            withTimeout(5_000) {
+                slowRepository.deckState.first { it.allScenes.size == 2 }
+            }
+        assertEquals(setOf("Scene", "Camera"), deck.allScenes.map { it.name }.toSet())
+        assertEquals("Camera", deck.currentProgramScene)
+        assertEquals(SceneRole.SECONDARY, deck.allScenes.single { it.name == "Camera" }.role)
+        // The raced read is repeated so the applied list is one OBS answered after the rename.
+        assertEquals(2, slowClient.reads)
+        deckJob.cancel()
     }
 
     private suspend fun awaitDeck(condition: (DeckState) -> Boolean): DeckState =
