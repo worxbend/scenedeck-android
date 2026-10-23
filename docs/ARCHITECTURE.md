@@ -97,7 +97,10 @@ one module owns the wire protocol.**
 Navigation 3 with app-owned back stack. Top-level destinations mirror the desktop
 workflow: **Scenes, Mixer, Stats**, plus **More** for Inventory, Graph, Doctor,
 Connections, Settings and Help. The internal Live route remains serialization-compatible. On tablets/foldables use `material3-adaptive` list-detail for
-Inventory/Settings; Live page reflows grid columns.
+Inventory/Settings; Live page reflows grid columns. The shell (`ShellLayout`) switches
+compact-height windows (phone landscape, < 480dp) to a navigation rail with a single-row
+status strip, applies horizontal safe-drawing insets to all content (end edge only beside
+a rail), and re-applies `enableEdgeToEdge` bar styles from the resolved app theme.
 
 ## Error & offline UX
 

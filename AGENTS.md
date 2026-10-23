@@ -64,6 +64,7 @@ must pass, and Compose preview(s) for changed screens must render.
 - The living StudioStylebook and docs/DESIGN_SYSTEM.md define the common visual language; connection forms open fully expanded and group identity/server/security with secure password visibility.
 
 - Apply status-bar insets outside main-screen scroll containers; Mixer headers must remain below system icons and cutouts.
+- Compact-height windows use a navigation rail and a single-row status strip; the shell applies horizontal safe-drawing insets (end only beside the rail). Snackbars use StudioSnackbarHost bottom-aligned; system-bar styles follow the resolved app theme.
 
 ## Quality and reliability contract
 

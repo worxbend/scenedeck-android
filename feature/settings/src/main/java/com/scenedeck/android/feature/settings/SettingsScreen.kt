@@ -19,7 +19,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -47,6 +46,7 @@ import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.designsystem.components.StudioIconWell
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
+import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
 import com.scenedeck.android.core.designsystem.components.StudioTone
 import com.scenedeck.android.core.designsystem.components.studioSegmentedButtonColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -105,7 +105,7 @@ fun SettingsScreen(
             onConfirmStopRecordChange = viewModel::setConfirmStopRecord,
             modifier = Modifier,
         )
-        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+        StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 }
 
