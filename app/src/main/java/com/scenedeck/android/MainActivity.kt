@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
             val stripState by appViewModel.stripState.collectAsStateWithLifecycle()
             val onboardingCompleted by
                 appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
+            val uiDensity by appViewModel.uiDensity.collectAsStateWithLifecycle()
             var skipToConnections by rememberSaveable { mutableStateOf(false) }
             val darkTheme = appState.isDarkTheme(isSystemInDarkTheme())
             // Bar icons follow the resolved app theme, not the system night mode.
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 dynamicColor = appState.dynamicColor,
                 motionLevel = appState.motionLevel,
+                density = uiDensity,
             ) {
                 CompositionLocalProvider(LocalRetryNow provides retryNow) {
                     SceneDeckApp(

@@ -71,6 +71,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(project(":core:datastore"))
+    testImplementation(project(":core:model"))
     testImplementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

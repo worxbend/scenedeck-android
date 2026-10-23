@@ -32,7 +32,14 @@ data class InventoryScene(
     /** A live scene with no role chosen yet (no entry, or curation without a role). */
     val unassigned: Boolean
         get() = !stale && entry?.role == null
+
+    /** False when the role is only the implicit Primary default (no role chosen). */
+    val roleAssigned: Boolean
+        get() = entry?.role != null
 }
+
+/** A stale entry the user just removed; kept so the snackbar can undo the removal. */
+data class RemovedStaleEntry(val entry: SceneRegistryEntry)
 
 data class InventoryUiState(
     val connection: ConnectionState = ConnectionState.Disconnected,
@@ -79,6 +86,11 @@ constructor(
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
+    private val _removals = MutableSharedFlow<RemovedStaleEntry>(extraBufferCapacity = 1)
+
+    /** Stale-entry removals, shown as a snackbar with an Undo action. */
+    val removals: SharedFlow<RemovedStaleEntry> = _removals.asSharedFlow()
+
     /**
      * Registry export/import transfer; file work runs on [viewModelScope] so it survives rotation.
      */
@@ -123,9 +135,15 @@ constructor(
 
     fun removeStale(sceneName: String) {
         launchAction {
+            val removed = registry.byName(sceneName) ?: return@launchAction
             registry.remove(sceneName)
-            _messages.emit("Removed stale entry “$sceneName”")
+            _removals.emit(RemovedStaleEntry(removed))
         }
+    }
+
+    /** Undo for [removeStale]: puts the entry back with its role, colors, icon and position. */
+    fun undoRemoveStale(removed: RemovedStaleEntry) {
+        launchAction { registry.restore(removed.entry) }
     }
 
     fun reorder(orderedSceneNames: List<String>) {

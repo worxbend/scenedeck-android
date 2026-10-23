@@ -32,6 +32,10 @@ data class UserSettings(
     val mixerGrouping: String = "SCOPE",
     /** Scene preview thumbnails on deck cards (M6). */
     val scenePreviewsEnabled: Boolean = true,
+    /** Layout density name (maps to the :core:designsystem `UiDensity` enum in :app). */
+    val uiDensity: String = "COMFORTABLE",
+    /** Mixer meter refresh behavior (FEATURE_SPEC §9). */
+    val meterRefresh: MeterRefresh = MeterRefresh.SMOOTH,
 )
 
 @Singleton
@@ -79,6 +83,10 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
 
     suspend fun setScenePreviewsEnabled(value: Boolean) = store.setScenePreviewsEnabled(value)
 
+    suspend fun setUiDensity(value: String) = store.setUiDensity(value)
+
+    suspend fun setMeterRefresh(value: MeterRefresh) = store.setMeterRefresh(value.name)
+
     suspend fun setInputLocked(inputName: String, locked: Boolean) =
         store.setInputLocked(inputName, locked)
 
@@ -102,6 +110,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
             mixerSelectedScene = mixerSelectedScene,
             mixerGrouping = mixerGrouping,
             scenePreviewsEnabled = scenePreviewsEnabled,
+            uiDensity = uiDensity,
+            meterRefresh = meterRefresh.name,
         )
 
     private fun SettingsSnapshot.toUserSettings() =
@@ -124,6 +134,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
             mixerSelectedScene = mixerSelectedScene,
             mixerGrouping = mixerGrouping,
             scenePreviewsEnabled = scenePreviewsEnabled,
+            uiDensity = uiDensity,
+            meterRefresh = MeterRefresh.fromName(meterRefresh),
         )
 
     private fun String.toDarkModeOrDefault(): DarkMode = runCatching {

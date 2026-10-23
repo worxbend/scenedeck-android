@@ -73,6 +73,13 @@ These hues carry product meaning and adapt per theme but keep their roles:
 - Scene cards retain uniform rounded geometry on activation, with semantic program/preview
   outlines and restrained press scaling (honor Reduced/Off motion).
 - Tonal elevation over shadows (dark-first design); glow ring for Active/On-air state.
+- Density: `SceneDeckTheme(density = …)` provides `SceneDeckTheme.spacing`. Comfortable =
+  20 dp gutter, 16 dp section gap, 8 dp item gap, 12 dp row padding; Compact = 12/10/4/8 dp.
+  Use the spacing tokens for new page layouts instead of fixed gutters; never shrink touch
+  targets below 48 dp.
+- Scene graph role fills: Primary/Secondary/Module = primary/secondary/tertiary
+  containers, Raw/Archive = neutral surfaces, Debug = warning amber. Program red is not a
+  role color.
 
 ## 6. Iconography
 

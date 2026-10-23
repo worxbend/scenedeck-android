@@ -57,6 +57,13 @@ class M5ComponentsRoborazziTest {
                             roleLabel = "Archive",
                             stale = true,
                         )
+                        InventoryRow(
+                            name = "Be Right Back Loop",
+                            icon = SceneIcon.FILM.imageVector,
+                            roleLabel = "Unassigned",
+                            roleAssigned = false,
+                            stale = true,
+                        )
                     }
                 }
             }
@@ -69,12 +76,21 @@ class M5ComponentsRoborazziTest {
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
                 val colors = SceneDeckTheme.colors
+                val scheme = androidx.compose.material3.MaterialTheme.colorScheme
                 Surface {
                     GraphCanvas(
                         nodes =
                             listOf(
-                                GraphNodeSpec("Starting Soon", colors.program),
-                                GraphNodeSpec("Cam 1", colors.program),
+                                GraphNodeSpec(
+                                    "Starting Soon",
+                                    scheme.primaryContainer,
+                                    contentColor = scheme.onPrimaryContainer,
+                                ),
+                                GraphNodeSpec(
+                                    "Cam 1",
+                                    scheme.primaryContainer,
+                                    contentColor = scheme.onPrimaryContainer,
+                                ),
                                 GraphNodeSpec("Nested Audio", colors.preview),
                                 GraphNodeSpec("Scratch", colors.warning, inCycle = true),
                             ),

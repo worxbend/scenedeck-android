@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DiscoveredInput
+import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.MixerInputState
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.withMeterRefresh
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.MediaActionKind
@@ -30,7 +32,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -174,7 +178,16 @@ constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MixerUiState())
 
     init {
-        viewModelScope.launch { client.volumeMeters.collect { levelsStore.update(it) } }
+        viewModelScope.launch {
+            // Meter refresh setting (FEATURE_SPEC §9): restart the meter pipeline on change.
+            settings.settings
+                .map { it.meterRefresh }
+                .distinctUntilChanged()
+                .collectLatest { refresh ->
+                    if (refresh == MeterRefresh.OFF) levelsStore.clear()
+                    client.volumeMeters.withMeterRefresh(refresh).collect { levelsStore.update(it) }
+                }
+        }
         viewModelScope.launch {
             // Mute/volume events also patch the SELECTED-mode local list.
             client.events.collect { event ->

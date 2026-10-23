@@ -3,8 +3,11 @@ package com.scenedeck.android.feature.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import com.scenedeck.android.core.data.AudioInputCatalog
+import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
+import com.scenedeck.android.core.designsystem.theme.UiDensity
 import java.io.IOException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -21,7 +24,8 @@ class SettingsWriteFailureTest {
     fun safetySettingFailuresShowSanitizedError(): Unit = runBlocking {
         val viewModel =
             SettingsViewModel(
-                SettingsRepository(SceneDeckSettingsStore.forTesting(FailingSettingsStore()))
+                SettingsRepository(SceneDeckSettingsStore.forTesting(FailingSettingsStore())),
+                AudioInputCatalog(audioObsClient()),
             )
         val actions: List<(SettingsViewModel) -> Unit> =
             listOf(
@@ -29,6 +33,10 @@ class SettingsWriteFailureTest {
                 { it.setConfirmStopStream(false) },
                 { it.setConfirmStartRecord(true) },
                 { it.setConfirmStopRecord(false) },
+                { it.setDensity(UiDensity.COMPACT) },
+                { it.setMeterRefresh(MeterRefresh.SAVER) },
+                { it.setAudioInputAllowed("Mic", true) },
+                { it.clearAudioAllowList() },
             )
         for (action in actions) {
             val message = async(start = CoroutineStart.UNDISPATCHED) { viewModel.errors.first() }

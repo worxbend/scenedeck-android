@@ -2,12 +2,11 @@ package com.scenedeck.android.feature.inventory
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,13 +14,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,8 +49,10 @@ import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
+import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val EXPORT_FILE_NAME = "scenedeck-registry.yaml"
@@ -66,6 +70,17 @@ fun InventoryScreen(
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.removals.collect { removal ->
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = "Removed stale entry “${removal.entry.sceneName}”",
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Long,
+                )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoRemoveStale(removal)
+        }
     }
 
     val exportLauncher =
@@ -130,7 +145,6 @@ fun InventoryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun InventoryContent(
     uiState: InventoryUiState,
@@ -150,7 +164,7 @@ internal fun InventoryContent(
     var iconEditorFor by remember { mutableStateOf<String?>(null) }
 
     var orderedScenes by remember { mutableStateOf(uiState.scenes) }
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listState = rememberLazyListState()
     val reorderableState =
         rememberReorderableLazyListState(listState) { from, to ->
             orderedScenes =
@@ -163,73 +177,137 @@ internal fun InventoryContent(
     }
     PersistSceneOrder(reorderableState.isAnyItemDragging, orderedScenes, onReorder)
 
+    val spacing = SceneDeckTheme.spacing
     Box(modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
-            Spacer(Modifier.height(16.dp))
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = spacing.pageGutter)
+        ) {
+            Spacer(Modifier.height(spacing.sectionGap))
             StudioPageHeader(
                 "Inventory",
                 "Scene roles, colors & deck order",
                 SceneDeckIcons.Inventory,
             )
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            ) {
-                OutlinedButton(onClick = onBulkAssign, enabled = uiState.unassignedCount > 0) {
-                    Text("Unassigned → Secondary")
-                }
-                OutlinedButton(onClick = onExport) { Text("Export") }
-                OutlinedButton(onClick = onImport) { Text("Import") }
-            }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
+            InventoryActions(uiState.unassignedCount > 0, onBulkAssign, onExport, onImport)
+            Spacer(Modifier.height(spacing.itemGap))
             Text(
                 text = "${uiState.scenes.size} scenes · ${uiState.unassignedCount} unassigned",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
-
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(orderedScenes, key = { it.name }) { scene ->
-                    ReorderableItem(reorderableState, key = scene.name) { _ ->
-                        InventoryRow(
-                            name = scene.name,
-                            icon = sceneIconForInventory(scene.entry?.iconName),
-                            roleLabel =
-                                if (scene.unassigned) "Unassigned"
-                                else
-                                    scene.role.name.lowercase().replaceFirstChar { it.uppercase() },
-                            accentColor = scene.entry?.accentColorArgb?.let { Color(it) },
-                            stale = scene.stale,
-                            onIconClick = { iconEditorFor = scene.name },
-                            onRoleClick = { roleMenuFor = scene.name },
-                            onAccentClick = { accentEditorFor = scene.name },
-                            onRemoveStale = { onRemoveStale(scene.name) },
-                            leadingContent = {
-                                DragGripDots(
-                                    sceneName = scene.name,
-                                    modifier = Modifier.draggableHandle(),
-                                )
-                            },
-                        )
-                    }
-                }
-            }
+            Spacer(Modifier.height(spacing.itemGap + 4.dp))
+            InventoryList(
+                scenes = orderedScenes,
+                listState = listState,
+                reorderableState = reorderableState,
+                onIconClick = { iconEditorFor = it },
+                onRoleClick = { roleMenuFor = it },
+                onAccentClick = { accentEditorFor = it },
+                onRemoveStale = onRemoveStale,
+            )
         }
-
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
-    // Role menu.
-    val roleTarget = roleMenuFor
-    if (roleTarget != null) {
-        ModalBottomSheet(onDismissRequest = { roleMenuFor = null }) {
+    InventorySheets(
+        scenes = uiState.scenes,
+        targets = SheetTargets(roleMenuFor, accentEditorFor, iconEditorFor),
+        onDismiss = {
+            roleMenuFor = null
+            accentEditorFor = null
+            iconEditorFor = null
+        },
+        onSetRole = onSetRole,
+        onSetAccent = onSetAccent,
+        onSetIcon = onSetIcon,
+    )
+}
+
+/** Bulk/transfer actions; wraps onto a second line instead of clipping at the screen edge. */
+@Composable
+private fun InventoryActions(
+    canBulkAssign: Boolean,
+    onBulkAssign: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        OutlinedButton(onClick = onBulkAssign, enabled = canBulkAssign) {
+            Text("Unassigned → Secondary")
+        }
+        OutlinedButton(onClick = onExport) { Text("Export") }
+        OutlinedButton(onClick = onImport) { Text("Import") }
+    }
+}
+
+/**
+ * Role chip text. A scene without a chosen role reads "Unassigned" (rendered outlined) even though
+ * the deck still treats it as Primary, so it never looks like an explicit Primary assignment.
+ */
+internal fun inventoryRoleLabel(scene: InventoryScene): String =
+    if (!scene.roleAssigned) "Unassigned"
+    else scene.role.name.lowercase().replaceFirstChar { it.uppercase() }
+
+@Composable
+private fun InventoryList(
+    scenes: List<InventoryScene>,
+    listState: LazyListState,
+    reorderableState: ReorderableLazyListState,
+    onIconClick: (String) -> Unit,
+    onRoleClick: (String) -> Unit,
+    onAccentClick: (String) -> Unit,
+    onRemoveStale: (String) -> Unit,
+) {
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(SceneDeckTheme.spacing.itemGap),
+    ) {
+        items(scenes, key = { it.name }) { scene ->
+            ReorderableItem(reorderableState, key = scene.name) { _ ->
+                InventoryRow(
+                    name = scene.name,
+                    icon = sceneIconForInventory(scene.entry?.iconName),
+                    roleLabel = inventoryRoleLabel(scene),
+                    roleAssigned = scene.roleAssigned,
+                    accentColor = scene.entry?.accentColorArgb?.let { Color(it) },
+                    stale = scene.stale,
+                    onIconClick = { onIconClick(scene.name) },
+                    onRoleClick = { onRoleClick(scene.name) },
+                    onAccentClick = { onAccentClick(scene.name) },
+                    onRemoveStale = { onRemoveStale(scene.name) },
+                    leadingContent = {
+                        DragGripDots(
+                            sceneName = scene.name,
+                            modifier = Modifier.draggableHandle(),
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Which scene each editor sheet is open for (null = closed). */
+private data class SheetTargets(val role: String?, val accent: String?, val icon: String?)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InventorySheets(
+    scenes: List<InventoryScene>,
+    targets: SheetTargets,
+    onDismiss: () -> Unit,
+    onSetRole: (String, SceneRole) -> Unit,
+    onSetAccent: (String, Long?) -> Unit,
+    onSetIcon: (String, String?) -> Unit,
+) {
+    targets.role?.let { roleTarget ->
+        ModalBottomSheet(onDismissRequest = onDismiss) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
                 Text(roleTarget, style = MaterialTheme.typography.titleLarge)
                 Text(
@@ -243,7 +321,7 @@ internal fun InventoryContent(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             onSetRole(roleTarget, role)
-                            roleMenuFor = null
+                            onDismiss()
                         },
                     ) {
                         Text(role.name.lowercase().replaceFirstChar { it.uppercase() })
@@ -253,30 +331,25 @@ internal fun InventoryContent(
         }
     }
 
-    // Accent sheet.
-    val accentTarget = accentEditorFor
-    if (accentTarget != null) {
-        ModalBottomSheet(onDismissRequest = { accentEditorFor = null }) {
+    targets.accent?.let { accentTarget ->
+        ModalBottomSheet(onDismissRequest = onDismiss) {
             AccentPickerContent(
-                current =
-                    uiState.scenes.firstOrNull { it.name == accentTarget }?.entry?.accentColorArgb,
+                current = scenes.firstOrNull { it.name == accentTarget }?.entry?.accentColorArgb,
                 onPick = { argb ->
                     onSetAccent(accentTarget, argb)
-                    accentEditorFor = null
+                    onDismiss()
                 },
             )
         }
     }
 
-    // Icon sheet.
-    val iconTarget = iconEditorFor
-    if (iconTarget != null) {
-        ModalBottomSheet(onDismissRequest = { iconEditorFor = null }) {
+    targets.icon?.let { iconTarget ->
+        ModalBottomSheet(onDismissRequest = onDismiss) {
             IconPickerContent(
-                current = uiState.scenes.firstOrNull { it.name == iconTarget }?.entry?.iconName,
+                current = scenes.firstOrNull { it.name == iconTarget }?.entry?.iconName,
                 onPick = { iconName ->
                     onSetIcon(iconTarget, iconName)
-                    iconEditorFor = null
+                    onDismiss()
                 },
             )
         }

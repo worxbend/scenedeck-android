@@ -2,6 +2,8 @@ package com.scenedeck.android.core.data
 
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.SceneItemInfo
+import com.scenedeck.android.core.model.SceneListSnapshot
+import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.SpecialInputs
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -86,6 +88,39 @@ class AudioDiscoveryTest {
         client.failSceneItems = true
         val inputs = discovery.discover(activeScene = "Cam 1", allowList = emptySet())
         assertEquals(listOf("Desktop Audio", "Mic/Aux"), inputs.map { it.name })
+    }
+
+    @Test
+    fun discoverAllWalksEverySceneOnceIgnoringAllowList(): Unit = runBlocking {
+        val inputs = discovery.discoverAll(listOf("Cam 1", "Starting Soon", "Nested Audio"))
+        assertEquals(
+            listOf("Desktop Audio", "Mic/Aux", "Test Tone 440", "Grouped Tone", "Nested Tone"),
+            inputs.map { it.name },
+        )
+    }
+
+    @Test
+    fun catalogListsSortedNamesOnlyWhileReady(): Unit = runBlocking {
+        client.sceneListSnapshot =
+            SceneListSnapshot(
+                "Cam 1",
+                listOf(SceneSummary("Cam 1", 1), SceneSummary("Starting Soon", 0)),
+            )
+        val catalog = AudioInputCatalog(client)
+        assertEquals(emptyList<String>(), catalog.audioInputNames())
+
+        client.setReady()
+        assertEquals(
+            listOf("Desktop Audio", "Grouped Tone", "Mic/Aux", "Nested Tone", "Test Tone 440"),
+            catalog.audioInputNames(),
+        )
+    }
+
+    @Test
+    fun allowListToggleAddsAndRemovesNames() {
+        val allowed = emptySet<String>().withAudioInputAllowed("Mic/Aux", allowed = true)
+        assertEquals(setOf("Mic/Aux"), allowed)
+        assertEquals(emptySet<String>(), allowed.withAudioInputAllowed("Mic/Aux", allowed = false))
     }
 
     /** Rig-shaped fake covering only what [AudioDiscovery] calls. */

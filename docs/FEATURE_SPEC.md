@@ -102,9 +102,14 @@ colors, icons, ordering) lives in a local registry on the device.
   (nested reusable), `Raw`, `Debug`, `Archive`.
 - Drag-to-reorder (persisted, same order as the Scenes grid; stale entries listed
   last), accent color picker, icon picker, stale-entry detection (registry entry whose
-  scene vanished from OBS) with one-tap cleanup.
+  scene vanished from OBS) with one-tap cleanup; the removal snackbar offers **Undo**,
+  which restores role, accent, icon and position (newer curation for the name wins).
+- Rows keep the scene name readable (up to two lines); stale rows put the stale badge and
+  Remove on a second line. Bulk/Export/Import actions wrap instead of clipping.
 - Roles are only assigned explicitly: reordering or changing a color/icon keeps a scene
   **Unassigned** (shown as Primary on the deck, counted by Unassigned → Secondary/Doctor).
+  Inventory labels such scenes "Unassigned" with an outlined chip, never as a filled
+  Primary chip.
 - Renames reported by OBS (`SceneNameChanged`) update the deck immediately (card name,
   program/preview tallies, Mixer's selected scene, Graph selection) and move a scene's
   curation and position to the new name in one local transaction (OBS is never
@@ -119,7 +124,11 @@ colors, icons, ordering) lives in a local registry on the device.
 ## 7. Graph & Doctor (health tooling)
 
 - **Graph page**: scene dependency tree from nested scene sources; classify edges
-  against role rules to spot surprising dependencies before going live.
+  against role rules to spot surprising dependencies before going live. Duplicate scene
+  items of the same nested scene form one edge (drawn lines, detail lists and the
+  TalkBack count agree). Columns shrink to fit the phone width; wider graphs scroll inside
+  the canvas with a "scroll sideways" hint. Role fills use theme accent containers, never
+  the program/LIVE red (red marks only forbidden edges and cycles).
 - **Doctor page**: diagnostics over OBS inventory + local registry + graph — unassigned
   roles, stale entries, circular references, hierarchy inversions; severity-graded report.
   Inversions are raised only between explicitly assigned roles (never the implicit Primary
@@ -155,8 +164,19 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
 - Profile forms open fully expanded and scroll with the keyboard; they group identity/server/security, use host/port keyboard navigation, and provide a secure password visibility toggle. Editing endpoint fields invalidates stale connection-test feedback.
 - Inventory role choices use a sheet; Doctor reports can filter by severity.
 - Motion level: full / reduced / off (respects system animator duration scale).
-- UI density (compact / comfortable), haptics toggle.
-- Audio allow-list; meter refresh behavior; keep-screen-on while connected.
+- UI density (compact / comfortable), haptics toggle. Density is persisted in DataStore
+  and drives `SceneDeckTheme.spacing` (page gutter, section/item gaps, row padding); it is
+  applied to the page headers, section headers, Inventory, Graph and Settings. Touch
+  targets stay ≥ 48 dp. Scenes, Mixer and Stats keep their fixed layouts for now.
+- Audio allow-list (Settings → Mixer): a checklist of audio inputs found across every
+  OBS scene (same discovery rules, allow-list ignored) plus already saved names. Empty =
+  every input; the Mixer re-runs discovery when the list changes. Inputs that only exist
+  as disabled scene items are not offered (they can still be kept if already saved).
+- Meter refresh: Smooth (every OBS batch, ~20 Hz), Normal (latest batch per 100 ms),
+  Saver (per 250 ms) or Off (meters stop and render empty). Applied client-side to the
+  Mixer meter pipeline; OBS keeps sending `InputVolumeMeters` at its fixed ~50 ms cadence
+  because changing the event subscription would require re-identifying the session.
+- Keep-screen-on while connected.
 - Onboarding: first-run welcome + connection wizard (auto-detect OBS on LAN if feasible,
   else manual host/port + QR).
 
