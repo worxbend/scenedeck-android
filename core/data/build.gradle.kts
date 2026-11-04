@@ -21,6 +21,15 @@ android {
     }
 }
 
+// Build migration fixtures from committed schemas through AGP's variant source API.
+androidComponents {
+    onVariants { variant ->
+        variant.hostTests.values.forEach { test ->
+            test.sources.resources?.addStaticSourceDirectory("../database/schemas")
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)

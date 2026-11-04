@@ -141,6 +141,16 @@ snapshot, index it and write a batch while preserving duplicate-import merge/cou
 semantics and default ordering. Deck/graph reducers index metadata once; the public
 graph builder preserves the first duplicate registry entry.
 
+Room schema 3 prepares workspace isolation: registry identity is the composite
+`connectionProfileId`, `sceneCollectionName`, and `sceneName`. Migrations live in
+`:core:database` (`SceneDeckMigrations`) and preserve pre-workspace records under
+profile `0` / empty collection. The legacy `SceneRegistryDao` only reads/deletes
+that legacy scope; `WorkspaceSceneDao` requires explicit scope for reads, cleanup,
+and transactional renames. Profile removal does not cascade into curation storage.
+This is a persistence foundation: the application still uses the legacy registry
+until authoritative session-context integration is complete (see
+`tasks/operator-workflow/plan.md`, W1b). No named-deck UI is shipped by the migration.
+
 Password drafts stay in memory, outside saved-state Bundles, and secret-bearing
 models redact their diagnostic strings. Keystore writes verify synchronous persistence
 on IO. Pending OBS connect and socket/client resources close when their owning job is

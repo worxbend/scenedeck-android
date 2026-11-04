@@ -5,11 +5,13 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [ConnectionProfileEntity::class, SceneRegistryEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun connectionProfileDao(): ConnectionProfileDao
 
     abstract fun sceneRegistryDao(): SceneRegistryDao
+
+    abstract fun workspaceSceneDao(): WorkspaceSceneDao
 }

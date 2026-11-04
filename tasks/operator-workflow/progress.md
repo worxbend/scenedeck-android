@@ -3,9 +3,9 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W1a — scoped persistence/migration design and implementation**.
-- Next action: record baseline, inspect Room migration wiring, add isolated persistence
-  with preservation tests, then integrate authoritative session context in W1b.
+- Active slice: **W1b — authoritative workspace integration**.
+- Next action: follow `workspace-design.md` for session identity, origin-bound
+  mutations, scoped UI/widget/cache state, and legacy recovery. W1a is verified.
 - Full feature delivery: **in progress**. No new user-facing feature is marked shipped.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
@@ -28,7 +28,7 @@
 - Direct Maven Central HEAD for the missing jar returned HTTP 200. Targeted checks
   are retrying with IPv4 and bounded network timeouts, without configuration cache.
 
-## W1a — Implementation in progress
+## W1a — Persistence implemented and quality gate passed
 
 - Room version 3 adds `connectionProfileId` and `sceneCollectionName` to the registry
   primary key. Legacy rows retain scope `(0, "")` and all original fields.
@@ -44,10 +44,29 @@
   could not load the historical JSON fixtures. Corrected resource wiring through
   `variant.hostTests` / `sources.resources` after inspecting the pinned AGP API.
   The earlier source-set and Test-classpath approaches were not retained.
-- Formatting and migration-test rerun are pending; no dependency pins changed.
+- Formatting passed (`/tmp/scenedeck-workspace-format.log`). The complete
+  `:core:data:testDebugUnitTest` suite now passes, including both historical migration
+  tests and all four isolation tests (`/tmp/scenedeck-workspace-data-tests.log`).
+  No dependency pins changed.
 - W1b follow-up evidence: widgets currently carry only a scene name and reconnect to
   the last-used profile, so their cached actions must also be bound to a workspace.
   Staged Inventory imports and Undo need origin scope, not the scope at confirmation.
+- Full JDK 21/uv quality gate **passed**, exit 0:
+  `/tmp/scenedeck-workspace-quality.log`. Gradle qualityCheck passed (909 tasks);
+  Semgrep ran seven rules on 228 tracked files with zero findings; Gitleaks history
+  and working-tree scans both reported no leaks.
+- Current aggregate unit-test outputs: **582 tests / 106 suites**, zero
+  failures/errors/skips (includes up-to-date suites reused by Gradle).
+- Explicit `assembleDebug testDebugUnitTest --no-configuration-cache` confirmation
+  **passed**, exit 0 (717 tasks, 715 up-to-date):
+  `/tmp/scenedeck-workspace-explicit-verification.log`.
+- No Compose screens changed in W1a. Existing preview tests pass through the full
+  suite; no real-OBS or physical-device performance claim is made for this slice.
+- Complete data suite: **181 tests / 25 suites, zero failures/errors/skips**.
+- W1b design/evidence and legacy recovery decision recorded in
+  [workspace-design.md](workspace-design.md). Legacy ownership cannot be inferred,
+  so the integration will offer explicit scoped recovery rather than guessing a host.
+- Durable plan committed as `fbd9fa8` (`docs: start durable operator feature workflow`).
 
 ## Decisions / limitations
 

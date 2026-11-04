@@ -9,10 +9,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SceneRegistryDao {
 
-    @Query("SELECT * FROM scene_registry ORDER BY sortOrder ASC, sceneName ASC")
+    @Query(
+        "SELECT * FROM scene_registry WHERE connectionProfileId = 0 AND sceneCollectionName = '' " +
+            "ORDER BY sortOrder ASC, sceneName ASC"
+    )
     fun observeAll(): Flow<List<SceneRegistryEntity>>
 
-    @Query("SELECT * FROM scene_registry WHERE sceneName = :sceneName")
+    @Query(
+        "SELECT * FROM scene_registry WHERE connectionProfileId = 0 AND sceneCollectionName = '' " +
+            "AND sceneName = :sceneName"
+    )
     suspend fun byName(sceneName: String): SceneRegistryEntity?
 
     @Upsert suspend fun upsert(entity: SceneRegistryEntity)
@@ -20,10 +26,16 @@ interface SceneRegistryDao {
     @Upsert suspend fun upsertAll(entities: List<SceneRegistryEntity>)
 
     /** Deletes entries whose scene no longer exists in OBS. */
-    @Query("DELETE FROM scene_registry WHERE sceneName NOT IN (:validSceneNames)")
+    @Query(
+        "DELETE FROM scene_registry WHERE connectionProfileId = 0 AND sceneCollectionName = '' " +
+            "AND sceneName NOT IN (:validSceneNames)"
+    )
     suspend fun deleteStale(validSceneNames: List<String>)
 
-    @Query("DELETE FROM scene_registry WHERE sceneName = :sceneName")
+    @Query(
+        "DELETE FROM scene_registry WHERE connectionProfileId = 0 AND sceneCollectionName = '' " +
+            "AND sceneName = :sceneName"
+    )
     suspend fun delete(sceneName: String)
 
     /**

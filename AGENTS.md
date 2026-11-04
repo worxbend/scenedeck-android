@@ -15,6 +15,11 @@ desktop Linux app at `../scenedeck` (Rust/GTK4). Read these before making change
 
 ## Project-level skills
 
+Active feature work resumes from `tasks/operator-workflow/README.md` and its plan/progress
+files. The authorized scope excludes Show rundown (including cue lists and timed
+advancement); multi-action presets are independently invoked. Planned checkpoints
+are not shipped behavior. Preserve the older completed review in `tasks/plan.md`.
+
 Skills live in `.kimi/skills/` and **must** be consulted for their domains:
 
 - `android-compose` — any Kotlin/Compose/build work
@@ -97,6 +102,10 @@ must pass, and Compose preview(s) for changed screens must render.
 - Registry deletion shares the mutation mutex; bulk mutations use one indexed snapshot
   and bulk write, preserving duplicate-import and ordering semantics. Graph metadata
   indexes preserve the first duplicate entry.
+- Room schema 3 preserves legacy registry rows under profile 0 / empty collection;
+  scoped persistence keys profile + collection + scene. Legacy DAO queries must never
+  read/delete other scopes. Workspace activation remains tracked separately in W1b
+  of `tasks/operator-workflow/plan.md`; schema support alone is not feature completion.
 - Password drafts never enter saved-state Bundles; diagnostic strings redact credentials.
 - Widget counts are bounded before allocation; foreground startup failure/timeouts disconnect safely.
 - Widgets deduplicate their six visible scenes, program scene and connection projection;

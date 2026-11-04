@@ -1,16 +1,14 @@
 package com.scenedeck.android.di
 
 import android.content.Context
-import androidx.annotation.VisibleForTesting
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.scenedeck.android.background.BackgroundSettingsStore
 import com.scenedeck.android.core.data.KeystoreSecretsStore
 import com.scenedeck.android.core.data.SecretsStore
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.database.ConnectionProfileDao
 import com.scenedeck.android.core.database.SceneDeckDatabase
+import com.scenedeck.android.core.database.SceneDeckMigrations
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.obs.ObsClient
@@ -28,28 +26,11 @@ import kotlinx.coroutines.SupervisorJob
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    /** v1 → v2: adds the local scene registry (profiles are preserved). */
-    @VisibleForTesting
-    val MIGRATION_1_2 =
-        object : Migration(1, 2) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE TABLE IF NOT EXISTS `scene_registry` (" +
-                        "`sceneName` TEXT NOT NULL, " +
-                        "`role` TEXT NOT NULL, " +
-                        "`accentColorArgb` INTEGER, " +
-                        "`iconName` TEXT, " +
-                        "`sortOrder` INTEGER NOT NULL, " +
-                        "PRIMARY KEY(`sceneName`))"
-                )
-            }
-        }
-
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, "scenedeck.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(SceneDeckMigrations.MIGRATION_1_2, SceneDeckMigrations.MIGRATION_2_3)
             .build()
 
     @Provides
