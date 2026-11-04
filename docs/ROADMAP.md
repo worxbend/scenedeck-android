@@ -1,5 +1,15 @@
 # Roadmap — SceneDeck Android
 
+## Active follow-up — operator workflow (2026-11-05)
+
+Implementation is tracked in [the durable workflow](../tasks/operator-workflow/README.md).
+The authorized scope includes scoped workspaces/named decks, preflight, live alerts,
+recording/media tools, independently invoked action presets, session history/export,
+local aliases, preview freshness, keyboard/pedal bindings, demo mode, and tablet layouts.
+**Show rundown is excluded**, including cue lists, scheduled advancement, and a tablet
+rundown panel. See the workflow plan for acceptance criteria and progress; these items
+are planned until their individual implementation/verification checkpoints are complete.
+
 Phased delivery from empty repo to Play Store. Each milestone is independently
 shippable (internal track) and has explicit acceptance criteria. Estimates assume
 one focused engineer (or agent-driven development with review).
