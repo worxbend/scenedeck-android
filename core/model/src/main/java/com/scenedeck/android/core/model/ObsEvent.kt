@@ -70,6 +70,8 @@ sealed interface ObsEvent {
 
     data class ProfileListChanged(val profiles: List<String>) : ObsEvent
 
+    data class CurrentSceneCollectionChanging(val collectionName: String) : ObsEvent
+
     data class CurrentSceneCollectionChanged(val collectionName: String) : ObsEvent
 
     data class SceneCollectionListChanged(val collections: List<String>) : ObsEvent

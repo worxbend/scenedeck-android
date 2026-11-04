@@ -53,12 +53,21 @@ one module owns the wire protocol.**
   map to typed `ConnectionError`. `ObsClient.retryNow()` only cuts a pending backoff
   wait short (Retry now, app foreground, network available); it keeps the attempt count
   and never starts, replaces or revives a session.
-- **Event lane**: single `MutableSharedFlow` (buffered, `DROP_OLDEST` for high-volume
-  `InputVolumeMeters` ~50 ms cadence — mirrors desktop's `try_send` drop policy).
+- **Event lane**: separate bounded event and meter flows (`DROP_OLDEST`; meters arrive
+  at ~50 ms cadence). Context streams stamp the connection ID and collection revision
+  on the receiver lane before buffering, so consumers can reject obsolete events.
+  The legacy untagged streams remain during W1b consumer migration. Default interface
+  adapters support only unscoped in-memory clients with token `(0, 0)`; clients with
+  real session identities must override the context streams.
 - **Request lane**: suspend functions with bounded parallelism (`Semaphore(8)`, same
   as desktop) for batch reads like audio discovery. A 10-second deadline covers
   permit admission and response waiting. Requests capture the originating session
-  before admission and reject a replacement session before dispatch/publication.
+  and collection revision before admission and reject replacement before dispatch/publication.
+  `CurrentSceneCollectionChanging` invalidates that revision and blocks new requests;
+  `CurrentSceneCollectionChanged` advances it again and resumes admission. Initial
+  Ready publication retains collection changes received during GetVersion. A deliberate
+  `SetCurrentSceneCollection` may complete through its own collection events, but cannot
+  enter the protocol lane after its originating collection has changed.
   Timeout and protocol failures are typed and sanitized; caller cancellation
   propagates and timed-out writes are not automatically retried. Typed request
   blocks, initial GetVersion and the complete receiver/cleanup explicitly share
@@ -84,6 +93,8 @@ one module owns the wire protocol.**
 | Deck/scenes/audio/events | `ObsStateRepository` | process (survives rotation) |
 | Registry (roles/colors/order) | `RegistryRepository` → Room + DataStore | persisted, YAML export |
 | Connection profiles | `ProfileRepository` → Room | persisted |
+| Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
+| Resolved workspace identity (W1b foundation) | `WorkspaceRepository` | connection/collection revision |
 | Passwords | `SecretsStore` → Keystore | persisted |
 | Stats ring buffer (2 min) | `StatsRepository` | connection-scoped |
 | Screen UI state | feature ViewModels | config-change scoped |
@@ -140,6 +151,8 @@ Registry deletion shares the existing mutation mutex. Bulk mutations read one
 snapshot, index it and write a batch while preserving duplicate-import merge/count
 semantics and default ordering. Deck/graph reducers index metadata once; the public
 graph builder preserves the first duplicate registry entry.
+Graph registers its shared-event subscription before triggering the initial read
+(`onSubscription`); an event arriving during that read must trigger another refresh.
 
 Room schema 3 prepares workspace isolation: registry identity is the composite
 `connectionProfileId`, `sceneCollectionName`, and `sceneName`. Migrations live in
@@ -150,6 +163,18 @@ and transactional renames. Profile removal does not cascade into curation storag
 This is a persistence foundation: the application still uses the legacy registry
 until authoritative session-context integration is complete (see
 `tasks/operator-workflow/plan.md`, W1b). No named-deck UI is shipped by the migration.
+
+The W1b context foundation distinguishes last-used preferences from the profile
+actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously
+before credential lookup and confirms only its own completed connection attempt.
+Older canceled/failed attempts cannot clear a newer target. Automatic reconnect keeps
+that target while each Ready session gets a new client-local session ID.
+The next command clears any late failure only after the canceled preparation has
+joined, so a blocking credential provider's obsolete error cannot poison its result.
+`WorkspaceRepository` resolves `GetSceneCollectionList` only for a confirmed target
+and stable Ready token. Failure is unknown identity, with an explicit coalesced retry;
+its synchronous origin check rejects changes before flow collectors catch up.
+Registry/UI/widget/cache consumers are not activated by this foundation alone.
 
 Password drafts stay in memory, outside saved-state Bundles, and secret-bearing
 models redact their diagnostic strings. Keystore writes verify synchronous persistence

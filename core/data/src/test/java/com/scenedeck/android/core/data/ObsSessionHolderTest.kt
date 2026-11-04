@@ -17,8 +17,11 @@ import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,9 +33,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,11 +50,13 @@ class ObsSessionHolderTest {
     private lateinit var profiles: ProfileRepository
     private lateinit var secrets: FakeSecretsStore
     private lateinit var holderScope: CoroutineScope
+    private lateinit var activeConnection: ActiveConnection
 
     @Before
     fun setUp() {
         settings = SettingsRepository(SettingsRepositoryTest.newIsolatedStore())
         client = FakeObsClient()
+        activeConnection = ActiveConnection()
         profiles = ProfileRepository(FakeProfileDao())
         secrets = FakeSecretsStore()
         // Not the runBlocking scope: the holder's auto-connect watcher suspends forever
@@ -63,7 +71,8 @@ class ObsSessionHolderTest {
 
     @Test
     fun connectFetchesProfileAndSecret(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
 
         holder.connect(FakeProfileDao.PROFILE_ID)
 
@@ -85,7 +94,7 @@ class ObsSessionHolderTest {
         settings.setOnboardingCompleted(true)
         settings.setLastUsedProfileId(FakeProfileDao.PROFILE_ID)
 
-        ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
 
         withTimeout(5_000) { while (client.connectCalls.isEmpty()) delay(25) }
         assertEquals("studio.local", client.connectCalls.single().host)
@@ -93,14 +102,15 @@ class ObsSessionHolderTest {
 
     @Test
     fun noAutoConnectBeforeOnboarding(): Unit = runBlocking {
-        ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         delay(500)
         assertEquals(0, client.connectCalls.size)
     }
 
     @Test
     fun disconnectDelegatesToClient(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.disconnect()
         withTimeout(5_000) { while (!client.disconnectCalled) delay(25) }
     }
@@ -108,7 +118,8 @@ class ObsSessionHolderTest {
     @Test
     fun failedCredentialReadBecomesObservableFailure(): Unit = runBlocking {
         secrets.readFailure = IllegalStateException("sensitive credential detail")
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connect(FakeProfileDao.PROFILE_ID)
         val failed =
             withTimeout(5_000) {
@@ -121,7 +132,8 @@ class ObsSessionHolderTest {
 
     @Test
     fun missingProfileBecomesObservableFailure(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connect(-1)
         withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Failed } }
         assertEquals(0, client.connectCalls.size)
@@ -131,7 +143,8 @@ class ObsSessionHolderTest {
     fun disconnectCancelsPendingProfilePreparation(): Unit = runBlocking {
         val gate = CompletableDeferred<Unit>()
         secrets.waitForPassword = gate
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connect(FakeProfileDao.PROFILE_ID)
         withTimeout(5_000) { secrets.passwordRequested.await() }
         holder.disconnect()
@@ -144,7 +157,8 @@ class ObsSessionHolderTest {
     @Test
     fun undecryptableSavedPasswordBecomesAuthFailure(): Unit = runBlocking {
         secrets.readFailure = SecretsDecryptException(IllegalStateException("tag mismatch"))
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connect(FakeProfileDao.PROFILE_ID)
         val failed =
             withTimeout(5_000) {
@@ -160,7 +174,15 @@ class ObsSessionHolderTest {
     fun settingsReadFailureSkipsAutoConnectWithoutConnectionFailure(): Unit = runBlocking {
         val failingSettings =
             SettingsRepository(SceneDeckSettingsStore.forTesting(FailingDataStore()))
-        val holder = ObsSessionHolder(client, profiles, secrets, failingSettings, holderScope)
+        val holder =
+            ObsSessionHolder(
+                client,
+                profiles,
+                secrets,
+                failingSettings,
+                holderScope,
+                activeConnection,
+            )
         delay(500)
         assertEquals(false, holder.onboardingCompleted.value)
         assertTrue(holder.connectionState.value !is ConnectionState.Failed)
@@ -169,7 +191,8 @@ class ObsSessionHolderTest {
 
     @Test
     fun failedProfileSwitchClosesPreviousSessionBeforePublishingFailure(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connect(FakeProfileDao.PROFILE_ID)
         withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Ready } }
         secrets.readFailure = IllegalStateException("private credential error")
@@ -178,18 +201,79 @@ class ObsSessionHolderTest {
         assertEquals(ConnectionState.Disconnected, client.connectionState.value)
         assertTrue(client.disconnectCalled)
         assertEquals(1, client.connectCalls.size)
+        assertNull(activeConnection.target.value.profileId)
     }
 
     @Test
     fun awaitConnectReturnsItsOwnOutcomeAfterEarlierFailure(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         assertTrue(holder.connectAndAwait(-1) is ConnectionState.Failed)
+        assertNull(activeConnection.target.value.profileId)
         assertTrue(holder.connectAndAwait(FakeProfileDao.PROFILE_ID) is ConnectionState.Ready)
+        assertEquals(FakeProfileDao.PROFILE_ID, activeConnection.target.value.profileId)
+        assertTrue(activeConnection.target.value.confirmed)
+    }
+
+    @Test
+    fun pendingPreparationInvalidatesOldIdentityAndCancellationClearsIt(): Unit = runBlocking {
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
+        holder.connectAndAwait(FakeProfileDao.PROFILE_ID)
+        val first = activeConnection.target.value
+        secrets.waitForPassword = CompletableDeferred()
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        val pending = activeConnection.target.value
+        assertTrue(pending.generation > first.generation)
+        assertFalse(pending.confirmed)
+        holder.disconnect()
+        assertNull(activeConnection.target.value.profileId)
+
+        val request = async { holder.connectAndAwait(FakeProfileDao.PROFILE_ID) }
+        withTimeout(5_000) { activeConnection.target.first { it.profileId != null } }
+        request.cancelAndJoin()
+        withTimeout(5_000) { activeConnection.target.first { it.profileId == null } }
+        assertFalse(activeConnection.target.value.confirmed)
+    }
+
+    @Test
+    fun immediateReconnectAfterSuccessfulHandshakeKeepsTarget(): Unit = runBlocking {
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
+        for (state in listOf(ConnectionState.Reconnecting(1), ConnectionState.Identifying)) {
+            client.afterConnectState = state
+            assertEquals(state, holder.connectAndAwait(FakeProfileDao.PROFILE_ID))
+            assertEquals(FakeProfileDao.PROFILE_ID, activeConnection.target.value.profileId)
+            assertTrue(activeConnection.target.value.confirmed)
+        }
+    }
+
+    @Test
+    fun supersededPreparationFailureCannotPoisonTheNextSuccessfulConnection(): Unit = runBlocking {
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        secrets.beforeRead = {
+            secrets.beforeRead = {}
+            entered.complete(Unit)
+            // A blocking credential provider may finish with an error after cancellation.
+            withContext(NonCancellable) { release.await() }
+            throw IOException("obsolete credential failure")
+        }
+        holder.connect(FakeProfileDao.PROFILE_ID)
+        withTimeout(5_000) { entered.await() }
+        val replacement = async { holder.connectAndAwait(FakeProfileDao.PROFILE_ID) }
+        withTimeout(5_000) { activeConnection.target.first { it.generation == 2L } }
+        release.complete(Unit)
+        assertTrue(withTimeout(5_000) { replacement.await() } is ConnectionState.Ready)
+        assertTrue(activeConnection.target.value.confirmed)
     }
 
     @Test
     fun replacementConnectMasksTransientClientDisconnection(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
         holder.connectAndAwait(FakeProfileDao.PROFILE_ID)
         withTimeout(5_000) { holder.connectionState.first { it is ConnectionState.Ready } }
         val gate = CompletableDeferred<Unit>()
@@ -206,7 +290,8 @@ class ObsSessionHolderTest {
 
     @Test
     fun retryNowNudgesClientWithoutQueuingCommands(): Unit = runBlocking {
-        val holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
 
         assertTrue(holder.retryNow())
 
@@ -226,11 +311,13 @@ class ObsSessionHolderTest {
     }
 
     private class FakeSecretsStore : SecretsStore {
+        var beforeRead: suspend () -> Unit = {}
         var readFailure: Exception? = null
         var waitForPassword: CompletableDeferred<Unit>? = null
         val passwordRequested = CompletableDeferred<Unit>()
 
         override suspend fun passwordFor(profileId: Long): String? {
+            beforeRead()
             passwordRequested.complete(Unit)
             waitForPassword?.await()
             readFailure?.let { throw it }
@@ -279,6 +366,7 @@ class ObsSessionHolderTest {
 
         val connectCalls = mutableListOf<ConnectCall>()
         @Volatile var connectGate: CompletableDeferred<Unit>? = null
+        var afterConnectState: ConnectionState? = null
 
         @Volatile var disconnectCalled = false
 
@@ -296,6 +384,7 @@ class ObsSessionHolderTest {
             }
             _connectionState.value =
                 ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test"))
+            afterConnectState?.let { _connectionState.value = it }
         }
 
         override suspend fun disconnect() {

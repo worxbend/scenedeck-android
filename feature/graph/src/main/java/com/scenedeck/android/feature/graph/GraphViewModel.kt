@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
@@ -43,9 +43,12 @@ constructor(
         combine(
                 client.connectionState,
                 registry.entries,
-                client.events.filter(::affectsSceneGraph).onStart {
-                    emit(ObsEvent.SceneListChanged(emptyList()))
-                },
+                client.events
+                    .onSubscription {
+                        // Register before the initial read so events during it are not lost.
+                        emit(ObsEvent.SceneListChanged(emptyList()))
+                    }
+                    .filter(::affectsSceneGraph),
             ) { connection, entries, _ ->
                 connection to entries
             }

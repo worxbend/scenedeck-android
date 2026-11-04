@@ -6,6 +6,7 @@ import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.ObsVideoSettings
 import com.scenedeck.android.core.model.RecordStatus
+import com.scenedeck.android.core.model.SceneCollectionListSnapshot
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SpecialInputs
@@ -44,8 +45,18 @@ internal open class FakeObsClient(
 
     val sceneSwitchCalls = mutableListOf<String>()
 
-    fun setReady() {
-        _connectionState.value = ConnectionState.Ready(ObsVersionInfo("31.0.1", "5.6.1", 1, "test"))
+    fun setReady(
+        sessionId: Long = 0,
+        collectionRevision: Long = 0,
+        collectionChanging: Boolean = false,
+    ) {
+        _connectionState.value =
+            ConnectionState.Ready(
+                ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
+                sessionId,
+                collectionRevision,
+                collectionChanging,
+            )
     }
 
     fun setDisconnected() {
@@ -140,7 +151,7 @@ internal open class FakeObsClient(
 
     override suspend fun setCurrentProfile(profileName: String) = unused()
 
-    override suspend fun getSceneCollectionList() = unused()
+    override suspend fun getSceneCollectionList(): SceneCollectionListSnapshot = unused()
 
     override suspend fun setCurrentSceneCollection(collectionName: String) = unused()
 }

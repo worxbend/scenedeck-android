@@ -7,6 +7,9 @@ import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.ObsProfile
+import com.scenedeck.android.core.model.ObsSessionEvent
+import com.scenedeck.android.core.model.ObsSessionMeters
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.ObsVideoSettings
@@ -22,8 +25,10 @@ import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.internal.KtobsObsClient
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 
 /**
  * The single entry point to OBS (docs/ARCHITECTURE.md rule 1). Implementation is ktobs/Ktor-based
@@ -53,6 +58,16 @@ interface ObsClient {
      * [kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST] (desktop parity).
      */
     val volumeMeters: SharedFlow<List<VolumeMeterReading>>
+
+    /**
+     * Production implementations stamp origin before buffering. Defaults support unscoped in-memory
+     * clients whose Ready token is (0, 0); they never invent a newer origin at delivery.
+     */
+    val eventsWithContext: Flow<ObsSessionEvent>
+        get() = events.map { ObsSessionEvent(ObsSessionToken(), it) }
+
+    val metersWithContext: Flow<ObsSessionMeters>
+        get() = volumeMeters.map { ObsSessionMeters(ObsSessionToken(), it) }
 
     /**
      * Connects and authenticates. Suspends until the session is [ConnectionState.Ready] or the
@@ -207,6 +222,9 @@ interface ObsClient {
 
 /** Thrown when a request is issued while the session is not [ConnectionState.Ready]. */
 class ObsNotConnectedException : IllegalStateException("Not connected to OBS")
+
+/** Collection replacement invalidates work; an already-dispatched write may have taken effect. */
+class ObsWorkspaceChangedException : IOException("OBS scene collection is changing or changed")
 
 /** Request admission or response exceeded its deadline; caller cancellation stays cancellation. */
 class ObsRequestTimeoutException : IOException("OBS request timed out")

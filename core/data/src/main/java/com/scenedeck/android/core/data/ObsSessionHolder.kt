@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Process-scoped owner of the single [ObsClient] session (docs/ARCHITECTURE.md — state ownership).
- * Repositories/features talk to it; nothing else constructs clients. Activity-scoped for now; the
- * keep-alive foreground service is M7.
+ * Repositories/features talk to it; nothing else constructs clients. The keep-alive service uses
+ * this same owner, including its authoritative connection-profile identity.
  */
 @Singleton
 class ObsSessionHolder
@@ -39,6 +39,7 @@ constructor(
     private val secrets: SecretsStore,
     private val settings: SettingsRepository,
     @ApplicationScope private val appScope: CoroutineScope,
+    private val activeConnection: ActiveConnection,
 ) {
     private val failure = MutableStateFlow<ConnectionState.Failed?>(null)
     private val preparing = MutableStateFlow(false)
@@ -102,7 +103,7 @@ constructor(
     }
 
     private fun enqueueConnect(profileId: Long) =
-        enqueue(connecting = true) {
+        enqueue(profileId = profileId) {
             val profile = profiles.byId(profileId) ?: error("Saved profile no longer exists")
             val password = secrets.passwordFor(profile.id)
             profiles.markUsed(profile.id)
@@ -123,28 +124,47 @@ constructor(
     fun retryNow(): Boolean = client.retryNow()
 
     private fun enqueue(
-        connecting: Boolean = false,
+        profileId: Long? = null,
         operation: suspend () -> Unit,
     ): Deferred<ConnectionState> =
         synchronized(commandLock) {
             val previous = commandJob
             previous?.cancel()
             val generation = ++commandGeneration
-            preparing.value = connecting
+            val target = activeConnection.begin(profileId)
+            preparing.value = profileId != null
             failure.value = null
             appScope
                 .async {
                     try {
                         previous?.join()
                         currentCoroutineContext().ensureActive()
-                        performOperation(operation)
+                        // A canceled blocking credential read may have reported a late failure
+                        // while joining. It must not become this attempt's outcome.
+                        failure.value = null
+                        performOperation(operation).also { state ->
+                            // connect() has completed its first handshake. The socket may already
+                            // be reconnecting by the time this coroutine resumes.
+                            if (
+                                state !is ConnectionState.Failed &&
+                                    state != ConnectionState.Disconnected
+                            )
+                                activeConnection.confirm(target)
+                            else activeConnection.end(target)
+                        }
                     } finally {
                         synchronized(commandLock) {
                             if (commandGeneration == generation) preparing.value = false
                         }
                     }
                 }
-                .also { commandJob = it }
+                .also { request ->
+                    commandJob = request
+                    // Also runs if cancellation happens before the async body starts.
+                    request.invokeOnCompletion { cause ->
+                        if (cause != null) activeConnection.end(target)
+                    }
+                }
         }
 
     private suspend fun performOperation(operation: suspend () -> Unit): ConnectionState {

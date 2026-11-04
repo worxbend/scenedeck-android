@@ -1,7 +1,6 @@
 package com.scenedeck.android.core.obs.internal
 
 import com.rejeq.ktobs.AuthError
-import com.rejeq.ktobs.EventOpCode
 import com.rejeq.ktobs.ObsAuthException
 import com.rejeq.ktobs.ObsCloseReason
 import com.rejeq.ktobs.ObsEventSubs
@@ -13,6 +12,7 @@ import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsNotConnectedException
 import io.ktor.client.HttpClient
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -24,6 +24,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -97,7 +98,7 @@ internal class ObsSessionRunner(
     private val connectionState: MutableStateFlow<ConnectionState>,
     private val requestSemaphore: Semaphore,
     private val protocolDispatcher: CoroutineDispatcher,
-    private val dispatchEvent: (ObsSession, EventOpCode) -> Unit,
+    private val sessionEvents: ObsSessionEventPublisher,
 ) {
 
     /** Event subscription bitmask applied to each new session. */
@@ -115,6 +116,7 @@ internal class ObsSessionRunner(
 
     @Volatile private var disconnectRequested = false
     private val sessionMutex = Mutex()
+    private val sessionIds = AtomicLong()
     private var sessionJob: Job? = null
     private var closeSignal: CompletableDeferred<Unit>? = null
     private var connectOutcome: CompletableDeferred<Unit>? = null
@@ -233,13 +235,14 @@ internal class ObsSessionRunner(
         port: Int,
         password: String?,
         socketEnded: CompletableDeferred<SessionEnd>,
+        sessionId: Long,
     ): ObsSessionBuilder =
         ObsSessionBuilder(httpClient).apply {
             this.host = host
             this.port = port
             this.password = password
             this.eventSubs = this@ObsSessionRunner.eventSubs
-            this.onEvent = { event -> dispatchEvent(this, event) }
+            this.onEvent = { event -> sessionEvents.dispatch(this, event, sessionId) }
             this.receiver = { s ->
                 var failure: Throwable? = null
                 var closeReason: ObsCloseReason? = null
@@ -279,11 +282,13 @@ internal class ObsSessionRunner(
         val socketEnded = CompletableDeferred<SessionEnd>()
         val closeSignal = CompletableDeferred<Unit>()
         this@ObsSessionRunner.closeSignal = closeSignal
-        val builder = newSessionBuilder(host, port, password, socketEnded)
+        val sessionId = sessionIds.incrementAndGet()
+        withContext(protocolDispatcher) { sessionEvents.beginSession(sessionId) }
+        val builder = newSessionBuilder(host, port, password, socketEnded, sessionId)
         val connectJob = launchConnectJob(builder, sessionDeferred, socketEnded, closeSignal)
 
         try {
-            awaitReadySession(sessionDeferred, onReady)
+            awaitReadySession(sessionDeferred, sessionId, onReady)
             val end = socketEnded.await()
             if (!disconnectRequested) {
                 throw SessionLostException(end.failure, end.closeReason)
@@ -320,18 +325,22 @@ internal class ObsSessionRunner(
     /** Awaits the handshake, proves the request lane and publishes [ConnectionState.Ready]. */
     private suspend fun awaitReadySession(
         sessionDeferred: CompletableDeferred<ObsSession>,
+        sessionId: Long,
         onReady: () -> Unit,
     ) {
         val s = withTimeout(connectTimeoutMs) { sessionDeferred.await() }
         session = s
         // Prove the request lane and collect session info in one round-trip.
-        val version =
-            withTimeout(connectTimeoutMs) {
+        withTimeout(connectTimeoutMs) {
+            withContext(protocolDispatcher) {
                 requestSemaphore.withPermit {
-                    withContext(protocolDispatcher) { s.getVersion().toDomain() }
+                    sessionEvents.awaitStable(sessionId)
+                    val version = s.getVersion().toDomain()
+                    currentCoroutineContext().ensureActive()
+                    sessionEvents.publishReady(sessionId, version)
                 }
             }
-        connectionState.value = ConnectionState.Ready(version)
+        }
         onReady()
     }
 }

@@ -10,8 +10,16 @@ sealed interface ConnectionState {
     /** WebSocket up; Hello/Identify handshake in progress. */
     data object Identifying : ConnectionState
 
-    /** Handshake complete; requests and events flow. */
-    data class Ready(val sessionInfo: ObsVersionInfo) : ConnectionState
+    /** Handshake complete; new requests require [collectionChanging] to be false. */
+    data class Ready(
+        val sessionInfo: ObsVersionInfo,
+        val sessionId: Long = 0,
+        val collectionRevision: Long = 0,
+        val collectionChanging: Boolean = false,
+    ) : ConnectionState {
+        val token: ObsSessionToken
+            get() = ObsSessionToken(sessionId, collectionRevision)
+    }
 
     /** Unexpected socket loss; waiting [attempt]-th backoff before retrying. */
     data class Reconnecting(val attempt: Int) : ConnectionState

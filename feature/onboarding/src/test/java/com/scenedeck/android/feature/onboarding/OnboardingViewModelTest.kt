@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.onboarding
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
+import com.scenedeck.android.core.data.ActiveConnection
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.ProfileRepository
 import com.scenedeck.android.core.data.SettingsRepository
@@ -57,7 +58,8 @@ class OnboardingViewModelTest {
                     )
                 )
             )
-        holder = ObsSessionHolder(client, profiles, secrets, settings, holderScope)
+        holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, ActiveConnection())
     }
 
     @After

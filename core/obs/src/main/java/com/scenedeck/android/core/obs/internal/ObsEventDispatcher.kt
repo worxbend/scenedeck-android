@@ -6,6 +6,8 @@ import com.rejeq.ktobs.event.config.CurrentProfileChangedEvent
 import com.rejeq.ktobs.event.config.CurrentProfileChangedEventData
 import com.rejeq.ktobs.event.config.CurrentSceneCollectionChangedEvent
 import com.rejeq.ktobs.event.config.CurrentSceneCollectionChangedEventData
+import com.rejeq.ktobs.event.config.CurrentSceneCollectionChangingEvent
+import com.rejeq.ktobs.event.config.CurrentSceneCollectionChangingEventData
 import com.rejeq.ktobs.event.config.ProfileListChangedEvent
 import com.rejeq.ktobs.event.config.ProfileListChangedEventData
 import com.rejeq.ktobs.event.config.SceneCollectionListChangedEvent
@@ -66,7 +68,6 @@ import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.internal.protocol.InputVolumeMetersPayload
 import com.scenedeck.android.core.obs.internal.protocol.toDomain
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
@@ -74,54 +75,56 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * the client's shared flows. A malformed event must never kill the receiver loop.
  */
 internal class ObsEventDispatcher(
-    private val events: MutableSharedFlow<ObsEvent>,
-    private val volumeMeters: MutableSharedFlow<List<VolumeMeterReading>>,
+    private val emitEvent: (Long, ObsEvent) -> Unit,
+    private val emitMeters: (Long, List<VolumeMeterReading>) -> Unit,
 ) {
 
-    fun dispatch(session: ObsSession, event: EventOpCode) {
+    fun dispatch(session: ObsSession, event: EventOpCode, sessionId: Long) {
         runCatching {
             when (event.eventType) {
-                InputVolumeMetersEvent -> session.dispatchMeters(event)
+                InputVolumeMetersEvent -> session.dispatchMeters(event, sessionId)
                 CurrentProgramSceneChangedEvent,
                 SceneListChangedEvent,
                 SceneCreatedEvent,
                 SceneRemovedEvent,
                 SceneNameChangedEvent,
-                SceneItemEnableStateChangedEvent -> session.dispatchSceneEvent(event)
+                SceneItemEnableStateChangedEvent -> session.dispatchSceneEvent(event, sessionId)
                 InputCreatedEvent,
                 InputRemovedEvent,
                 InputNameChangedEvent,
                 InputMuteStateChangedEvent,
-                InputVolumeChangedEvent -> session.dispatchInputEvent(event)
+                InputVolumeChangedEvent -> session.dispatchInputEvent(event, sessionId)
                 StreamStateChangedEvent,
                 RecordStateChangedEvent,
-                VirtualcamStateChangedEvent -> session.dispatchOutputEvent(event)
+                VirtualcamStateChangedEvent -> session.dispatchOutputEvent(event, sessionId)
                 MediaInputPlaybackStartedEvent,
                 MediaInputPlaybackEndedEvent,
                 InputAudioBalanceChangedEvent,
                 InputAudioSyncOffsetChangedEvent,
-                InputAudioMonitorTypeChangedEvent -> session.dispatchInputEvent(event)
+                InputAudioMonitorTypeChangedEvent -> session.dispatchInputEvent(event, sessionId)
                 CurrentProfileChangedEvent,
                 ProfileListChangedEvent,
+                CurrentSceneCollectionChangingEvent,
                 CurrentSceneCollectionChangedEvent,
                 SceneCollectionListChangedEvent,
-                StudioModeStateChangedEvent -> session.dispatchConfigEvent(event)
+                StudioModeStateChangedEvent -> session.dispatchConfigEvent(event, sessionId)
                 CurrentPreviewSceneChangedEvent,
                 SceneTransitionStartedEvent,
                 SceneTransitionEndedEvent,
                 CurrentSceneTransitionChangedEvent,
-                CurrentSceneTransitionDurationChangedEvent -> session.dispatchStudioEvent(event)
+                CurrentSceneTransitionDurationChangedEvent ->
+                    session.dispatchStudioEvent(event, sessionId)
             }
         }
     }
 
-    private fun ObsSession.dispatchMeters(event: EventOpCode) {
+    private fun ObsSession.dispatchMeters(event: EventOpCode, sessionId: Long) {
         val data = event.eventData ?: return
         val payload = ws.json.decodeFromJsonElement<InputVolumeMetersPayload>(data)
-        volumeMeters.tryEmit(payload.toDomain())
+        emitMeters(sessionId, payload.toDomain())
     }
 
-    private fun ObsSession.dispatchSceneEvent(event: EventOpCode) {
+    private fun ObsSession.dispatchSceneEvent(event: EventOpCode, sessionId: Long) {
         val domain: ObsEvent =
             when (event.eventType) {
                 CurrentProgramSceneChangedEvent ->
@@ -154,12 +157,12 @@ internal class ObsEventDispatcher(
                     }
                 else -> return
             }
-        events.tryEmit(domain)
+        emitEvent(sessionId, domain)
     }
 
-    private fun ObsSession.dispatchInputEvent(event: EventOpCode) {
+    private fun ObsSession.dispatchInputEvent(event: EventOpCode, sessionId: Long) {
         val domain = mapInputLifecycleEvent(event) ?: mapInputAudioEvent(event) ?: return
-        events.tryEmit(domain)
+        emitEvent(sessionId, domain)
     }
 
     private fun ObsSession.mapInputLifecycleEvent(event: EventOpCode): ObsEvent? =
@@ -209,7 +212,7 @@ internal class ObsEventDispatcher(
             else -> null
         }
 
-    private fun ObsSession.dispatchOutputEvent(event: EventOpCode) {
+    private fun ObsSession.dispatchOutputEvent(event: EventOpCode, sessionId: Long) {
         val domain: ObsEvent =
             when (event.eventType) {
                 StreamStateChangedEvent ->
@@ -226,10 +229,10 @@ internal class ObsEventDispatcher(
                     }
                 else -> return
             }
-        events.tryEmit(domain)
+        emitEvent(sessionId, domain)
     }
 
-    private fun ObsSession.dispatchStudioEvent(event: EventOpCode) {
+    private fun ObsSession.dispatchStudioEvent(event: EventOpCode, sessionId: Long) {
         val domain: ObsEvent =
             when (event.eventType) {
                 CurrentPreviewSceneChangedEvent ->
@@ -256,10 +259,10 @@ internal class ObsEventDispatcher(
                     )
                 else -> return
             }
-        events.tryEmit(domain)
+        emitEvent(sessionId, domain)
     }
 
-    private fun ObsSession.dispatchConfigEvent(event: EventOpCode) {
+    private fun ObsSession.dispatchConfigEvent(event: EventOpCode, sessionId: Long) {
         val domain: ObsEvent =
             when (event.eventType) {
                 CurrentProfileChangedEvent ->
@@ -268,6 +271,10 @@ internal class ObsEventDispatcher(
                     )
                 ProfileListChangedEvent ->
                     ObsEvent.ProfileListChanged(event.get<ProfileListChangedEventData>().profiles)
+                CurrentSceneCollectionChangingEvent ->
+                    ObsEvent.CurrentSceneCollectionChanging(
+                        event.get<CurrentSceneCollectionChangingEventData>().sceneCollectionName
+                    )
                 CurrentSceneCollectionChangedEvent ->
                     ObsEvent.CurrentSceneCollectionChanged(
                         event.get<CurrentSceneCollectionChangedEventData>().sceneCollectionName
@@ -282,6 +289,6 @@ internal class ObsEventDispatcher(
                     )
                 else -> return
             }
-        events.tryEmit(domain)
+        emitEvent(sessionId, domain)
     }
 }

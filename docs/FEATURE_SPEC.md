@@ -218,7 +218,10 @@ scene item transforms, scripting, Twitch/StreamElements integration (v1).
   scene actions; disconnected/reconnecting states keep the last-known grid for
   connect-then-act. Explicit placement/refresh still retries the current state.
 - OBS requests fail after a 10-second admission-and-response deadline and remain
-  bound to their originating session. Timeout does not automatically retry writes;
+  bound to their originating session and collection revision. New requests are rejected
+  while OBS changes scene collections, and queued requests cannot enter another
+  collection. A deliberate collection switch can receive its own completion response.
+  Timeout or collection replacement does not automatically retry writes;
   failure messages exclude server comments and arbitrary transport/parser details.
   Concurrent deadline/cancellation batches release pending response waiters without
   reducing the eight-request in-flight limit.

@@ -1,5 +1,6 @@
 package com.scenedeck.android.feature.graph
 
+import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.EdgeVerdict
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
@@ -14,6 +15,9 @@ import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ScreenshotRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,13 +27,41 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GraphViewModelTest {
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun sceneEventDuringInitialGraphReadIsNotLost() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val client = FakeObsClient()
+        client.setReady()
+        client.onFirstSceneRead = {
+            client.extraScene = "Created during initial read"
+            client.events.tryEmit(ObsEvent.SceneCreated(client.extraScene!!, false))
+        }
+        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        try {
+            backgroundScope.launch(dispatcher) { viewModel.uiState.collect {} }
+            runCurrent()
+            assertTrue(viewModel.uiState.value.graph!!.nodes.any { it.name == client.extraScene })
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
 
     @Test
     fun buildsGraphWithRoleRuleVerdicts(): Unit = runBlocking {
@@ -139,6 +171,7 @@ class GraphViewModelTest {
     @Suppress("TooManyFunctions")
     private class FakeObsClient : ObsClient {
         var extraScene: String? = null
+        var onFirstSceneRead: (() -> Unit)? = null
         private val _connectionState =
             MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -154,17 +187,23 @@ class GraphViewModelTest {
 
         override suspend fun disconnect() = Unit
 
-        override suspend fun getSceneList(): SceneListSnapshot =
-            SceneListSnapshot(
-                currentProgramScene = "Show",
-                scenes =
-                    listOf(
-                        SceneSummary("Show", 0),
-                        SceneSummary("Cam 1", 1),
-                        SceneSummary("LowerThird", 2),
-                        SceneSummary("Scratch", 3),
-                    ) + listOfNotNull(extraScene?.let { SceneSummary(it, 4) }),
-            )
+        override suspend fun getSceneList(): SceneListSnapshot {
+            val snapshot =
+                SceneListSnapshot(
+                    currentProgramScene = "Show",
+                    scenes =
+                        listOf(
+                            SceneSummary("Show", 0),
+                            SceneSummary("Cam 1", 1),
+                            SceneSummary("LowerThird", 2),
+                            SceneSummary("Scratch", 3),
+                        ) + listOfNotNull(extraScene?.let { SceneSummary(it, 4) }),
+                )
+            val action = onFirstSceneRead
+            onFirstSceneRead = null
+            action?.invoke()
+            return snapshot
+        }
 
         override suspend fun getSceneItemList(sceneName: String): List<SceneItemInfo> =
             when (sceneName) {

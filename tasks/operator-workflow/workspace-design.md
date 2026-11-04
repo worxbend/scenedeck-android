@@ -1,18 +1,31 @@
 # W1b integration notes
 
-These are implementation constraints for the next slice, not shipped behavior.
+These are integration constraints. The session/context foundation is implemented;
+registry/UI/widget/cache activation and legacy recovery are still pending.
 
 ## Evidence
 
 - `ObsSessionHolder` owns connection operations and supersedes old commands using a
   generation/job. `SettingsRepository.lastUsedProfileId` changes before connecting;
   it must not be combined with an old Ready state to identify the active host.
-- `ConnectionState.Ready` carries version information, not connection-profile identity.
-- The event boundary currently exposes `CurrentSceneCollectionChanged`, but does not
-  yet expose its corresponding changing event. Verify the pinned protocol/library
-  before extending it; do not put wire types in repositories or features.
+- Ready now carries client-local `sessionId`, `collectionRevision`, and
+  `collectionChanging`; the production event/meter context streams stamp the token
+  before buffering. The old untagged streams remain only for consumer migration.
+- The protocol boundary now exposes both collection-changing and collection-changed.
+  Their official protocol semantics and availability in pinned ktobs 0.5.0 were
+  checked before implementation. New requests are rejected during changing; queued
+  work is revision-bound and cannot cross into the new collection. Initial Ready
+  preserves changes received during GetVersion. Keep wire types in core/obs.
+- `ActiveConnection` is updated synchronously by Holder commands. `WorkspaceRepository`
+  discovers the collection after the matching target is confirmed and offers
+  `currentSession()` / `isCurrent(session)` guards for operation boundaries. Do not
+  use `state.value as? Ready` alone as an action guard: flow delivery can lag identity.
 - `ObsStateRepository` combines independent scene/program/registry flows. Scope each
   snapshot so a new registry cannot combine with the previous collection's scenes.
+- Graph's initial event subscription race was reproduced and fixed while validating
+  this foundation. Preserve subscription-before-initial-read when migrating Graph
+  to the context stream (whose public type is Flow). Its deterministic startup-event
+  regression must continue to pass; do not reintroduce an onStart gap.
 - Screenshot caches currently use scene names. Clear or scope frames/throttle state
   on workspace replacement so a same-named scene cannot display another host's image.
 - `RegistryTransfer` stages file contents, then imports into the registry when confirmed.

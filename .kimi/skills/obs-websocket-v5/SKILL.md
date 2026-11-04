@@ -41,6 +41,13 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
   Ktor's scope, so confinement must be explicit. Repeated concurrent timeout/caller-
   cancellation regressions inspect zero retained UUID waiters and healthy followups.
   Recheck the pinned non-suspending UUID critical sections and regressions on upgrades.
+- **Collection identity**: Ready includes a client-local session ID and collection
+  revision. Context event/meter streams stamp them before buffering. Changing blocks
+  new requests and invalidates queued/in-flight reads; Changed resumes with a new
+  revision. Preserve changes received during initial GetVersion. A deliberate
+  SetCurrentSceneCollection can finish through its own events, but pre-dispatch checks
+  must still reject a queued command from an obsolete collection. No automatic retry
+  of a write with an uncertain outcome.
 - **Failure privacy**: expose typed safe descriptions, never raw server comments,
   response/parser payloads or transport causes in diagnostic/UI strings.
 - **Thumbnails**: reject images above 2 MiB compressed before base64 allocation;
@@ -66,7 +73,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 Stream/record state (+ record file), `CurrentProgramSceneChanged`, input
 mute/volume changed, `InputVolumeMeters`, input created/removed/renamed, scene item
 created/removed/reindexed/enabled, profile + profile-list changed, collection +
-collection-list changed, scene list changed. Events either update state directly or
+collection-changing/changed + collection-list changed, scene list changed. Events either update state directly or
 trigger re-reads.
 
 ## Audio rules (port from desktop, do not improvise)
@@ -83,4 +90,5 @@ trigger re-reads.
 
 `Disconnected → Connecting → Identifying → Ready → Reconnecting(backoff)`; map
 `ObsAuthException` / socket failures to typed `ConnectionError`; auto-reconnect with
-exponential backoff; emit everything on one `SharedFlow<ObsEvent>`.
+exponential backoff. Separate buffered event/meter context streams carry origin identity;
+legacy untagged streams remain during W1b consumer migration.

@@ -90,6 +90,11 @@ must pass, and Compose preview(s) for changed screens must render.
   Typed requests, initial GetVersion and the complete receiver share one serial protocol
   execution lane while up to eight requests remain suspended in flight. Recheck the pinned
   ktobs non-suspending UUID critical-section assumption and cleanup regressions on upgrades.
+- Ready identity includes a client-local session ID and collection revision. Context
+  events/meters are stamped before buffering. Collection Changing blocks requests and
+  advances revision; Changed advances again. Preserve changes received during initial
+  GetVersion. Only an already-dispatched deliberate collection switch may complete
+  across a collection revision; queued writes must still reject replacement.
 - Thumbnail polling admits at most two capture jobs per awaited batch, prunes removed
   scenes, and rejects images above 2 MiB compressed or 1,048,576 pixels before bitmap
   allocation. Cached memory still scales with eligible scenes; do not claim measured
@@ -102,10 +107,19 @@ must pass, and Compose preview(s) for changed screens must render.
 - Registry deletion shares the mutation mutex; bulk mutations use one indexed snapshot
   and bulk write, preserving duplicate-import and ordering semantics. Graph metadata
   indexes preserve the first duplicate entry.
+- Graph subscribes to the shared event stream before triggering its initial read;
+  do not use onStart on that stream, which can lose events during initial discovery.
 - Room schema 3 preserves legacy registry rows under profile 0 / empty collection;
   scoped persistence keys profile + collection + scene. Legacy DAO queries must never
   read/delete other scopes. Workspace activation remains tracked separately in W1b
   of `tasks/operator-workflow/plan.md`; schema support alone is not feature completion.
+- ActiveConnection comes from ObsSessionHolder, never last-used preferences. A new
+  command invalidates its identity before suspension; only the matching successful
+  attempt confirms it. WorkspaceRepository resolves the collection on that target and
+  Ready token, exposes failed discovery as unknown, and guards results synchronously.
+  Scoped registry/UI/widget/cache activation remains incomplete until W1b is verified.
+  Clear obsolete connection failures after canceled preparation joins; a late credential
+  failure must not become the next successful attempt's outcome.
 - Password drafts never enter saved-state Bundles; diagnostic strings redact credentials.
 - Widget counts are bounded before allocation; foreground startup failure/timeouts disconnect safely.
 - Widgets deduplicate their six visible scenes, program scene and connection projection;

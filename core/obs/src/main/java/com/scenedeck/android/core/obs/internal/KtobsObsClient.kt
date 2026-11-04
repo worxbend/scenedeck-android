@@ -52,12 +52,16 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.MediaActionKind
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsSessionEvent
+import com.scenedeck.android.core.model.ObsSessionMeters
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsNotConnectedException
 import com.scenedeck.android.core.obs.ObsRequestFailedException
 import com.scenedeck.android.core.obs.ObsRequestProtocolException
 import com.scenedeck.android.core.obs.ObsRequestTimeoutException
+import com.scenedeck.android.core.obs.ObsWorkspaceChangedException
 import com.scenedeck.android.core.obs.ScreenshotRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -152,7 +156,30 @@ internal class KtobsObsClient(
         )
     override val volumeMeters: SharedFlow<List<VolumeMeterReading>> = _volumeMeters.asSharedFlow()
 
-    private val eventDispatcher = ObsEventDispatcher(_events, _volumeMeters)
+    private val contextEvents =
+        MutableSharedFlow<ObsSessionEvent>(
+            extraBufferCapacity = EVENTS_BUFFER,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+    override val eventsWithContext = contextEvents.asSharedFlow()
+    private val contextMeters =
+        MutableSharedFlow<ObsSessionMeters>(
+            extraBufferCapacity = METERS_BUFFER,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+    override val metersWithContext = contextMeters.asSharedFlow()
+    private val eventPublisher =
+        ObsSessionEventPublisher(
+            _connectionState,
+            { event ->
+                _events.tryEmit(event.event)
+                contextEvents.tryEmit(event)
+            },
+            { batch ->
+                _volumeMeters.tryEmit(batch.readings)
+                contextMeters.tryEmit(batch)
+            },
+        )
     private val sessionRunner =
         ObsSessionRunner(
                 scope,
@@ -160,7 +187,7 @@ internal class KtobsObsClient(
                 _connectionState,
                 requestSemaphore,
                 protocolDispatcher,
-                eventDispatcher::dispatch,
+                eventPublisher,
             )
             .apply {
                 this.eventSubs = eventSubs
@@ -184,18 +211,23 @@ internal class KtobsObsClient(
 
     // ── Requests ────────────────────────────────────────────────────────────
 
-    private suspend fun <T> request(block: suspend (ObsSession) -> T): T {
+    private suspend fun <T> request(
+        allowCollectionChange: Boolean = false,
+        block: suspend (ObsSession) -> T,
+    ): T {
+        val origin = readyState().token
         val session =
             sessionRunner.session?.takeIf { _connectionState.value is ConnectionState.Ready }
                 ?: throw ObsNotConnectedException()
+        requireCurrentSession(session, origin, allowCollectionChange = false)
         // Admission belongs to the same deadline as the response. A caller's cancellation
         // propagates; only this request's deadline becomes a recoverable failure.
         val result =
             withTimeoutOrNull(requestTimeoutMs) {
                 requestSemaphore.withPermit {
-                    requireCurrentSession(session)
-                    val value = requestOnProtocol(session, block)
-                    requireCurrentSession(session)
+                    requireCurrentSession(session, origin, allowCollectionChange = false)
+                    val value = requestOnProtocol(session, origin, block)
+                    requireCurrentSession(session, origin, allowCollectionChange)
                     Result.success(value)
                 }
             }
@@ -207,10 +239,11 @@ internal class KtobsObsClient(
     ) // Inbound parser messages/causes can contain private response data.
     private suspend fun <T> requestOnProtocol(
         session: ObsSession,
+        origin: ObsSessionToken,
         block: suspend (ObsSession) -> T,
     ): T =
         withContext(protocolDispatcher) {
-            requireCurrentSession(session)
+            requireCurrentSession(session, origin, allowCollectionChange = false)
             try {
                 block(session)
             } catch (e: ObsRequestException) {
@@ -220,10 +253,20 @@ internal class KtobsObsClient(
             }
         }
 
-    private fun requireCurrentSession(session: ObsSession) {
-        if (sessionRunner.session !== session || _connectionState.value !is ConnectionState.Ready)
+    private fun requireCurrentSession(
+        session: ObsSession,
+        origin: ObsSessionToken,
+        allowCollectionChange: Boolean,
+    ) {
+        val ready = readyState()
+        if (sessionRunner.session !== session || ready.sessionId != origin.sessionId)
             throw ObsNotConnectedException()
+        if (!allowCollectionChange && (ready.collectionChanging || ready.token != origin))
+            throw ObsWorkspaceChangedException()
     }
+
+    private fun readyState(): ConnectionState.Ready =
+        _connectionState.value as? ConnectionState.Ready ?: throw ObsNotConnectedException()
 
     override suspend fun getVersion() = request { it.getVersion().toDomain() }
 
@@ -291,9 +334,10 @@ internal class KtobsObsClient(
         it.getSceneCollectionList().toDomain()
     }
 
-    override suspend fun setCurrentSceneCollection(collectionName: String) = request {
-        it.setCurrentSceneCollection(collectionName)
-    }
+    override suspend fun setCurrentSceneCollection(collectionName: String) =
+        request(allowCollectionChange = true) {
+            it.setCurrentSceneCollection(collectionName)
+        }
 
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
 
