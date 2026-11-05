@@ -100,6 +100,9 @@ exponential backoff. Separate buffered event/meter context streams carry origin 
 legacy untagged streams remain during W1b consumer migration.
 
 Optional recording controls use advertised GetVersion capabilities, not version guesses.
+Preset preparation similarly uses typed `ObsCapabilities.controls`: each group requires
+its advertised read/write requests, with wire names mapped only in `:core:obs`. Read-only
+preparation does not authorize an execution or permit skipping a later target recheck.
 Keep recording-format failures sanitized and never retry uncertain writes. Recording
 state events have a nullable outputPath; the local RecordingEventData adapter corrects
 ktobs 0.5.0's non-null model. Recheck that workaround on dependency upgrades.

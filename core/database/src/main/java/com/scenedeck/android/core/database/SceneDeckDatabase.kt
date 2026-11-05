@@ -17,10 +17,12 @@ import androidx.room.RoomDatabase
             HistoryEventEntity::class,
             HistoryPreferencesEntity::class,
             HistoryBookmarkEntity::class,
+            ActionPresetEntity::class,
         ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
+@Suppress("TooManyFunctions") // Room requires one typed DAO accessor per persisted aggregate.
 abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun connectionProfileDao(): ConnectionProfileDao
 
@@ -41,4 +43,6 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun historyPreferencesDao(): HistoryPreferencesDao
 
     abstract fun historyBookmarkDao(): HistoryBookmarkDao
+
+    abstract fun actionPresetDao(): ActionPresetDao
 }

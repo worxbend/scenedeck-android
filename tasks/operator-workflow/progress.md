@@ -859,6 +859,64 @@
   writes automatically. Integrate real results into the original History observation
   before checking W6a. W8–W11 remain in scope; rundown/cue scheduling stays excluded.
 
+## W7 storage and read-only preparation — 2026-11-05
+
+- The prior History turn made **progress**, committed as `87c1b51`; its worktree was
+  clean at resumption. This turn also makes **progress**. W7's editor/executor and
+  actual History outcomes, W8–W11 and the whole durable goal remain active. The scope
+  still excludes Show rundown, cue lists and timed advancement. No publication is requested.
+- Added Room schema 10 with a scoped action-presets table and explicit migration.
+  Typed steps cover program/preview scene targets, input mute/volume, media playback
+  and stream/recording targets. There are no arbitrary requests, scripts or timing steps.
+  Limits are 32 definitions per workspace, 1–12 ordered steps and an 80-character name;
+  strict versioned JSON is bounded to 32 KiB characters. Unknown/corrupt data fails closed.
+- PresetRepository preserves original scope, exact OBS target names and step order.
+  A stable new-draft ID makes committed-create retry idempotent; revisions and full
+  original comparisons reject stale saves/deletes even after content returns to its
+  original value. Transactions enforce unique names/limits and check context/cancellation
+  before commit. A stale existing editor cannot recreate deleted data. Profile removal
+  preserves local definitions. No Presets screen or executing write flow is active yet.
+- Added typed ObsControl groups mapped from advertised read/write pairs inside the
+  protocol module. PresetPreparation and PresetStepProbe perform only bounded reads,
+  with three concurrent probes, eight seconds per probe and 30 seconds overall. They
+  preserve successful readings beside unknown checks, recheck saved revision/relevant
+  policy/origin, distinguish missing/unsupported/locked/excluded/Studio-off/unready,
+  and expose OutputSafetyGate requirements even for currently matching values.
+- Preparation is not execution consent. Current matches cannot pre-skip future steps.
+  Relative volume comparison preserves meaningful low-level differences; silence needs
+  actual zero. A reconnecting stream is not stopped, and contradictory recording state
+  is unknown. Errors exclude server/private diagnostic text; cancellation reaches reads.
+- Storage, migration, protocol-capability and static checks passed **exit 0, 12s,
+  64 tasks** (`/tmp/scenedeck-presets-storage-tests.log`). The next preparation run
+  passed tests but found three returns in scene checking; refactored the branch without
+  suppressing the rule. Final focused preparation/migration/data static checks passed
+  **exit 0, 4s, 56 tasks** (`/tmp/scenedeck-presets-preparation-tests.log`).
+- The added eleventh DAO triggered Room's database interface function-count limit;
+  added a targeted, documented exception for its required typed accessors. This does
+  not relax behavioral or Compose complexity checks and adds no baseline. Updated
+  architecture/spec/AGENTS/protocol guidance and `presets-design.md`.
+- Full JDK21/uv `scripts/check-quality.sh` passed **exit 0, 2m 42s, 1,112 tasks**
+  (`/tmp/scenedeck-presets-foundation-quality.log`). Formatting, complexity, Android lint,
+  debug build, all unit tests and existing screenshot verification passed. Semgrep ran
+  seven rules across 345 files with zero findings. Gitleaks scanned 72 commits and the
+  working tree without leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 3s,
+  876 tasks** (`/tmp/scenedeck-presets-foundation-explicit.log`). Final debug XML totals:
+  **928 tests across 163 suites, zero failures/errors/skips**, 29 more tests than the
+  History checkpoint. No screens changed and no new render is claimed; existing
+  Roborazzi regressions pass. `git diff --check` is clean; Gradle owners ran sequentially.
+- W7a is verified. W7b/c/d and W6a remain open; read-only preparation alone does not
+  satisfy invocation/consent, execution, or actual result production. Updated roadmap
+  and resumption files. No real-OBS/device/performance verification, release or publication
+  is claimed. The full durable goal stays active without reducing its scope.
+- Next: implement the bounded singleton preset runner with concrete prepared consent,
+  per-step target/context/lock checks, post-write reconciliation, partial/unknown results
+  and no automatic write retry. Integrate results with their original History observation,
+  including disconnect/closed-parent and clear/delete races; current generic append alone
+  cannot preserve late results after closure. Then expose the scoped editor, summary and
+  execution/result UI and verify required theme/compact renders. See `presets-design.md`
+  for detailed invariants. W8–W11 remain required and Show rundown remains excluded.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

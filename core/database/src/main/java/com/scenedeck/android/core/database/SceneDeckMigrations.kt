@@ -123,4 +123,22 @@ object SceneDeckMigrations {
                 )
             }
         }
+
+    val MIGRATION_9_10 =
+        object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `action_presets` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`presetId` TEXT NOT NULL, `name` TEXT NOT NULL, `nameKey` TEXT NOT NULL, " +
+                        "`revision` INTEGER NOT NULL, `payload` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`, `presetId`))"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "`index_action_presets_connectionProfileId_sceneCollectionName_nameKey` " +
+                        "ON `action_presets` (`connectionProfileId`, `sceneCollectionName`, `nameKey`)"
+                )
+            }
+        }
 }

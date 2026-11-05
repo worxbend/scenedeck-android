@@ -107,7 +107,11 @@ placeholder payload type as this integration. Continue at W7 while retaining thi
 
 ### W7 — Controlled multi-action presets
 
-- [ ] W7a: Persist scoped named presets using a small typed allow-list of existing
+W7a and the read-only preparation boundary are verified. No Presets UI or executing
+runner is active yet. Continue with the bounded runner/original-observation History
+integration and the concrete editor/invocation flow in [presets-design.md](presets-design.md).
+
+- [x] W7a: Persist scoped named presets using a small typed allow-list of existing
   runtime controls (scene, mute/volume, media, and confirmed output operations).
 - [ ] W7b: Build step editor and explicit invocation with a concrete step summary;
   share output safety and advertise unsupported or missing targets before execution.

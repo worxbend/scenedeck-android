@@ -363,6 +363,26 @@ expired prepared data and failed writes are explicit. Duplicate writes are gated
 raw storage/document errors are shown. W6's actual preset-outcome producer remains W7 work;
 see `tasks/operator-workflow/history-design.md`.
 
+Room schema 10 adds `action_presets`, with composite profile/collection/UUID identity and
+a unique normalized name within each workspace. `PresetRepository` serializes bounded
+create/edit/delete operations; a stable initial draft ID makes committed-create retries
+idempotent, and full-original/revision comparisons reject stale edits/deletes. Ordered
+typed steps use strict versioned JSON with a 32 KiB character bound. Unknown versions,
+fields/actions, invalid ranges and excess rows produce failed state, not an empty list.
+Definitions survive profile deletion. The Room database has a targeted function-count
+exception because each persisted aggregate requires a typed DAO accessor; behavioral
+classes retain normal complexity checks.
+
+`ObsCapabilities.controls` maps advertised read/write groups inside `:core:obs`.
+`PresetPreparation` rechecks saved definition and relevant local policy before/after
+bounded reads. `PresetStepProbe` uses the original session at every request and rejects
+obsolete results. At most three probes run concurrently, each within eight seconds,
+with a 30-second preparation deadline. It exposes distinct unsupported/missing/locked/
+excluded/Studio-off/unready/unknown findings and current matches, plus the shared Output
+Safety requirements. No preparation path writes to OBS. This foundation is not wired to
+a Presets editor or executing runner; see `tasks/operator-workflow/presets-design.md` for
+remaining consent, execution, lifecycle and original-observation History integration.
+
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused
 source leases), `MediaPlaybackStore` (one lock for current context, read ordering and

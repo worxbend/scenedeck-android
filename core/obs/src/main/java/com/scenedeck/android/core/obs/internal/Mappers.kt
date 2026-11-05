@@ -54,6 +54,7 @@ internal fun GetVersionResponse.toDomain() =
                 splitRecording = "SplitRecordFile" in availableRequests,
                 recordingChapter = "CreateRecordChapter" in availableRequests,
                 mediaSeek = "SetMediaInputCursor" in availableRequests,
+                controls = availableRequests.controlCapabilities(),
             ),
     )
 

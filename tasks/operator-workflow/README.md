@@ -3,7 +3,9 @@
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
 W1–W5 and the W6 History capture/user flow are verified. Resume at **W7 — controlled
-multi-action presets**. W6a remains open for actual preset outcomes; W6b/c are verified.
+multi-action presets**. W7a storage and read-only preparation are verified; the editor,
+executing runner and History integration remain. Read [presets-design.md](presets-design.md)
+before continuing W7b/c/d. W6a remains open for actual preset outcomes; W6b/c are verified.
 Keep the original observation/unknown-result contract in [history-design.md](history-design.md)
 when connecting preset execution to History. W7–W11 remain required.
 

@@ -390,6 +390,20 @@ file paths. Previously exported files are not changed by later edits/deletion in
 Actual multi-action preset results will join history with W7; that producer is not yet
 implemented. Show rundown, cue lists and timed advancement remain excluded.
 
+### Controlled multi-action presets — implementation in progress
+
+W7 has a scoped storage and read-only preparation foundation. It is **not yet exposed
+as a Presets editor or executing user flow**. The stored allow-list supports explicit
+program/preview scene targets, mute, volume, media playing/paused/stopped, and stream/
+recording active targets. Definitions are bounded to 32 per workspace and 12 ordered
+steps each, with revision checks and failed-data states. Preparation checks advertised
+read/write support, target availability, input locks/allow-list and Output Safety without
+changing OBS. A currently matching value is only a reading; execution must recheck it.
+
+The editor, concrete invocation summary, bounded executor and actual History outcomes
+remain required by `tasks/operator-workflow/plan.md`. Presets will be individually invoked;
+they do not add cue scheduling, delays, loops, scripting or collection editing.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

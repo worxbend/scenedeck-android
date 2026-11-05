@@ -10,4 +10,5 @@ data class ObsCapabilities(
     val splitRecording: Boolean = false,
     val recordingChapter: Boolean = false,
     val mediaSeek: Boolean = false,
+    val controls: Set<ObsControl> = emptySet(),
 )

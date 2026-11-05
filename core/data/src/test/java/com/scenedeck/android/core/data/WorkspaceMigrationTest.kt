@@ -194,6 +194,32 @@ class WorkspaceMigrationTest {
         assertEquals("Old mark", snapshot.unlinkedBookmarks.single().label)
     }
 
+    @Test
+    fun upgradeFromVersionNinePreservesHistoryLinksAndSettingsAndAddsEmptyPresets(): Unit =
+        runBlocking {
+            createHistoricalDatabase(9)
+            context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+                sqlite.execSQL(
+                    "INSERT INTO history_sessions VALUES " +
+                        "(9, 'observation', 'owner', 0, 7, 'Studio', 1000, 1100, 100, NULL, NULL, 0, 0, 0)"
+                )
+                sqlite.execSQL(
+                    "INSERT INTO bookmarks VALUES (42, 'mark', 7, 'Studio', 'legacy', 1050, 'Linked mark', '{}')"
+                )
+                sqlite.execSQL("INSERT INTO history_bookmarks VALUES ('mark', 'observation', 50)")
+                sqlite.execSQL("INSERT INTO history_preferences VALUES (0, 0, 100, 3)")
+            }
+            val upgraded = openMigratedDatabase()
+            val snapshot = HistoryRepository(upgraded).exportSnapshot()
+            assertEquals(HistoryPreferences(false, 100, 3), snapshot.preferences)
+            assertEquals(
+                "Linked mark",
+                snapshot.observations.single().bookmarks.single().bookmark.label,
+            )
+            assertEquals(50L, snapshot.observations.single().bookmarks.single().elapsedMs)
+            assertTrue(upgraded.actionPresetDao().list(7, "Studio", 33).isEmpty())
+        }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -205,6 +231,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_6_7,
                 SceneDeckMigrations.MIGRATION_7_8,
                 SceneDeckMigrations.MIGRATION_8_9,
+                SceneDeckMigrations.MIGRATION_9_10,
             )
             .build()
             .also { database = it }

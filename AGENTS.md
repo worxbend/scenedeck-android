@@ -216,6 +216,18 @@ must pass, and Compose preview(s) for changed screens must render.
   endpoints, raw protocol/comments and private output paths. Failed reads/exports are
   explicit and sanitized. W6 preset-result integration remains pending W7.
 
+- W7 currently has scoped preset storage/read-only preparation only; there is no
+  Presets editor or executing user flow. Room schema 10 retains 32 definitions per
+  workspace, 1–12 typed target-value steps each. Preserve raw OBS names/order, stable
+  draft IDs, optimistic revisions, transactional name/bound checks and cancellation.
+  Unknown/corrupt action payloads fail closed. Do not count foundation as full W7.
+- Preset preparation requires advertised paired read/write capabilities, applies input
+  locks/allow-list and OutputSafetyGate, probes at most three steps concurrently, and
+  rechecks the saved revision, policy and origin. A current match is not permission to
+  skip a later executing step. No OBS writes are made during preparation. Resume from
+  `tasks/operator-workflow/presets-design.md`; runner, consent/UI and actual History
+  results remain required, including results after the original observation closes.
+
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
 - Preflight is under More with optional links from start-output confirmations; the link
