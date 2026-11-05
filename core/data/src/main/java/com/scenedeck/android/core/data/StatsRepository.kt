@@ -117,6 +117,7 @@ constructor(
                     targetFps = targetFps,
                     session = origin,
                     receivedAt = TelemetryReadTimes(stats.atMs, stream.atMs, record.atMs),
+                    recordReadStartedAtMs = record.startedAtMs,
                 )
             val snapshot =
                 publishPoll(polled, OutputRevisions(streamVersion, recordVersion, cameraVersion))
@@ -128,11 +129,16 @@ constructor(
         }
     }
 
-    private data class Reading<T>(val value: T?, val atMs: Long?)
+    private data class Reading<T>(val value: T?, val atMs: Long?, val startedAtMs: Long?)
 
     private suspend fun <T> read(origin: ObsSessionToken, block: suspend () -> T): Reading<T> {
+        val startedAt = clock.nowMs()
         val result = requestResult { client.withSession(origin) { block() } }
-        return Reading(result.getOrNull(), if (result.isSuccess) clock.nowMs() else null)
+        return Reading(
+            result.getOrNull(),
+            if (result.isSuccess) clock.nowMs() else null,
+            if (result.isSuccess) startedAt else null,
+        )
     }
 
     private data class OutputRevisions(val stream: Long, val record: Long, val camera: Long)
@@ -155,6 +161,8 @@ constructor(
         return polled.copy(
             stream = if (streamFresh) polled.stream else current.stream,
             record = if (recordFresh) polled.record else current.record,
+            recordReadStartedAtMs =
+                if (recordFresh) polled.recordReadStartedAtMs else current.recordReadStartedAtMs,
             receivedAt =
                 polled.receivedAt.copy(
                     stream =
@@ -201,6 +209,7 @@ constructor(
                         current.copy(
                             connection = connection,
                             record = recordFromEvent(current.record, event),
+                            recordReadStartedAtMs = null,
                             receivedAt = current.receivedAt.copy(record = null),
                         )
                     }

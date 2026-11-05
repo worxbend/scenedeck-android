@@ -565,6 +565,60 @@
   actions. `setMediaInputCursor` already exists in ObsClient and KtobsObsClient, so reuse
   that boundary. The full durable goal remains active; no release/publication performed.
 
+## W5a — Recording tools implementation and focused verification
+
+- Resumed from clean `0e3902f`; this turn is **progress**. W5b–W11 remain open.
+- Added typed advertised capabilities and pause/resume/split/chapter request adapters
+  without changing pinned dependencies. Added a target-bound recording-tools controller,
+  Hilt ViewModel and expanded sheet in Scenes options. All writes use the existing
+  deadline/session/cancellation lane, with no automatic retries or new OBS poller.
+- Fake-server checks exposed ktobs 0.5.0's non-null recording-event path assumption;
+  a local serializable adapter now accepts null/absent paths and maps typed phases.
+  Shared telemetry also retains recording-read start time so delayed earlier reads
+  cannot falsely confirm a pause/resume write.
+- Initial static checks caught complexity/return-count/line-length issues, fixed by
+  extraction and simpler control flow, without suppressions. First compile/tests also
+  caught cross-module smart casts and incorrect test fixture expectations; corrected.
+- Focused JDK21 tests/static checks and five renders passed: **24s, 144 tasks**,
+  `/tmp/scenedeck-recording-focused-confirmation.log`. Covers 13 controller regressions,
+  five protocol tests, nine recording UI tests and existing Stats regressions. Inspected
+  SceneDeck light, OBS dark and compact unknown-outcome images. Full gate is in flight.
+- Final audit identified a remaining queued-command issue: observed context/recording
+  replacement should cancel admission waits immediately, rather than only suppressing
+  completion. Tighten that path and verify before completing W5a.
+- No real-OBS/device/profile measurements or release/publication are claimed.
+
+## W5a — Verified recording controls checkpoint
+
+- **W5a is complete; W5b–d and W6–W11 remain open.** This turn made **progress**.
+  The durable goal remains active and excludes Show rundown/cues/timed advancement.
+- The final audit fix cancels the owning command when observed target/session/recording
+  identity changes. This cancels queued admission and suppresses obsolete completion;
+  an already-sent action may still have taken effect. Old pending work is not shown as
+  an action on a replacement target. The additional regression proves no queued write
+  dispatches after an observed recording boundary.
+- Final focused controller/UI/static checks passed, **21s, 137 tasks**:
+  `/tmp/scenedeck-recording-cancel.log`. New coverage totals **28 tests**: 14 controller,
+  five protocol and nine UI tests. Five rendered variants are checked in; no visual
+  behavior changed after their initial capture. Full tests also cover shared telemetry.
+- First complete JDK21/uv gate passed (2m 5s, 1,050 tasks,
+  `/tmp/scenedeck-recording-quality.log`). After the cancellation refinement, the final
+  gate passed **exit 0, 2m 13s, 1,050 tasks**:
+  `/tmp/scenedeck-recording-quality-final.log`. Android lint, complexity, formatting,
+  debug build/unit/Roborazzi checks passed. Semgrep: seven rules over 293 files, zero
+  findings. Gitleaks history (67 commits) and tree scans: no leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 3s,
+  826 tasks**, `/tmp/scenedeck-recording-explicit.log`. Aggregate XML: **770 tests /
+  139 suites, zero failures/errors/skips**. `git diff --check` is clean.
+- Updated FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, AGENTS and OBS protocol
+  skill guidance. All changes are local; no real-OBS/device verification, measured
+  performance, release or publication is claimed.
+- Next: **W5b** scoped local bookmarks, independently of OBS chapters. Inspect Room
+  schema 6 and scoped repository transaction patterns. Define separate OBS-reported
+  stream/recording elapsed timestamps, paused-recording semantics and unknown/gapped
+  context, with bounded persistence suited to W6 history/export. Then **W5c** exposes
+  bounded media seek/progress using the existing Mixer repository polling boundary.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

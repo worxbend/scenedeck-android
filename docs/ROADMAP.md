@@ -244,7 +244,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 - Verified: sustained live warnings with scoped/current telemetry, cooldowns and explicit
   unknown states; More/details and compact shell bar; deliberately armed microphone
   monitoring and optional foreground haptics. No audible or OS alert notifications.
-- Next: recording and media tools, then the remaining authorized
+- Verified: capability-gated recording pause/resume, file splitting and chapter markers,
+  with pending/confirmed state, sanitized format rejection and uncertain-write handling.
+- Next: local timestamp bookmarks and media progress/seeking, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

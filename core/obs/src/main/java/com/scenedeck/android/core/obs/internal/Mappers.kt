@@ -26,6 +26,7 @@ import com.scenedeck.android.core.model.MediaActionKind
 import com.scenedeck.android.core.model.MediaStateKind
 import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MonitorTypeKind
+import com.scenedeck.android.core.model.ObsCapabilities
 import com.scenedeck.android.core.model.ObsStats
 import com.scenedeck.android.core.model.ObsVersionInfo
 import com.scenedeck.android.core.model.ObsVideoSettings
@@ -46,6 +47,14 @@ internal fun GetVersionResponse.toDomain() =
         obsWebSocketVersion = obsWebSocketVersion,
         rpcVersion = rpcVersion,
         platform = platform,
+        capabilities =
+            ObsCapabilities(
+                pauseRecording = "PauseRecord" in availableRequests,
+                resumeRecording = "ResumeRecord" in availableRequests,
+                splitRecording = "SplitRecordFile" in availableRequests,
+                recordingChapter = "CreateRecordChapter" in availableRequests,
+                mediaSeek = "SetMediaInputCursor" in availableRequests,
+            ),
     )
 
 internal fun GetSceneListResponse.toDomain() =
@@ -200,3 +209,8 @@ internal fun MonitorTypeKind.toKtobs(): MonitorType =
         MonitorTypeKind.MONITOR_ONLY -> MonitorType.MonitorOnly
         MonitorTypeKind.MONITOR_AND_OUTPUT -> MonitorType.MonitorAndOutput
     }
+
+internal fun recordingPhase(state: String): com.scenedeck.android.core.model.RecordingPhase =
+    com.scenedeck.android.core.model.RecordingPhase.entries.firstOrNull {
+        state == "OBS_WEBSOCKET_OUTPUT_${it.name}"
+    } ?: com.scenedeck.android.core.model.RecordingPhase.UNKNOWN

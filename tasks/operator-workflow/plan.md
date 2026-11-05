@@ -81,7 +81,7 @@ and progress evidence. The next incomplete checkpoint is W5.
 
 ### W5 — Recording and media tools
 
-- [ ] W5a: Retain available request capabilities; add recording pause/resume and
+- [x] W5a: Retain available request capabilities; add recording pause/resume and
   advanced split/chapter actions when supported, with confirmed/pending state.
 - [ ] W5b: Add local timestamp bookmarks independent of OBS chapter availability;
   define recording/stream time bases and paused-recording behavior explicitly.

@@ -9,4 +9,5 @@ data class ObsVersionInfo(
     val obsWebSocketVersion: String,
     val rpcVersion: Int,
     val platform: String? = null,
+    val capabilities: ObsCapabilities = ObsCapabilities(),
 )

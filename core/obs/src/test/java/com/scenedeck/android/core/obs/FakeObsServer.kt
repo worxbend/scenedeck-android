@@ -63,6 +63,7 @@ internal class FakeObsServer(
     val connectionCount = AtomicInteger(0)
     val receivedEventSubs = AtomicInteger(-1)
     val receivedRequests = CopyOnWriteArrayList<String>()
+    val receivedRequestFrames = CopyOnWriteArrayList<String>()
 
     /** Extra delay before answering a given requestType (responses stay async). */
     var responseDelayMs: (requestType: String) -> Long = { 0L }
@@ -179,6 +180,7 @@ internal class FakeObsServer(
             val type = data["requestType"]!!.jsonPrimitive.content
             val id = data["requestId"]!!.jsonPrimitive.content
             receivedRequests += type
+            receivedRequestFrames += data.toString()
 
             if (!shouldRespond(type)) return
             val responseData =

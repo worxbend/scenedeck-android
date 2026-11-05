@@ -49,10 +49,12 @@ internal open class FakeObsClient(
         sessionId: Long = 0,
         collectionRevision: Long = 0,
         collectionChanging: Boolean = false,
+        capabilities: com.scenedeck.android.core.model.ObsCapabilities =
+            com.scenedeck.android.core.model.ObsCapabilities(),
     ) {
         _connectionState.value =
             ConnectionState.Ready(
-                ObsVersionInfo("31.0.1", "5.6.1", 1, "test"),
+                ObsVersionInfo("31.0.1", "5.6.1", 1, "test", capabilities),
                 sessionId,
                 collectionRevision,
                 collectionChanging,

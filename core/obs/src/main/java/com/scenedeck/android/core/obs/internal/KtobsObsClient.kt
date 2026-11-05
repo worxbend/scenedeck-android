@@ -26,7 +26,11 @@ import com.rejeq.ktobs.request.mediainputs.setMediaInputCursor
 import com.rejeq.ktobs.request.mediainputs.triggerMediaInputAction
 import com.rejeq.ktobs.request.outputs.getVirtualCamStatus
 import com.rejeq.ktobs.request.outputs.toggleVirtualCam
+import com.rejeq.ktobs.request.record.createRecordChapter
 import com.rejeq.ktobs.request.record.getRecordStatus
+import com.rejeq.ktobs.request.record.pauseRecord
+import com.rejeq.ktobs.request.record.resumeRecord
+import com.rejeq.ktobs.request.record.splitRecordFile
 import com.rejeq.ktobs.request.record.startRecord
 import com.rejeq.ktobs.request.record.stopRecord
 import com.rejeq.ktobs.request.sceneitems.getSceneItemEnabled
@@ -331,6 +335,16 @@ internal class KtobsObsClient(
 
     override suspend fun stopRecord() {
         request { it.stopRecord() }
+    }
+
+    override suspend fun pauseRecord() = request { it.pauseRecord() }
+
+    override suspend fun resumeRecord() = request { it.resumeRecord() }
+
+    override suspend fun splitRecordFile() = request { it.splitRecordFile() }
+
+    override suspend fun createRecordChapter(chapterName: String?) = request {
+        it.createRecordChapter(chapterName)
     }
 
     override suspend fun getProfileList() = request { it.getProfileList().toDomain() }

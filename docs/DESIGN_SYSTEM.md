@@ -281,3 +281,15 @@ arming shows an inline explanation. The optional foreground haptics switch is of
 default and explains its session lifetime and global Settings dependency. Keep notification
 limitations and cooldown behavior available in the details page, without implying all-clear
 from the absence of a warning. Capture page/bar in SceneDeck and OBS light/dark themes.
+
+
+### Recording tools
+
+Keep advanced recording controls under scene options, leaving the direct Stream / Record /
+VCam row compact. The fully expanded sheet uses StudioPageHeader, the shared recording
+icon and StudioSectionHeader. It scrolls in compact windows, keeps 48dp controls, explains
+unavailable capabilities, and distinguishes active/paused/stopped/unknown state in text.
+Pause becomes Resume only from confirmed OBS state. Pending disables all tool writes;
+inline results announce politely and retain unknown/rejected wording. Chapter entry is
+optional, bounded, and cleared when the target recording context changes. Capture the
+sheet in SceneDeck/OBS light/dark and a compact-height uncertain-outcome state.

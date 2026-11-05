@@ -69,7 +69,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 | Scenes | `GetSceneList`, `GetCurrentProgramScene`, `SetCurrentProgramScene`, `GetSceneItemList` (groups incl.), `GetSceneItemEnabled`, `SetSceneItemEnabled` (M7) |
 | Studio (M6) | `GetStudioModeEnabled`, `SetStudioModeEnabled`, `Get/SetCurrentPreviewScene`, `TriggerStudioModeTransition`, `Get/SetCurrentSceneTransition`, `SetCurrentSceneTransitionDuration` |
 | Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection`, `GetVideoSettings` |
-| Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `ToggleVirtualCam` (M7) |
+| Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `PauseRecord`, `ResumeRecord`, `SplitRecordFile`, `CreateRecordChapter`, `ToggleVirtualCam` (M7) |
 | Audio | `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
 | Media (M7) | `GetMediaInputStatus`, `TriggerMediaInputAction` |
 | Sources (M6) | `GetSourceScreenshot` (JPEG, throttled) |
@@ -98,3 +98,8 @@ trigger re-reads.
 `ObsAuthException` / socket failures to typed `ConnectionError`; auto-reconnect with
 exponential backoff. Separate buffered event/meter context streams carry origin identity;
 legacy untagged streams remain during W1b consumer migration.
+
+Optional recording controls use advertised GetVersion capabilities, not version guesses.
+Keep recording-format failures sanitized and never retry uncertain writes. Recording
+state events have a nullable outputPath; the local RecordingEventData adapter corrects
+ktobs 0.5.0's non-null model. Recheck that workaround on dependency upgrades.

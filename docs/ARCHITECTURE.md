@@ -284,3 +284,22 @@ so changing tabs never resets output state. Output events update the feed prompt
 poll responses are merged only if no newer event superseded the request. Failed
 readings become unknown independently. Connection consumers await their own
 request outcome rather than accepting a previous terminal connection state.
+
+
+Recording tools use a typed `ObsCapabilities` projection, populated from advertised
+requests inside `:core:obs`. The adapter retains existing request admission, session
+ownership, cancellation and deadline rules. `RecordingEventData` handles nullable or
+absent output paths because ktobs 0.5.0 incorrectly requires a non-null path; typed
+recording lifecycle phases keep that protocol mapping inside `:core:obs`.
+
+`RecordingToolsRepository` owns one pending action and observes the authoritative target,
+Ready token and recording lifecycle boundaries. It validates fresh shared telemetry,
+re-reads status before writing, and gates unsupported/inactive/stale operations. Observed
+context/recording changes cancel the owning command job, including permit waits; pending
+work from the old origin is not presented as an action on the new target. Pause
+confirmation uses shared status reads **started after** the acknowledgement; an older
+in-flight read cannot prove the write succeeded. Successful read start/receipt times
+are invalidated together by recording events and failed reads. Confirmation is bounded
+at 3.5 seconds after the existing bounded request; split/chapter use acknowledgement.
+No additional polling requests are introduced. Its local one-second clock only expires
+stale state; all errors exposed to UI are fixed typed outcomes without private details.

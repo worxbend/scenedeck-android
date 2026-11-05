@@ -63,6 +63,7 @@ sealed interface ObsEvent {
         val active: Boolean,
         val state: String,
         val outputPath: String?,
+        val phase: RecordingPhase = RecordingPhase.UNKNOWN,
     ) : ObsEvent
 
     // ── Config ──────────────────────────────────────────────────────────────

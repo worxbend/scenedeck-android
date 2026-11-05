@@ -175,6 +175,14 @@ must pass, and Compose preview(s) for changed screens must render.
 - Connection operations expose sanitized failures, preserve failed-save drafts and gate duplicate writes; blank edit-test credentials reuse encrypted storage.
 - Scenes header owns status/timers (Standby, LIVE, REC); simultaneous outputs show both. Direct row: Stream, Record, VCam.
 
+- Recording tools live in Scenes options. Optional pause/resume/split/chapter controls
+  require advertised capabilities and fresh active recording state; advanced actions
+  require unpaused recording. Pause confirmation needs a shared read started after the
+  write acknowledgement, never a delayed earlier read. Gate duplicates and preserve
+  target/Ready/recording lifecycle identity; uncertain writes never retry automatically.
+  Split/chapter format rejection is sanitized. Decode nullable recording-event paths
+  in the core OBS adapter (ktobs 0.5.0's built-in event model is too strict).
+
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
 - Preflight is under More with optional links from start-output confirmations; the link

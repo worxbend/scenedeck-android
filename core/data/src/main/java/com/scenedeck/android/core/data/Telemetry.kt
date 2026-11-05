@@ -28,6 +28,10 @@ data class Telemetry(
     /** Origin and individual successful receipt times; never persisted. */
     val session: ObsSessionToken? = null,
     val receivedAt: TelemetryReadTimes = TelemetryReadTimes(),
+    /**
+     * Start of the successful recording read; confirmation must exclude earlier in-flight reads.
+     */
+    val recordReadStartedAtMs: Long? = null,
 )
 
 /** Monotonic milliseconds for successful reads, not a wall-clock report timestamp. */

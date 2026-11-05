@@ -34,7 +34,6 @@ import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackEndedEventData
 import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEvent
 import com.rejeq.ktobs.event.mediainputs.MediaInputPlaybackStartedEventData
 import com.rejeq.ktobs.event.outputs.RecordStateChangedEvent
-import com.rejeq.ktobs.event.outputs.RecordStateChangedEventData
 import com.rejeq.ktobs.event.outputs.StreamStateChangedEvent
 import com.rejeq.ktobs.event.outputs.StreamStateChangedEventData
 import com.rejeq.ktobs.event.outputs.VirtualcamStateChangedEvent
@@ -224,8 +223,13 @@ internal class ObsEventDispatcher(
                         ObsEvent.VirtualcamStateChanged(it.outputActive, it.outputState)
                     }
                 RecordStateChangedEvent ->
-                    event.get<RecordStateChangedEventData>().let {
-                        ObsEvent.RecordStateChanged(it.outputActive, it.outputState, it.outputPath)
+                    event.get<RecordingEventData>().let {
+                        ObsEvent.RecordStateChanged(
+                            it.outputActive,
+                            it.outputState,
+                            it.outputPath,
+                            recordingPhase(it.outputState),
+                        )
                     }
                 else -> return
             }

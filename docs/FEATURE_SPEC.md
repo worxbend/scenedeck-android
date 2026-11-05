@@ -110,6 +110,26 @@ colors, icons, ordering) lives in a local registry on the device.
 - Compact Stream / Record / VCam row on Scenes. Studio mode and thumbnail preferences
   live in the scene options menu. Replay Buffer is excluded from the Android app.
 
+### Recording tools
+
+Scenes → scene options → **Recording tools** opens pause/resume and advanced recording
+controls. Availability comes from the connected OBS server's advertised requests;
+unsupported controls are disabled with an explanation. Active recording and fresh
+status are required; split and chapter also require recording to be unpaused.
+
+Pause/resume send explicit target-value commands. Buttons remain pending until OBS
+acknowledges the request and a subsequent shared status read confirms the target, or
+confirmation times out. File split and chapter messages distinguish an accepted
+request from an uncertain outcome. OBS can reject these operations for the current
+recording format/settings. Chapter names are optional and limited to 120 characters.
+They are sent to OBS; no recording path or server error detail is displayed.
+
+Only one tool action runs at a time. Failed, timed-out or canceled writes are never
+retried automatically; unknown outcomes ask the operator to check OBS. Connection,
+collection and observed recording start/stop changes invalidate old actions/results.
+Closing the sheet does not undo an already-sent action. Streaming continues normally
+while recording is paused. Existing start/stop safety confirmations are unchanged.
+
 ## 5. Stats page (telemetry)
 
 - Poll `GetStats` + `GetStreamStatus` once per second (obs-websocket has no push stats).

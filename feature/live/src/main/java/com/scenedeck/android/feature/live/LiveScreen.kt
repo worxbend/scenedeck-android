@@ -94,6 +94,7 @@ fun LiveScreen(
     val previewsEnabled by viewModel.previewsEnabled.collectAsStateWithLifecycle()
     val sceneItemsVersion by viewModel.sceneItemsVersion.collectAsStateWithLifecycle()
     val virtualCamPending by viewModel.virtualCamPending.collectAsStateWithLifecycle()
+    var recordingToolsOpen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -128,6 +129,7 @@ fun LiveScreen(
                         onSceneTap = { name -> origin?.let { viewModel.onSceneTap(it, name) } },
                         onStreamClick = viewModel::onStreamClick,
                         onRecordClick = viewModel::onRecordClick,
+                        onRecordingTools = { recordingToolsOpen = true },
                         onToggleVirtualCam = viewModel::toggleVirtualCam,
                         onQuickEditSave = { name, edit ->
                             origin?.let { viewModel.saveSceneMeta(it, name, edit) } ?: false
@@ -178,6 +180,8 @@ fun LiveScreen(
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
+    RecordingToolsOverlay(recordingToolsOpen, hapticsEnabled, { recordingToolsOpen = false })
+
     NamedDeckManagement(namedDecks, deckState)
 
     confirmation?.let {
@@ -227,6 +231,7 @@ internal fun LiveDeckContent(
     deckOptionsFailed: Boolean = false,
     thumbnailFailures: Set<String> = emptySet(),
     previewTimeMs: Long = 0L,
+    onRecordingTools: () -> Unit = {},
 ) {
     var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
 
@@ -284,6 +289,7 @@ internal fun LiveDeckContent(
             motionLevel,
             tBarOpen,
             { tBarOpen = !tBarOpen },
+            onRecordingTools,
         )
         Spacer(Modifier.height(8.dp))
         TransportBar(
@@ -418,6 +424,7 @@ private fun DeckHeader(
     motionLevel: MotionLevel,
     tBarOpen: Boolean,
     onTBarToggle: () -> Unit,
+    onRecordingTools: () -> Unit,
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
     val reorderLabel = if (reorderMode) R.string.finish_reordering else R.string.reorder_scenes
@@ -438,6 +445,13 @@ private fun DeckHeader(
                 Icon(SceneDeckIcons.More, stringResource(R.string.scene_options))
             }
             DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text("Recording tools") },
+                    onClick = {
+                        optionsOpen = false
+                        onRecordingTools()
+                    },
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(reorderLabel)) },
                     onClick = {

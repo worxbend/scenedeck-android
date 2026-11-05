@@ -138,6 +138,15 @@ interface ObsClient {
 
     suspend fun stopRecord()
 
+    /** Target-value controls; never toggle or automatically retry an uncertain write. */
+    suspend fun pauseRecord(): Unit = error(NOT_IMPLEMENTED)
+
+    suspend fun resumeRecord(): Unit = error(NOT_IMPLEMENTED)
+
+    suspend fun splitRecordFile(): Unit = error(NOT_IMPLEMENTED)
+
+    suspend fun createRecordChapter(chapterName: String?): Unit = error(NOT_IMPLEMENTED)
+
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
     // Default bodies keep pre-M6 fakes compiling (they fail loudly if called).
 

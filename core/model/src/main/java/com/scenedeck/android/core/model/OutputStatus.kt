@@ -25,3 +25,17 @@ data class RecordStatus(
     val durationMs: Long,
     val bytes: Long,
 )
+
+/** Typed recording lifecycle. Unknown future wire states stay unknown. */
+enum class RecordingPhase {
+    UNKNOWN,
+    STARTING,
+    STARTED,
+    STOPPING,
+    STOPPED,
+    PAUSED,
+    RESUMED;
+
+    val changesRun: Boolean
+        get() = this == STARTING || this == STARTED || this == STOPPING || this == STOPPED
+}
