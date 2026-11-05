@@ -437,9 +437,29 @@ key-up only releases ownership. It canonicalizes letters, digits, F1–F12 and n
 collapses modifier sides and ignores lock-state bits, reserving editing/navigation/system
 keys. `ShortcutTextInputBoundary` tracks Compose input-session leases independently of
 IME visibility. These adapters are not yet wired into MainActivity or the shell. The
-configuration UI, lifecycle/route/modal admission and guarded OBS executor remain W8 work;
+configuration UI and lifecycle/route/modal admission remain W8 work;
 storage and adapter tests alone do not complete keyboard/pedal support. See
 `tasks/operator-workflow/shortcuts-design.md`.
+
+`ShortcutRunner` now owns one invocation from read-only preparation through optional
+single-use output consent and execution; competing calls return false without changing
+the current invocation. Its caller owns the coroutine lifetime, with no application-scope
+launcher or restored invocation. `ShortcutRunControl` binds confirm/cancel to a unique
+invocation ID and checks the injected elapsed clock, including delayed timer resumption.
+Preparation is bounded to 20 seconds, consent to 60, and post-consent work to 20; fresh
+post-acknowledgement confirmation is bounded to four seconds. Caller cancellation propagates,
+while dispatched but unconfirmed work remains unknown. No automatic write retry is used.
+
+`SharedShortcutExecutionSource` validates the original saved binding and policy and uses
+typed session-bound controls. `ShortcutProbe` captures Studio mode or the literal Take
+preview, checks advertised read/write capability sets, exact target availability, locks,
+audio allow-list and concrete output state. It rechecks before dispatch, skips matching
+target values and sends explicit start/stop commands. Mixer mute uses the repository's
+existing pending-write tokens. Busy recording tools reject recording commands. Scoped
+events, definition/context changes and policy changes interrupt pending work; subscriptions
+start before preparation. Take ignores the expected preview exchange after dispatch and
+confirms its captured scene in program. Frontend lifecycle gating and the review/dialog
+integration remain required before this backend is exposed to keyboard input.
 
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused

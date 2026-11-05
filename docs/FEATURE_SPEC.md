@@ -439,7 +439,8 @@ scripting or collection editing.
 
 Shortcut configuration and invocation are not yet available in the app. The current
 foundation adds scoped local storage without default bindings and isolated input/focus
-adapters. More → Shortcuts, supported-action editing/help and guarded execution still
+adapters, plus a guarded action runner with single-use output consent. More → Shortcuts,
+supported-action editing/help and foreground invocation still
 require integration and verification. The planned scope and acceptance checks are in
 `tasks/operator-workflow/shortcuts-design.md`; no global/background or universal pedal
 support is implied by this foundation.

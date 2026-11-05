@@ -152,7 +152,8 @@ class StatsViewModelTest {
     fun canvasFrameRateDrivesThresholds(): Unit = runBlocking {
         client.videoSettingsResponse = ObsVideoSettings(30, 1, 1920, 1080, 1280, 720)
         client.setReady()
-        val state = awaitState { it.sampleCount > 0 }
+        // Samples and telemetry are separate StateFlows; combine may deliver the sample first.
+        val state = awaitState { it.sampleCount > 0 && it.targetFps != null }
 
         assertEquals(30f, state.targetFps ?: 0f, 1e-3f)
         assertEquals(27f, state.frameRate.fpsWarn, 1e-3f)

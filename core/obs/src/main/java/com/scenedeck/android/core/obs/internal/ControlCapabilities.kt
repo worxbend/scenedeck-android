@@ -17,6 +17,23 @@ internal fun Collection<String>.controlCapabilities(): Set<ObsControl> {
                     "SetCurrentPreviewScene",
                 ),
             ObsControl.INPUT_MUTE to setOf("GetInputMute", "SetInputMute"),
+            ObsControl.FOLLOW_STUDIO_SCENE to
+                setOf(
+                    "GetSceneList",
+                    "GetStudioModeEnabled",
+                    "GetCurrentProgramScene",
+                    "GetCurrentPreviewScene",
+                    "SetCurrentProgramScene",
+                    "SetCurrentPreviewScene",
+                ),
+            ObsControl.STUDIO_TRANSITION to
+                setOf(
+                    "GetSceneList",
+                    "GetStudioModeEnabled",
+                    "GetCurrentProgramScene",
+                    "GetCurrentPreviewScene",
+                    "TriggerStudioModeTransition",
+                ),
             ObsControl.INPUT_VOLUME to setOf("GetInputVolume", "SetInputVolume"),
             ObsControl.MEDIA_STATE to setOf("GetMediaInputStatus", "TriggerMediaInputAction"),
             ObsControl.STREAM to setOf("GetStreamStatus", "StartStream", "StopStream"),

@@ -254,9 +254,19 @@ must pass, and Compose preview(s) for changed screens must render.
   collection, with unique chords even when disabled, stable IDs and compared revisions.
   Strict typed JSON is bounded to 8 KiB characters; target names stay literal. Configuration
   never invokes actions and there are no default bindings. App key/text-input adapters
-  are not yet connected to MainActivity: editor, lifecycle/modal routing and guarded
-  execution remain incomplete. Resume `tasks/operator-workflow/shortcuts-design.md`;
+  are not yet connected to MainActivity: editor and lifecycle/modal routing remain
+  incomplete. Resume `tasks/operator-workflow/shortcuts-design.md`;
   do not mark W8 complete from persistence or adapter tests alone.
+- ShortcutRunner holds one invocation through preparation/consent/execution and rejects
+  competing invocations without queuing. Caller lifetime owns it; app foreground routing
+  must cancel on navigation/background. Single-use confirmation IDs expire after 60 seconds
+  on the elapsed clock as well as a timer. Read preparation and post-consent work each have
+  a 20-second bound; confirmation reads have four seconds. Recheck saved binding, target,
+  policy and Ready identity; Studio mode and Take preview are captured, never reinterpreted.
+  Take confirmation follows its captured program target and permits the normal preview
+  exchange after dispatch. Use MixerRepository mute tokens, block busy recording tools,
+  keep uncertain writes unknown and never retry them. FOLLOW_STUDIO_SCENE/STUDIO_TRANSITION
+  capabilities derive from complete advertised request sets in core:obs.
 
 - Preflight is under More with optional links from start-output confirmations; the link
   dismisses pending consent before navigation. No mandatory scan or automatic start.

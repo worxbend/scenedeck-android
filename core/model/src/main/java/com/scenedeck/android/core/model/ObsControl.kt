@@ -4,6 +4,8 @@ package com.scenedeck.android.core.model
 enum class ObsControl {
     PROGRAM_SCENE,
     PREVIEW_SCENE,
+    FOLLOW_STUDIO_SCENE,
+    STUDIO_TRANSITION,
     INPUT_MUTE,
     INPUT_VOLUME,
     MEDIA_STATE,

@@ -1,6 +1,6 @@
 # Keyboard and compatible foot pedals — W8
 
-Status: **storage and input foundation implemented; app integration pending** after the
+Status: **storage, input and action backend implemented; app integration pending** after the
 verified W7 checkpoint `5dd9a21`. This document distinguishes the foundation from planned
 behavior. W8a/b/c remain unchecked until the whole configuration and invocation flow is
 implemented and verified. Verification evidence lives in `progress.md`.
@@ -69,7 +69,7 @@ pending instead of silently queuing pedal actions. Fresh reads validate scene/St
 input availability and output state. Input locks/allow-list and advertised request support
 remain authoritative. Recheck the saved binding, policy and context before the write.
 Use existing session-bound repository/ObsClient controls; protocol code stays in core:obs.
-Mute should use MixerRepository's confirmed/pending token path, after the shortcut layer
+Mute uses MixerRepository's confirmed/pending token path, after the shortcut layer
 checks locks and allowed inputs. Recording tools that are busy block conflicting outputs.
 
 Output Safety uses the concrete start/stop target and the shared gate. A required dialog
@@ -83,7 +83,8 @@ remain quiet; failures and uncertainty must be visible.
 ## Validation and completion
 
 The foundation implements `ShortcutBinding`/`ShortcutDraft`, `ShortcutRepository`,
-the schema migration and isolated app `ShortcutKeyRouter`/`ShortcutTextInputBoundary`.
+the schema migration, `ShortcutRunner`/`SharedShortcutExecutionSource` and isolated app
+`ShortcutKeyRouter`/`ShortcutTextInputBoundary`.
 Neither adapter is installed in MainActivity. Keep that integration coupled to the
 editor/help and guarded executor; do not expose bindings that can bypass their policy.
 The router takes an activation epoch plus a Ready snapshot (or null), calls no OBS APIs,
@@ -91,13 +92,27 @@ and relies on the caller to recheck current lifecycle/window/route/modal/text-in
 eligibility on every event. Text-input leases remain active with a hidden software
 keyboard and release on focus loss/disposal; use this guard alongside child-first dispatch.
 
-Executor implementation notes: existing `PresetStepProbe` checks finite read/write pairs,
-but scene-follow-Studio and Take need their own captured Studio/preview checks. Take has
-no `ObsControl` entry yet; add and verify advertised request capability mapping inside
-`:core:obs` rather than assuming support. Use the existing `OutputSafetyGate` with the
-explicit requested start/stop intent, recheck concrete output state, and never toggle.
-Fresh reads, policy/binding revalidation, single-use consent and renamed-target invalidation
-must precede dispatch; reuse session-bound controls and the Mixer mute token path.
+The executor now uses `ShortcutProbe` for captured Studio/preview checks and
+`FOLLOW_STUDIO_SCENE`/`STUDIO_TRANSITION` capabilities mapped from complete advertised
+request sets in `:core:obs`. `ShortcutRunner.run(origin, binding)` owns one invocation
+through preparation, optional consent, dispatch and verification; competing calls return
+false without queuing or replacing the current state. The caller owns its lifetime.
+`confirm(id)` consumes one waiting consent; `cancel(id)` cannot affect a different run.
+Both the timer and injected elapsed clock enforce 60-second consent expiry. Preparation
+and post-consent work each have a 20-second bound; target confirmation has four seconds.
+The output gate checks the explicit requested target, never a toggle. Initially matching
+targets return without dispatch; matching fresh reads after consent also do not write.
+Definition, policy, context and target changes invalidate work, and caller cancellation
+propagates. Dispatched, unconfirmed work is unknown and never automatically retried.
+Take confirms the captured scene in program and permits its normal preview exchange after
+dispatch. No invocation or consent survives process interruption.
+
+App integration still needs a foreground caller and lifecycle/navigation cancellation.
+Window focus gates key admission but an owned output dialog must not cancel its own
+confirmation just because that dialog takes window focus. Keep route/background changes
+and dismiss callbacks separate from that focus guard. Key capture in the editor will need
+the same canonical mapper as the app router; move that adapter into shared `:core:ui`
+when adding `:feature:shortcuts`, rather than importing app code from a feature.
 
 - Real Room migration/reopen, scope isolation, chord conflicts, bounds/corruption,
   idempotent creation, revisions, failed drafts and cancellation.

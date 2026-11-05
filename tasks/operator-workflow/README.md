@@ -5,7 +5,8 @@ excluding **Show rundown**. This is the resumption entry point for this work.
 W1–W7 are implemented and verified, including the Presets editor, single-use output
 consent, bounded execution/cancellation and user-triggered History results. Resume at
 **W8 — keyboard and compatible foot-pedal bindings**. W8–W11 remain required.
-The W8 storage/key-input foundation is verified; the user-facing flow is not wired.
+The W8 storage/key-input foundation and guarded action backend are verified. The
+user-facing flow is not wired; resume with editor/help, confirmation UI and app routing.
 Use [shortcuts-design.md](shortcuts-design.md) for scope, admission and verification.
 Keep the originating-workspace, consent and unknown-result contracts in
 [presets-design.md](presets-design.md) and [history-design.md](history-design.md) when

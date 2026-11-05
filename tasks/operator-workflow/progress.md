@@ -4,9 +4,9 @@
 
 - Branch: `feat/operator-workflow`.
 - Active slice: **W8 — keyboard and compatible foot-pedal bindings**.
-- Design/contracts: `shortcuts-design.md`; storage and isolated key-input foundations are verified.
-- W1–W7 are implemented and verified. W8–W11 remain required. The editor, app routing
-  and guarded shortcut executor still need integration; W8 remains unchecked.
+- Design/contracts: `shortcuts-design.md`; storage, isolated key-input and action backend are verified.
+- W1–W7 are implemented and verified. W8–W11 remain required. The shortcut editor,
+  confirmation UI and foreground app routing still need integration; W8 remains unchecked.
 - Full feature delivery: **in progress**. No release or remote publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
@@ -1094,6 +1094,66 @@
   validate definition/policy/target/context at dispatch and never retry unknown writes.
   Verify user flows, rename/context races and theme/compact/accessibility renders before
   checking any W8 box. W9 demo, W10 tablet and W11 final integration remain required.
+
+## 2026-11-05 — W8 guarded action backend verified
+
+- Resumed clean `136c411`; the previous goal turn made verified progress. Continued the
+  full authorized scope without Show rundown. W8a/b/c remain unchecked because the
+  keyboard/editor/app user flow is not wired. W9–W11 and the durable goal remain active.
+- Added `ShortcutRunner`, `ShortcutRunControl`, typed run/target/policy state,
+  `ShortcutExecutionSource`, `SharedShortcutExecutionSource` and `ShortcutProbe`.
+  One invocation owns admission through preparation, optional output consent, dispatch
+  and confirmation. Competing calls return false without queuing or replacing state.
+  The caller owns its coroutine lifetime; no application-scope launcher, persisted
+  invocation, resumed consent, toggle, automatic write retry or persistent background poller is added.
+- Preparation and post-consent execution each have a 20-second bound. Output consent
+  uses the existing explicit-target OutputSafetyGate and a unique one-use invocation ID;
+  both the 60-second timer and injected elapsed clock reject expiry. Confirm/cancel for
+  another ID cannot affect a run. Initially or freshly matching targets do not write.
+  Acknowledgement needs a fresh target observation within four seconds; otherwise the
+  result stays unknown. Caller cancellation propagates; an interrupted dispatched write
+  remains unknown, while a typed server rejection is explicit and sanitized.
+- Scoped event subscription starts before preparation. Definition/context/policy changes,
+  target rename/removal, Studio changes and pre-dispatch Take preview changes stop work.
+  Scene actions capture program versus preview; Take captures the literal preview and
+  confirms it in program, allowing OBS's normal preview exchange after dispatch. Fresh
+  availability/capability, input locks/allow-list, saved revision and policy checks precede
+  the typed session-bound write. Prepared targets cannot change the saved action.
+- Mixer mute calls the existing repository token path; a real-repository test proves
+  an obsolete shortcut failure cannot undo a later manual mute action. Busy recording
+  tools block conflicting recording shortcuts without cancelling the active tool.
+  Added FOLLOW_STUDIO_SCENE and STUDIO_TRANSITION capabilities with complete advertised
+  read/write sets mapped only in core:obs, with handshake coverage for absent Take support.
+- Added 31 tests: runner consent/admission/deadline/cancellation/uncertainty cases, actual
+  Room + settings + Mixer + recording tools integration, exact names and Studio targeting,
+  policy/definition/session changes, output status and concrete target revalidation,
+  malformed resolved-target rejection and protocol capability coverage. Fixtures now use
+  the typed named OBS status codes and the actual `mixerState` API. Refactored complexity
+  and exception handling without new blanket suppressions or relaxed product guards.
+- Final focused shortcut and capability tests/static checks passed **exit 0, 8s,
+  63 tasks** (`/tmp/scenedeck-shortcuts-runner.log`). The first full gate found an existing
+  Stats test race: it waited for sample count, then assumed the independently combined
+  canvas-FPS value had arrived. The test now waits for non-null target FPS before asserting
+  its value and thresholds; no production Stats behavior or assertion was weakened.
+  Initial failure evidence: `/tmp/scenedeck-shortcuts-executor-quality.log`.
+- Full JDK21/uv `scripts/check-quality.sh` then passed **exit 0, 1m 1s Gradle phase,
+  1,177 tasks** (`/tmp/scenedeck-shortcuts-executor-quality-verified.log`). Build, unit
+  tests, lint, formatting, complexity and existing render verification passed. Semgrep:
+  seven rules, 392 files, zero findings. Gitleaks: 76 commits plus working tree, no leaks.
+  Final totals: **1,057 tests across 183 suites, zero failures/errors/skips** (+31).
+  Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 2s, 928 tasks**
+  (`/tmp/scenedeck-shortcuts-executor-explicit.log`). No visible screen changed, so no new
+  preview/golden was required. No real-OBS/device, physical-pedal or performance claim.
+- Updated architecture/spec/roadmap, AGENTS, protocol skill and resumption/design files.
+  **Next:** add `:feature:shortcuts` under More with scoped list/editor, explicit key
+  capture, enable/disable/delete, conflicts, failed-draft retention, help and literal
+  target choices with display-only aliases. Share the canonical Android key mapper via
+  core:ui when the feature needs it. Install child-first MainActivity dispatch only with
+  live foreground/window/route/modal/text-input eligibility and an activation epoch.
+  Add concrete output confirmation/unknown-result feedback and cancel on navigation or
+  background. An owned confirmation dialog taking window focus must not dismiss itself;
+  focus gates key admission separately. Verify the full user flow and required theme,
+  compact-height and accessibility renders before completing W8. Continue W9–W11 afterward.
 
 ## Decisions / limitations
 

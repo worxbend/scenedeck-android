@@ -103,6 +103,10 @@ Optional recording controls use advertised GetVersion capabilities, not version 
 Preset preparation similarly uses typed `ObsCapabilities.controls`: each group requires
 its advertised read/write requests, with wire names mapped only in `:core:obs`. Read-only
 preparation does not authorize an execution or permit skipping a later target recheck.
+Shortcut FOLLOW_STUDIO_SCENE requires both scene destinations plus Studio/scene reads;
+STUDIO_TRANSITION requires the transition write and its Studio/preview/program/scene reads.
+Capture the intended Studio destination or Take preview, recheck before dispatch, and
+confirm Take against that captured program target after the normal preview exchange.
 Keep recording-format failures sanitized and never retry uncertain writes. Recording
 state events have a nullable outputPath; the local RecordingEventData adapter corrects
 ktobs 0.5.0's non-null model. Recheck that workaround on dependency upgrades.
