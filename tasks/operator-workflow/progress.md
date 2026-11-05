@@ -460,6 +460,49 @@
   match the implementation. Next: W4 shared-telemetry freshness/identity audit and
   sustained, contextual live alerts. The full workflow remains active.
 
+## W4 — Telemetry identity/freshness foundation in progress
+
+- Previous checkpoint W3 committed as `1f8ee30`; full scope stays active. This turn is
+  **progress**, not blocked. W4a–d remain unchecked; no live alert UI is delivered yet.
+  `live-alerts-design.md` records the alert plan and the distinction from this foundation.
+- Audited shared StatsRepository: it previously accepted any Ready session after reads
+  and consumed untagged output events, with no per-reading age. Added origin-bound reads,
+  context-event guards, reset on collection replacement, and independent receipt times.
+  Events invalidate counter freshness; failed readings have no timestamp. Output polling
+  continues even if local collection discovery fails, preserving independent controls.
+- `MonotonicClock` is injected via Hilt and uses elapsed realtime including device sleep.
+  Tests use virtual time (or JVM monotonic time for the existing real-time Stats fixture).
+  No new OBS poller, request type, dependency/version or database migration is involved.
+- Initial data/Stats unit+golden/static verification passed: 27s, 132 tasks,
+  `/tmp/scenedeck-alert-foundation-focused.log`. The injectable sleep-aware clock and
+  additional late-request assertion were added afterward; final verification is pending.
+- Five new deterministic regressions cover independently delayed reads, canceled late
+  responses after a replacement session, collection transitions, old buffered events,
+  and failed/disconnected receipt times. Next: final gate, explicit build/tests and a
+  foundation checkpoint, then implement the sustained alert reducer and UI.
+
+## W4 — Verified telemetry foundation
+
+- This goal turn remains **progress**. W4a–d and W5–W11 are still open; this checkpoint
+  fixes telemetry ownership/freshness before warning implementation. No alert UI,
+  microphone monitoring, release or real-device behavior is claimed.
+- First full gate stopped at an unresolved Dagger import in the new clock binding
+  (`/tmp/scenedeck-alert-foundation-quality.log`, 8s). Moved the provider to the app's
+  Hilt layer; core data retains only the injectable interface. No dependency was added.
+- Final full JDK 21/uv quality gate passed, **exit 0, 988 tasks, 2m 59s**:
+  `/tmp/scenedeck-alert-foundation-quality-final.log`. Formatting/complexity/lint,
+  debug build and unit/Roborazzi verification passed; seven Semgrep rules across
+  276 source files found nothing; Gitleaks history (65 commits) and tree scans were clean.
+- Explicit `assembleDebug testDebugUnitTest` passed, **exit 0, 776 tasks, 2s**:
+  `/tmp/scenedeck-alert-foundation-explicit.log`. Aggregate XML: **719 tests / 130 suites,
+  zero failures/errors/skips**. All five new telemetry regressions passed, including
+  rejection of further requests from an old canceled batch. No screen UI was changed;
+  existing rendered goldens were verified without changing reference images.
+- Updated FEATURE_SPEC, ARCHITECTURE, ROADMAP, AGENTS and the OBS project skill for
+  the actual telemetry contract. Scope/design/resumption files retain the remaining
+  alert work and original Show rundown exclusion. Next: sustained condition reducer,
+  contextual inline warnings/navigation/dismissal and explicit speech-monitor consent.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

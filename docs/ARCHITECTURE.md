@@ -83,6 +83,13 @@ one module owns the wire protocol.**
   which screen is visible (desktop keeps a 2-min ring buffer for the whole session —
   we do the same in `StatsRepository`). The canvas FPS (`GetVideoSettings`) is re-read
   on connect, `CurrentProfileChanged` and every 10 polls (OBS has no video-settings event).
+  Each batch carries the Ready connection/collection token and separate successful receipt
+  times for stats, stream and recording reads. `MonotonicClock` uses elapsed realtime
+  including device sleep; it is injectable for deterministic timing tests. Bound reads
+  and context-stamped events reject replacement tokens synchronously. Output events clear
+  counter receipt times, and failed reads have no receipt time. History and canvas cache
+  reset on connection/collection replacement. Local workspace discovery does not gate
+  the poller; alert consumers must check freshness and current identity independently.
 - **Audio discovery**: special inputs → active-scene audio inputs → recurse into
   enabled nested scenes/groups → dedupe → filter allow-list. Ported 1:1 from desktop.
 
@@ -101,7 +108,7 @@ one module owns the wire protocol.**
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
 | Resolved workspace identity | `WorkspaceRepository` | connection/collection revision |
 | Passwords | `SecretsStore` → Keystore | persisted |
-| Stats ring buffer (2 min) | `StatsRepository` | connection-scoped |
+| Stats/read receipt times and ring buffer (2 min) | `StatsRepository` | connection + collection generation |
 | Screen UI state | feature ViewModels | config-change scoped |
 
 ## Process model

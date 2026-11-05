@@ -95,6 +95,12 @@ must pass, and Compose preview(s) for changed screens must render.
   advances revision; Changed advances again. Preserve changes received during initial
   GetVersion. Only an already-dispatched deliberate collection switch may complete
   across a collection revision; queued writes must still reject replacement.
+- Shared telemetry carries the Ready token and separate monotonic receipt times for
+  stats/stream/record reads. The clock includes device sleep. Events never refresh old
+  counter timestamps; failed reads have no timestamp. Replacement tokens reject late
+  reads/events and clear history/canvas cache. Polling does not depend on local workspace
+  discovery; alert consumers must independently guard identity/freshness. Live alert UI
+  remains planned under W4 until its behavior and verification checkpoints are complete.
 - Thumbnail polling admits at most two capture jobs per awaited batch, prunes removed
   scenes, and rejects images above 2 MiB compressed or 1,048,576 pixels before bitmap
   allocation. Cached memory still scales with eligible scenes; do not claim measured

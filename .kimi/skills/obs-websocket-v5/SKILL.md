@@ -31,6 +31,10 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 - **Stats are poll-only**: `GetStats` + `GetStreamStatus` at 1 Hz for the whole
   connection (2-min ring buffer), not per-screen. Stats thresholds use the canvas FPS
   from `GetVideoSettings` (fpsNumerator/fpsDenominator), never a hardcoded 60 fps.
+  Shared telemetry is tagged with the Ready token and individual monotonic receipt times
+  (including device sleep). Output events invalidate counter timestamps; failed reads are
+  untimed. Connection/collection replacement clears samples and rejects old reads/events.
+  Local workspace discovery does not gate output polling.
 - **Concurrency**: bound parallel request batches with `Semaphore(8)` (desktop parity).
   The 10-second request deadline includes permit admission and response wait.
   Bind requests to the session captured before admission; reject replacement

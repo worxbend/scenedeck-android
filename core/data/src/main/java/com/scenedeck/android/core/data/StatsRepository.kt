@@ -3,14 +3,17 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsEvent
-import com.scenedeck.android.core.model.ObsStats
+import com.scenedeck.android.core.model.ObsSessionEvent
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.RecordStatus
 import com.scenedeck.android.core.model.StreamStatus
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.withSession
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,42 +24,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * 1 Hz telemetry snapshot: `GetStats` + `GetStreamStatus` + `GetRecordStatus` + virtual camera
- * status while connected (obs-websocket has no push stats; FEATURE_SPEC §5). Drives the
- * StatusStrip, the TransportBar and the stats page; [StatsRepository.samples] keeps the rolling
- * 2-minute window for charts.
- */
-data class Telemetry(
-    val connection: ConnectionState = ConnectionState.Disconnected,
-    val stats: ObsStats? = null,
-    val stream: StreamStatus? = null,
-    val record: RecordStatus? = null,
-    /** Rolling bitrate computed from consecutive `GetStreamStatus` byte counters. */
-    val bitrateKbps: Int = 0,
-    val virtualCamActive: Boolean = false,
-    /**
-     * OBS canvas frame rate from `GetVideoSettings` (e.g. 30, 59.94); null until known. Stats
-     * thresholds derive from it instead of assuming 60 fps.
-     */
-    val targetFps: Double? = null,
-)
-
 @Singleton
 class StatsRepository
 @Inject
 constructor(
     private val client: ObsClient,
     @ApplicationScope private val scope: CoroutineScope,
+    private val clock: MonotonicClock,
 ) {
-    /** Injectable sample clock (wall clock in production; virtual in tests). */
-    internal var nowMs: () -> Long = System::currentTimeMillis
     private val _telemetry = MutableStateFlow(Telemetry())
     val telemetry: StateFlow<Telemetry> = _telemetry.asStateFlow()
 
     /**
-     * Rolling 2-minute [TelemetrySample] window (FEATURE_SPEC §5). Connection-scoped: filled by the
-     * 1 Hz poll loop for the whole session, cleared on disconnect.
+     * Rolling 2-minute [TelemetrySample] window (FEATURE_SPEC §5). Session/collection-scoped:
+     * filled by the 1 Hz poll loop; cleared on disconnect or collection replacement.
      */
     private val history = TelemetryHistory()
     private val _samples = MutableStateFlow<List<TelemetrySample>>(emptyList())
@@ -70,53 +51,73 @@ constructor(
     private var cameraRevision = 0L
 
     init {
+        // Subscribe before initial polling so early output events cannot be lost.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventsWithContext.collect { applyOutputEvent(it) }
+        }
         scope.launch {
-            client.connectionState.collectLatest { state ->
-                when (state) {
-                    is ConnectionState.Ready -> pollLoop(state)
-                    else -> {
-                        history.clear()
-                        _samples.value = emptyList()
-                        synchronized(outputLock) {
-                            streamRevision++
-                            recordRevision++
-                            cameraRevision++
-                            _telemetry.value = Telemetry(connection = state)
-                        }
-                    }
-                }
+            client.connectionState.collectLatest { connection ->
+                val origin =
+                    (connection as? ConnectionState.Ready)
+                        ?.takeUnless { it.collectionChanging }
+                        ?.token
+                reset(connection, origin)
+                if (origin != null) pollLoop(connection, origin)
             }
         }
-        scope.launch { client.events.collect { applyOutputEvent(it) } }
     }
 
-    private suspend fun pollLoop(connection: ConnectionState) {
+    private fun isCurrent(origin: ObsSessionToken): Boolean {
+        val ready = client.connectionState.value as? ConnectionState.Ready ?: return false
+        return !ready.collectionChanging && ready.token == origin
+    }
+
+    private fun reset(connection: ConnectionState, origin: ObsSessionToken?) {
         history.clear()
         _samples.value = emptyList()
         canvasFrameRate.reset()
+        synchronized(outputLock) {
+            streamRevision++
+            recordRevision++
+            cameraRevision++
+            _telemetry.value = Telemetry(connection = connection, session = origin)
+        }
+    }
+
+    private suspend fun pollLoop(connection: ConnectionState, origin: ObsSessionToken) {
         var lastBytes: Long? = null
         var lastSampleAtMs = 0L
-        while (currentCoroutineContext().isActive) {
-            val stats = requestResult { client.getStats() }.getOrNull()
+        while (currentCoroutineContext().isActive && isCurrent(origin)) {
+            val stats = read(origin) { client.getStats() }
             val streamVersion = synchronized(outputLock) { streamRevision }
-            val stream = requestResult { client.getStreamStatus() }.getOrNull()
+            val stream = read(origin) { client.getStreamStatus() }
             val recordVersion = synchronized(outputLock) { recordRevision }
-            val record = requestResult { client.getRecordStatus() }.getOrNull()
+            val record = read(origin) { client.getRecordStatus() }
             val cameraVersion = synchronized(outputLock) { cameraRevision }
-            val virtualCam = requestResult { client.getVirtualCamStatus() }.getOrDefault(false)
-            val targetFps = canvasFrameRate.refreshIfDue()
-            val now = nowMs()
+            val virtualCam = read(origin) { client.getVirtualCamStatus() }
+            val targetFps = read(origin) { canvasFrameRate.refreshIfDue() }.value
+            val now = clock.nowMs()
             val bitrate =
                 computeBitrateKbps(
-                    stream?.active == true,
-                    stream?.bytes ?: 0,
+                    stream.value?.active == true,
+                    stream.value?.bytes ?: 0,
                     lastBytes,
-                    now - lastSampleAtMs,
+                    (stream.atMs ?: now) - lastSampleAtMs,
                 )
-            lastBytes = stream?.bytes
-            lastSampleAtMs = now
+            lastBytes = stream.value?.bytes
+            lastSampleAtMs = stream.atMs ?: now
             val polled =
-                Telemetry(connection, stats, stream, record, bitrate, virtualCam, targetFps)
+                Telemetry(
+                    connection = connection,
+                    stats = stats.value,
+                    stream = stream.value,
+                    record = record.value,
+                    bitrateKbps = bitrate,
+                    virtualCamActive = virtualCam.value ?: false,
+                    targetFps = targetFps,
+                    session = origin,
+                    receivedAt = TelemetryReadTimes(stats.atMs, stream.atMs, record.atMs),
+                )
             val snapshot =
                 publishPoll(polled, OutputRevisions(streamVersion, recordVersion, cameraVersion))
             if (snapshot?.stats != null) {
@@ -127,12 +128,20 @@ constructor(
         }
     }
 
+    private data class Reading<T>(val value: T?, val atMs: Long?)
+
+    private suspend fun <T> read(origin: ObsSessionToken, block: suspend () -> T): Reading<T> {
+        val result = requestResult { client.withSession(origin) { block() } }
+        return Reading(result.getOrNull(), if (result.isSuccess) clock.nowMs() else null)
+    }
+
     private data class OutputRevisions(val stream: Long, val record: Long, val camera: Long)
 
     /** Output events win over responses requested before that event was received. */
     private fun publishPoll(polled: Telemetry, versions: OutputRevisions): Telemetry? =
         synchronized(outputLock) {
-            if (client.connectionState.value !is ConnectionState.Ready) return@synchronized null
+            val origin = polled.session ?: return@synchronized null
+            if (!isCurrent(origin)) return@synchronized null
             val merged = mergeOutputReadings(polled, versions)
             _telemetry.value = merged
             merged
@@ -142,9 +151,17 @@ constructor(
     private fun mergeOutputReadings(polled: Telemetry, versions: OutputRevisions): Telemetry {
         val current = _telemetry.value
         val streamFresh = versions.stream == streamRevision
+        val recordFresh = versions.record == recordRevision
         return polled.copy(
             stream = if (streamFresh) polled.stream else current.stream,
-            record = if (versions.record == recordRevision) polled.record else current.record,
+            record = if (recordFresh) polled.record else current.record,
+            receivedAt =
+                polled.receivedAt.copy(
+                    stream =
+                        if (streamFresh) polled.receivedAt.stream else current.receivedAt.stream,
+                    record =
+                        if (recordFresh) polled.receivedAt.record else current.receivedAt.record,
+                ),
             virtualCamActive =
                 if (versions.camera == cameraRevision) polled.virtualCamActive
                 else current.virtualCamActive,
@@ -152,11 +169,15 @@ constructor(
         )
     }
 
-    private fun applyOutputEvent(event: ObsEvent) {
-        // A profile switch can load a different canvas frame rate.
-        if (event is ObsEvent.CurrentProfileChanged) canvasFrameRate.markStale()
-        applyOutputStateEvent(event)
-    }
+    private fun applyOutputEvent(received: ObsSessionEvent) =
+        synchronized(outputLock) {
+            val origin = _telemetry.value.session ?: return@synchronized
+            if (received.token != origin || !isCurrent(origin)) return@synchronized
+            val event = received.event
+            // A profile switch can load a different canvas frame rate.
+            if (event is ObsEvent.CurrentProfileChanged) canvasFrameRate.markStale()
+            applyOutputStateEvent(event)
+        }
 
     private fun applyOutputStateEvent(event: ObsEvent) =
         synchronized(outputLock) {
@@ -170,6 +191,7 @@ constructor(
                             connection = connection,
                             stream = streamFromEvent(current.stream, event),
                             bitrateKbps = 0,
+                            receivedAt = current.receivedAt.copy(stream = null),
                         )
                     }
                 }
@@ -179,6 +201,7 @@ constructor(
                         current.copy(
                             connection = connection,
                             record = recordFromEvent(current.record, event),
+                            receivedAt = current.receivedAt.copy(record = null),
                         )
                     }
                 }

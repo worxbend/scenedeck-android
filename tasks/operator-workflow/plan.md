@@ -67,6 +67,9 @@ small useful improvements while establishing shared state before automation.
 
 ### W4 — Live alerts
 
+Telemetry identity/freshness foundation is verified; see `live-alerts-design.md` and
+progress evidence. Warning reduction, UI and speech monitoring remain to implement.
+
 - [ ] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
 - [ ] W4b: Add contextual inline warnings and navigation to affected readings;

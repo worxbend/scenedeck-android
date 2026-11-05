@@ -123,7 +123,10 @@ colors, icons, ordering) lives in a local registry on the device.
 - Compact gauge panels follow bitrate, CPU, memory and output-state summaries.
 - Trend charts (FPS, render time), per-sample skipped/missed frame bars, counter cards
   (CPU, memory, bitrate, frame totals); rolling bitrate from consecutive byte counters.
-- 2-minute ring-buffer history kept for the whole connection, not just while page open.
+- 2-minute ring-buffer history kept across pages for the current connection/collection
+  generation. Disconnect and collection replacement clear prior readings and history;
+  obsolete responses/events cannot populate the replacement session. Polling remains
+  available independently of local workspace discovery.
 - FPS + dropped frames appear in the global status strip on every main page while
   streaming; standby and recording-only sessions retain output status/timers.
 

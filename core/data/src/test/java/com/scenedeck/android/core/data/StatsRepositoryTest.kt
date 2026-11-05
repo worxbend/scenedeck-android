@@ -23,14 +23,7 @@ class StatsRepositoryTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.streamStatusResponse = streamStatus()
         client.setReady()
-        var virtualNow = 0L
-        val repository =
-            StatsRepository(client, backgroundScope).apply {
-                nowMs = {
-                    virtualNow += 1_000L
-                    virtualNow
-                }
-            }
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
 
         // First sample: baseline, bitrate unknown.
         testScheduler.runCurrent()
@@ -53,7 +46,7 @@ class StatsRepositoryTest {
     fun stopsPollingOnDisconnect(): Unit = runTest {
         val client = FakeObsClient()
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         testScheduler.runCurrent()
 
         client.setDisconnected()
@@ -80,7 +73,7 @@ class StatsRepositoryTest {
                     )
             )
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         testScheduler.runCurrent()
 
         assertEquals(true, repository.telemetry.value.record?.active)
@@ -91,7 +84,7 @@ class StatsRepositoryTest {
     fun ringBufferAccumulatesWhileReadyAndClearsOnDisconnect() = runTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
 
         testScheduler.runCurrent()
         assertEquals(1, repository.samples.value.size)
@@ -125,7 +118,7 @@ class StatsRepositoryTest {
         client.streamStatusResponse = streamStatus()
         client.recordStatusResponse = RecordStatus(true, false, "00:00:01.000", 1000, 42)
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         assertEquals(true, repository.telemetry.value.record?.active)
         failStats = true
@@ -146,7 +139,7 @@ class StatsRepositoryTest {
                 override suspend fun getStreamStatus(): StreamStatus = response.await()
             }
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         client.emit(ObsEvent.StreamStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED"))
         client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED", null))
@@ -170,7 +163,7 @@ class StatsRepositoryTest {
         client.streamStatusResponse = streamStatus().copy(active = false)
         client.recordStatusResponse = RecordStatus(false, false, "00:00:20.000", 20000, 1234)
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         client.emit(ObsEvent.StreamStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED"))
         client.emit(ObsEvent.RecordStateChanged(true, "OBS_WEBSOCKET_OUTPUT_STARTED", null))
@@ -190,7 +183,7 @@ class StatsRepositoryTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.videoSettingsResponse = videoSettings(30, 1)
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         assertEquals(30.0, repository.telemetry.value.targetFps)
         assertEquals(1, client.videoSettingsCalls)
@@ -221,7 +214,7 @@ class StatsRepositoryTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.videoSettingsResponse = videoSettings(30, 1)
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
 
         client.videoSettingsResponse = null
@@ -240,7 +233,7 @@ class StatsRepositoryTest {
     fun failedFirstCanvasFrameRateReadRetriesOnTheNextPoll() = runTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         assertEquals(null, repository.telemetry.value.targetFps)
         assertEquals(1, client.videoSettingsCalls)
@@ -257,7 +250,7 @@ class StatsRepositoryTest {
     fun unknownCanvasFrameRateWhenVideoSettingsUnavailable() = runTest {
         val client = FakeObsClient(statsResponse = statsResponse())
         client.setReady()
-        val repository = StatsRepository(client, backgroundScope)
+        val repository = StatsRepository(client, backgroundScope) { testScheduler.currentTime }
         runCurrent()
         assertEquals(null, repository.telemetry.value.targetFps)
         assertEquals(59.94, repository.telemetry.value.stats?.activeFps)

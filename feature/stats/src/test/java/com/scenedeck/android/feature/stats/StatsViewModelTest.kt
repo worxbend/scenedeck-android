@@ -78,7 +78,7 @@ class StatsViewModelTest {
                 )
             )
         pollScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        repository = StatsRepository(client, pollScope)
+        repository = StatsRepository(client, pollScope) { System.nanoTime() / 1_000_000 }
         viewModel = StatsViewModel(repository, settings)
     }
 
