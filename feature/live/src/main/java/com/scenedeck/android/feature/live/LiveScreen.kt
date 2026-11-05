@@ -78,6 +78,7 @@ fun LiveScreen(
     viewModel: LiveViewModel = hiltViewModel(),
     namedDecks: NamedDeckViewModel = hiltViewModel(),
     onNavigateToConnections: () -> Unit = {},
+    onNavigateToPreflight: () -> Unit = {},
 ) {
     val deckState by viewModel.deckState.collectAsStateWithLifecycle()
     val namedState by namedDecks.decks.collectAsStateWithLifecycle()
@@ -180,7 +181,15 @@ fun LiveScreen(
     NamedDeckManagement(namedDecks, deckState)
 
     confirmation?.let {
-        TransportConfirmationDialog(it, viewModel::confirmPending, viewModel::dismissConfirmation)
+        TransportConfirmationDialog(
+            it,
+            viewModel::confirmPending,
+            viewModel::dismissConfirmation,
+            onPreflight = {
+                viewModel.dismissConfirmation()
+                onNavigateToPreflight()
+            },
+        )
     }
 }
 

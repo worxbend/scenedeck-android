@@ -38,6 +38,7 @@ object AppModule {
                 SceneDeckMigrations.MIGRATION_2_3,
                 SceneDeckMigrations.MIGRATION_3_4,
                 SceneDeckMigrations.MIGRATION_4_5,
+                SceneDeckMigrations.MIGRATION_5_6,
             )
             .build()
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="preflight_description">Check scenes, microphone, disk space and your checklist</string>
     <string name="app_name">SceneDeck</string>
     <string name="widget_deck_description">SceneDeck mini-deck</string>
     <string name="studio_tools">Your studio</string>

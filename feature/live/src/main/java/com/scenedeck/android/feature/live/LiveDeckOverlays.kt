@@ -1,5 +1,6 @@
 package com.scenedeck.android.feature.live
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
@@ -23,6 +24,7 @@ internal fun TransportConfirmationDialog(
     pending: TransportConfirmation,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    onPreflight: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -41,18 +43,24 @@ internal fun TransportConfirmationDialog(
             )
         },
         text = {
-            Text(
-                when (pending) {
-                    TransportConfirmation.START_STREAM ->
-                        stringResource(R.string.confirm_start_stream_body)
-                    TransportConfirmation.STOP_STREAM ->
-                        stringResource(R.string.confirm_stop_stream_body)
-                    TransportConfirmation.START_RECORD ->
-                        stringResource(R.string.confirm_start_record_body)
-                    TransportConfirmation.STOP_RECORD ->
-                        stringResource(R.string.confirm_stop_record_body)
+            Column {
+                Text(
+                    when (pending) {
+                        TransportConfirmation.START_STREAM ->
+                            stringResource(R.string.confirm_start_stream_body)
+                        TransportConfirmation.STOP_STREAM ->
+                            stringResource(R.string.confirm_stop_stream_body)
+                        TransportConfirmation.START_RECORD ->
+                            stringResource(R.string.confirm_start_record_body)
+                        TransportConfirmation.STOP_RECORD ->
+                            stringResource(R.string.confirm_stop_record_body)
+                    }
+                )
+                if (onPreflight != null && pending.canOpenPreflight) {
+                    TextButton(onClick = onPreflight) { Text("Open Preflight") }
+                    Text("Opening checks cancels this confirmation. Start again when ready.")
                 }
-            )
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
@@ -66,6 +74,9 @@ internal fun TransportConfirmationDialog(
         },
     )
 }
+
+internal val TransportConfirmation.canOpenPreflight: Boolean
+    get() = this == TransportConfirmation.START_STREAM || this == TransportConfirmation.START_RECORD
 
 @Composable
 internal fun DeckWorkspaceStatus(deckState: DeckState, onRetryWorkspace: () -> Unit) {

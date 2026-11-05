@@ -239,7 +239,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   a focused editor and explicit versioned backup/import with replacement previews.
 - Verified: workspace-local scene labels, both editors, raw identity/search preservation,
   compatible registry transfer and preview age/stale/failure/disconnection captions.
-- Next: preflight, then the remaining authorized
+- Verified: workspace-scoped Preflight setup, manual checks and bounded independent
+  results, optional one-run microphone signal check, and entry from start confirmations.
+- Next: live alerts, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

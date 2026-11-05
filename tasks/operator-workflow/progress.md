@@ -401,6 +401,65 @@
   Next: W3 scoped preflight configuration, bounded independent checks and More entry.
   Keep the full workflow active; no release or publication is authorized here.
 
+## W3 — Preflight implementation in progress
+
+- Previous goal turn was **progress**: W2 committed as `de5acd3`, worktree clean.
+  W3–W11 remain unchecked. Scope/decisions are in `preflight-design.md`.
+- Added Room 6 scoped configuration, guarded original-value transactional saves,
+  manual completion and label-change reset, bounded validation and unknown corrupt-data
+  handling. Migration preserves existing aliases/decks. Required scene references stay raw.
+- Added finite parallel read checks with independent Pass/Fail/Unknown results, optional
+  four-second context-stamped signal observation and a wall-clock report timestamp.
+  Read failures never expose exception details. Context/cancel/setup changes clear results.
+- Added `:feature:preflight`, setup sheet, checklist and report under More. Start-output
+  confirmations offer Open Preflight and dismiss pending consent before navigating;
+  output safety remains optional/configurable. No OBS writes or new polling were added.
+- Data compilation passed (`/tmp/scenedeck-preflight-foundation.log`, 51s, 35 tasks).
+  After resolving complexity/line-length findings without suppressions, core data tests,
+  feature compilation and detekt passed (`/tmp/scenedeck-preflight-focused.log`, 18s,
+  95 tasks). New tests cover persistence/reopen/scoping/stale saves, migration from 5,
+  partial failures, read timeout, cancellation, replacement and signal/unknown distinction.
+- First render attempt stopped at an invalid Compose assertion import in the new output
+  confirmation test; removed it (the assertion is a member). Added ViewModel tests for
+  duplicate runs, clearing old successes, cancellation and config/context invalidation.
+  Rendering, final tests, docs and the full gate are still required. Do not mark W3 done.
+
+- Subsequent ViewModel/Compose tests and detekt passed (27s, 185 tasks,
+  `/tmp/scenedeck-preflight-renders-verified.log`). The test-store constructor was
+  corrected to its existing `forTesting` factory. No production API was loosened.
+- Eight new report/setup goldens cover SceneDeck/OBS light/dark. Inspected both surfaces
+  in light/dark, including readable unknown/failure states, raw scene identity and form
+  actions. An actual expanded-sheet test verifies that Save remains visible while the
+  manual editor scrolls. Final report captures use a distinct shared checklist icon and
+  fixed test locale/timezone, avoiding machine-dependent timestamp golden differences.
+  Final render evidence: exit 0, 26s, 131 tasks,
+  `/tmp/scenedeck-preflight-renders-release-check.log` (no release performed).
+- Matching product/architecture/design/privacy/AGENTS and the module-map skill are
+  updated. Staged source is frozen for the full gate currently running in
+  `/tmp/scenedeck-preflight-quality.log`. It also includes a new real-Room regression
+  that invalidates workspace identity during SQL insertion and requires rollback.
+  Next: inspect full-gate result, explicit build/tests, final audit and W3 checkpoint.
+
+## W3 — Verified Preflight
+
+- **W3a–d are complete.** This goal turn is **progress**; W4–W11 remain open.
+  Show rundown/cue lists/timed advancement remain excluded.
+- Full JDK 21/uv quality gate passed, exit 0: **988 tasks in 2m 44s**, including
+  formatting, complexity, Android lint, debug build/unit tests, seven Semgrep rules
+  across 273 source files with zero findings, and clean Gitleaks history/tree scans.
+  Evidence: `/tmp/scenedeck-preflight-quality.log`.
+- Explicit `assembleDebug testDebugUnitTest` passed: **776 tasks in 6s**,
+  `/tmp/scenedeck-preflight-explicit.log`. The resumed process had already exited;
+  the terminal log records BUILD SUCCESSFUL. Aggregate XML: **714 tests / 129 suites,
+  zero failures, errors or skips**.
+- The real-Room regression confirms configuration insertion rolls back if workspace
+  identity changes during the write. Eight report/setup light/dark goldens and the
+  expanded-sheet/failed-draft/output-confirmation tests passed. No device, real-OBS
+  or measured-performance claim is made.
+- Product, architecture, design, privacy, roadmap, AGENTS and module-map guidance
+  match the implementation. Next: W4 shared-telemetry freshness/identity audit and
+  sustained, contextual live alerts. The full workflow remains active.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

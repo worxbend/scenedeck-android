@@ -34,7 +34,7 @@ compileSdk 37, targetSdk 36, minSdk 28.** Versions drift — check
 
 Multi-module per `docs/ARCHITECTURE.md`: `:app`, `:core:{obs,model,common,data,
 datastore,database,designsystem,ui}`, `:feature:{live,mixer,stats,inventory,graph,
-doctor,connections,settings,onboarding}`. Rules:
+doctor,preflight,connections,settings,onboarding}`. Rules:
 
 - OBS WebSocket protocol code lives ONLY in `:core:obs` behind the `ObsClient` interface.
 - Feature modules never define colors/shapes/type ad hoc — use `:core:designsystem`.

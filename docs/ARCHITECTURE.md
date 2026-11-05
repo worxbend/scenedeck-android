@@ -24,6 +24,7 @@ one module owns the wire protocol.**
 ├─ :feature:inventory       scene registry management (roles/colors/icons/order)
 ├─ :feature:graph           scene dependency graph
 ├─ :feature:doctor          diagnostics report
+├─ :feature:preflight       scoped readiness setup, finite checks and manual checklist
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -94,6 +95,8 @@ one module owns the wire protocol.**
 | Registry (roles/colors/order/local aliases) | `RegistryRepository` → Room | persisted per workspace, YAML/JSON export |
 | Thumbnail frames, successful receipt time and failed captures | `ScreenshotRepository` | current workspace/session; cleared on disconnect |
 | Named decks, membership and selected deck | `NamedDeckRepository` → Room | persisted per workspace |
+| Preflight configuration and manual confirmations | `PreflightRepository` → Room | persisted per workspace |
+| Preflight report and one-run signal consent | `PreflightViewModel` / Compose | current displayed workspace only |
 | Connection profiles | `ProfileRepository` → Room | persisted |
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
 | Resolved workspace identity | `WorkspaceRepository` | connection/collection revision |
@@ -194,6 +197,20 @@ retains its existing admission/rate/image limits and accepts valid black images.
 `LiveViewModel` owns a lifecycle-subscribed one-second display clock; pure freshness
 reduction applies the 20-second threshold without scheduling captures. UI images are
 gated by the matching workspace, Ready state and preview setting.
+
+Room schema 6 adds `preflight_config`, keyed by profile + collection with a bounded,
+versioned JSON payload. `PreflightRepository` validates input and compares the original
+configuration inside a Room transaction guarded before/after suspension; stale edits
+cannot overwrite newer setup or checklist changes. Corrupt data is a failed state, never
+default passing data. Profile deletion does not cascade into local preflight setup.
+`PreflightRunner` uses `ObsClient.withSession` for at most three concurrent read checks
+(scene list, stats, mute), each bounded to eight seconds. Independent failures are
+unknown; caller cancellation propagates and context replacement rejects the report.
+Optional signal observation consumes the shared stamped meter flow for up to four
+seconds with no extra protocol subscription/poller. Reports retain their originating
+setup and session; the ViewModel clears them at run start/cancel/config/context change.
+App navigation owns the More entry and optional start-confirmation detour; feature
+modules do not depend on each other. The detour clears pending output consent.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously

@@ -248,3 +248,19 @@ Preview captions appear below the normal card state: age, Stale preview, Preview
 or Preview unavailable. Leave tally colors for program/preview/output state. The extra
 caption adds vertical space and scales with font size; hidden previews hide captions.
 Disconnected Scenes uses the shared placeholder with an explicit preview explanation.
+
+### Preflight
+
+Preflight lives under More, with StudioPageHeader naming the connection and collection.
+Use explicit Pass / Fail / Unknown text on each result; color supplements the wording.
+Keep the timestamp and snapshot reminder visible in the report. Run checks, Setup and
+Cancel remain distinct controls; running state clears old findings and shows progress.
+The signal checkbox is explicitly armed for one run, with a short speak-now instruction.
+Manual confirmations are ordinary accessible checkbox rows with persisted-state copy.
+
+Setup opens expanded with fixed Save/Cancel controls and a scrolling, IME-aware form.
+Group expected collection, microphone, disk threshold, required scenes and manual items.
+Show raw OBS identity beside aliases and retain unavailable scene references for removal.
+Validation and save failure appear inline while retaining the draft. Start-confirmation
+links explain that leaving for Preflight cancels that pending start; stop dialogs keep
+their focused confirmation actions.

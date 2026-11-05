@@ -77,4 +77,14 @@ object SceneDeckMigrations {
                 db.execSQL("ALTER TABLE `scene_registry` ADD COLUMN `localAlias` TEXT")
             }
         }
+    val MIGRATION_5_6 =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `preflight_config` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`payload` TEXT NOT NULL, PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`))"
+                )
+            }
+        }
 }

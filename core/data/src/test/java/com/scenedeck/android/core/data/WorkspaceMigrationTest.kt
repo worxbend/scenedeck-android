@@ -123,6 +123,19 @@ class WorkspaceMigrationTest {
         assertEquals(listOf("Camera"), decks.decks.single().sceneNames)
     }
 
+    @Test
+    fun upgradeFromVersionFiveKeepsAliasesAndStartsWithNoPreflightConfig(): Unit = runBlocking {
+        createHistoricalDatabase(5)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL(
+                "INSERT INTO scene_registry VALUES ('Camera', 'ARCHIVE', NULL, NULL, 3, 7, 'Studio', 'Host')"
+            )
+        }
+        val upgraded = openMigratedDatabase()
+        assertEquals("Host", upgraded.workspaceSceneDao().byName(7, "Studio", "Camera")?.localAlias)
+        assertEquals(null, upgraded.preflightConfigDao().get(7, "Studio"))
+    }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -130,6 +143,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_2_3,
                 SceneDeckMigrations.MIGRATION_3_4,
                 SceneDeckMigrations.MIGRATION_4_5,
+                SceneDeckMigrations.MIGRATION_5_6,
             )
             .build()
             .also { database = it }

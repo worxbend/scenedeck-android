@@ -11,6 +11,7 @@ import com.scenedeck.android.feature.inventory.InventoryScreen
 import com.scenedeck.android.feature.live.LiveScreen
 import com.scenedeck.android.feature.mixer.MixerScreen
 import com.scenedeck.android.feature.onboarding.OnboardingScreen
+import com.scenedeck.android.feature.preflight.PreflightScreen
 import com.scenedeck.android.feature.settings.SettingsScreen
 import com.scenedeck.android.feature.stats.StatsScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
@@ -28,6 +29,11 @@ internal fun sceneDeckEntryProvider(
         inventoryEntry(selectTopLevel)
         graphEntry(selectTopLevel)
         doctorEntry(selectTopLevel)
+        entry<SceneDeckDestination.Preflight> {
+            PreflightScreen(
+                onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
         settingsEntry(appState)
         connectionsEntry()
         onboardingEntry(backStack)
@@ -35,7 +41,10 @@ internal fun sceneDeckEntryProvider(
 
 private fun EntryProviderScope<NavKey>.liveEntry(selectTopLevel: (SceneDeckDestination) -> Unit) {
     entry<SceneDeckDestination.Live> {
-        LiveScreen(onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) })
+        LiveScreen(
+            onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) },
+            onNavigateToPreflight = { selectTopLevel(SceneDeckDestination.Preflight) },
+        )
     }
 }
 

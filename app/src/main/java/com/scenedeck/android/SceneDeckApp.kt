@@ -261,6 +261,7 @@ private val SceneDeckDestination.description: String
                 SceneDeckDestination.Inventory -> R.string.inventory_description
                 SceneDeckDestination.Graph -> R.string.graph_description
                 SceneDeckDestination.Doctor -> R.string.doctor_description
+                SceneDeckDestination.Preflight -> R.string.preflight_description
                 SceneDeckDestination.Connections -> R.string.connections_description
                 SceneDeckDestination.Settings -> R.string.settings_description
                 else -> R.string.help_description

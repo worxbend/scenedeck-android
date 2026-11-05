@@ -11,8 +11,9 @@ import androidx.room.RoomDatabase
             NamedDeckEntity::class,
             NamedDeckMemberEntity::class,
             WorkspaceDeckSelectionEntity::class,
+            PreflightConfigEntity::class,
         ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
@@ -23,4 +24,6 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun workspaceSceneDao(): WorkspaceSceneDao
 
     abstract fun namedDeckDao(): NamedDeckDao
+
+    abstract fun preflightConfigDao(): PreflightConfigDao
 }

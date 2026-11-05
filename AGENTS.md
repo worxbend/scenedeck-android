@@ -161,6 +161,18 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
+- Preflight is under More with optional links from start-output confirmations; the link
+  dismisses pending consent before navigation. No mandatory scan or automatic start.
+  Room schema 6 stores bounded versioned setup/manual confirmations per profile +
+  collection. Saves compare original configuration transactionally; edited manual labels
+  clear completion. Old/corrupt setup never becomes a passing default result.
+- Preflight uses at most three concurrent, eight-second, session-bound reads with
+  independent Pass/Fail/Unknown rows and timestamp. Optional one-run signal observation
+  uses stamped shared meters for four seconds: finite post-fader peak above -50 dB
+  passes, observed quiet fails the window, no valid samples is unknown. No new poller.
+  Run/cancel/config/context changes clear prior reports; failures are sanitized and
+  failed saves retain drafts. Mute/control availability does not prove an audible signal.
+
 - Persistent status bar shows OFF AIR / LIVE with stream time / REC with record time on all main tabs; disconnected output state is unknown, never assumed idle.
 - Persistent performance metrics appear only while streaming, never in standby or recording-only mode.
 - Keep-alive notification mirrors the status bar (LIVE/REC times, OFF AIR only when both outputs are known); denied notification permission is explained, blocked permission links to app notification settings; Keep-alive & background is listed under More.

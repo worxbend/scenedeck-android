@@ -55,14 +55,14 @@ small useful improvements while establishing shared state before automation.
 
 ### W3 — Preflight
 
-- [ ] W3a: Persist scoped configuration: expected collection, required scenes,
+- [x] W3a: Persist scoped configuration: expected collection, required scenes,
   selected microphone, disk threshold, and editable manual checks.
-- [ ] W3b: Run bounded checks with independent pass/fail/unknown states and timestamp.
+- [x] W3b: Run bounded checks with independent pass/fail/unknown states and timestamp.
   Separate mute/control availability from optional signal detection. A failed scan
   must not display old success; a context change invalidates the run.
-- [ ] W3c: Add preflight under More and an optional entry from output confirmation;
+- [x] W3c: Add preflight under More and an optional entry from output confirmation;
   preserve output safety and avoid a mandatory scan on every start.
-- [ ] W3d: Verify partial failures, cancellation, unknown readings, manual checklist
+- [x] W3d: Verify partial failures, cancellation, unknown readings, manual checklist
   persistence, context changes, accessibility, and dark/light previews.
 
 ### W4 — Live alerts

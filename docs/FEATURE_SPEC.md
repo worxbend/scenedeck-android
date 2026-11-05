@@ -210,6 +210,33 @@ previews hides both images and captions. Existing capture intervals and bounds r
 Explicitly **out of scope** (same as desktop): input creation/editing, filters,
 scene item transforms, scripting, Twitch/StreamElements integration (v1).
 
+### Preflight
+
+More → **Preflight** provides a deliberate, read-only readiness check. Setup is local
+to the connection profile and OBS collection: expected collection, required scenes,
+microphone input, minimum free recording-disk space, and editable manual checklist.
+Defaults use the current collection and 2,048 MB; missing scene/microphone selections
+are unknown. Choose detected Mixer inputs or enter their literal OBS name. Scene
+selection can display local labels but stores the raw name. Missing references remain
+visible and removable. Limits: 100 scenes, 30 manual checks, 120 characters per checklist
+label, 4,096 per OBS reference, and 1–1,000,000 MB for disk space.
+
+Run checks produces timestamped **Pass / Fail / Unknown** results independently.
+Wrong collection, missing scene, muted microphone and low disk space fail; unreadable,
+invalid or timed-out values are unknown. The mute check proves control availability
+and mute state, not audible sound. Optionally arm **Check microphone signal this time**
+and speak during the four-second window: a valid post-fader peak above -50 dB passes,
+observed quiet samples fail the window, and missing/invalid samples remain unknown.
+Arming clears after each run; it does not change meter preferences or add polling.
+
+Manual confirmations persist in this workspace until cleared; editing an item's wording
+clears its confirmation. Setup/checklist changes invalidate the prior report. Starting
+or canceling a run, disconnecting or replacing the workspace clears old results; failed
+saves retain the setup draft. Results are a snapshot and should be rerun after changes.
+No scan starts an output or changes OBS. Start confirmations optionally link here,
+dismissing their pending consent first; starting afterward requires a new deliberate
+action. Existing output-confirmation settings remain unchanged, with no mandatory scan.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.
