@@ -87,4 +87,19 @@ object SceneDeckMigrations {
                 )
             }
         }
+    val MIGRATION_6_7 =
+        object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `bookmarks` (" +
+                        "`sequence` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`bookmarkId` TEXT NOT NULL, `connectionProfileId` INTEGER NOT NULL, " +
+                        "`sceneCollectionName` TEXT NOT NULL, `observationId` TEXT NOT NULL, " +
+                        "`createdAtMs` INTEGER NOT NULL, `label` TEXT NOT NULL, `times` TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_bookmarks_bookmarkId` ON `bookmarks` (`bookmarkId`)"
+                )
+            }
+        }
 }

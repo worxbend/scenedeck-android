@@ -619,6 +619,60 @@
   context, with bounded persistence suited to W6 history/export. Then **W5c** exposes
   bounded media seek/progress using the existing Mixer repository polling boundary.
 
+## W5b — Bookmark implementation (verification in progress)
+
+- Previous turn (`a051c3f`, W5a) was **progress**, with a clean worktree. This turn
+  adds local bookmarks; the full goal and Show rundown exclusion are unchanged.
+- Added Room schema 7/table/explicit migration, bounded local repository, synchronous
+  timestamp capture with separate output counters/sample ages, idempotent retry,
+  offline list/edit/delete, and the first `:feature:history` page under More.
+- Captures bind to a resolved current workspace, then remain immutable even if saving
+  finishes after disconnect. Unknown/inactive/paused/reconnecting states are distinct.
+  Insertion sequence (not device wall time) drives the 500-mark retention limit.
+- Initial checks caught long SQL/UI strings; fixed formatting without suppressions.
+  Core capture (five tests), repository (nine tests), and full historical Room migration
+  checks passed in `/tmp/scenedeck-bookmarks-focused-final.log`. That run failed two
+  feature tests: a missing Robolectric SDK pin and its known dialog/text-field layout
+  loop with explicit window widths. Applied the repository's existing SDK 34/default
+  dialog-width test configuration; the actual input/dialog and assertions remain.
+- UI renders and ViewModel failed-save/retry regression are running again. No W5b
+  checkbox or full feature completion is claimed yet. Full quality/build/preview gates,
+  final audit and durable checkpoint remain before handoff.
+
+## W5b — Verified local bookmarks checkpoint
+
+- **W5b is complete; W5c–d and W6–W11 remain open.** This turn made **progress**.
+  The durable goal remains active; Show rundown/cues/timed advancement remain excluded.
+- Added More → Bookmarks with immediate local capture, separate stream/record elapsed
+  values, explicit paused/reconnecting/unknown states, original workspace identity,
+  offline label editing/deletion and exact-moment failed-save retry/discard. Room schema
+  7 preserves previous data and bounds retention to the newest 500 insertions.
+- Focused data/static/UI checks passed **exit 0, 53s, 138 tasks**:
+  `/tmp/scenedeck-bookmarks-renders-final.log`. The initial rerun caught a test-only
+  invalid `assertDoesNotExist` import; removed it (the API is a member function).
+  Final coverage also rejects unsupported persisted payload versions as explicit failure.
+- Nine page/editor/compact goldens are checked in. Inspected SceneDeck light, OBS dark,
+  compact unknown readings, and both corresponding label dialogs. The established
+  Robolectric default-width dialog workaround is test configuration only; actual
+  TextField/dialog interactions are exercised without a production bypass.
+- Full JDK21/uv `scripts/check-quality.sh` passed **exit 0, 2m 38s, 1,112 tasks**:
+  `/tmp/scenedeck-bookmarks-quality.log`. Formatting, complexity, Android lint, debug
+  build, unit and Roborazzi verification passed. Semgrep: seven rules over 303 files,
+  zero findings. Gitleaks history (68 commits) and worktree scans found no leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 11s,
+  876 tasks**, `/tmp/scenedeck-bookmarks-explicit.log`. Aggregate XML: **799 tests /
+  144 suites, zero failures/errors/skips** (29 added tests). Coverage includes capture
+  without additional OBS reads, historical migrations, database recreation, scope changes,
+  insertion-order retention, idempotency, stale edits, corruption and failed-save recovery.
+- Updated FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, PRIVACY_POLICY, ROADMAP, AGENTS,
+  Android skill module map and workflow resumption files. No real-OBS/device verification,
+  measured performance, release or publication is claimed. W6 full history/export is
+  still separate work, not completed by the bookmark table/page.
+- Next: **W5c media progress/remaining time and bounded seeking**. Reuse shared Mixer
+  polling and the existing OBS cursor request; add validated/fresh status, read-order
+  guards, capability checks, pending/outcome reconciliation and failure-path tests before
+  exposing seek controls. See `recording-media-design.md` for concrete source findings.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

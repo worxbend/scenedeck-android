@@ -16,4 +16,5 @@
     <string name="output_status_checking">Checking outputs…</string>
     <string name="output_status_off_air">OFF AIR</string>
     <string name="alerts_description">Sustained warnings and optional speech monitoring</string>
+    <string name="bookmarks_description">Local timestamp bookmarks</string>
 </resources>

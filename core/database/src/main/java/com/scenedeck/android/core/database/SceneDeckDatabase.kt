@@ -12,8 +12,9 @@ import androidx.room.RoomDatabase
             NamedDeckMemberEntity::class,
             WorkspaceDeckSelectionEntity::class,
             PreflightConfigEntity::class,
+            BookmarkEntity::class,
         ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
@@ -26,4 +27,6 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun namedDeckDao(): NamedDeckDao
 
     abstract fun preflightConfigDao(): PreflightConfigDao
+
+    abstract fun bookmarkDao(): BookmarkDao
 }

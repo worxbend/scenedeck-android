@@ -26,6 +26,7 @@ one module owns the wire protocol.**
 ├─ :feature:doctor          diagnostics report
 ├─ :feature:preflight       scoped readiness setup, finite checks and manual checklist
 ├─ :feature:alerts          live warning details, speech consent and compact shell bar
+├─ :feature:history         local timestamp bookmarks (session history/export pending)
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -303,3 +304,16 @@ are invalidated together by recording events and failed reads. Confirmation is b
 at 3.5 seconds after the existing bounded request; split/chapter use acknowledgement.
 No additional polling requests are introduced. Its local one-second clock only expires
 stale state; all errors exposed to UI are fixed typed outcomes without private details.
+
+Room schema 7 adds bounded `bookmarks` storage with a unique capture ID and an insertion
+sequence. `BookmarksRepository` captures from shared telemetry synchronously against
+`WorkspaceContext`, then persists the immutable snapshot under its original key even if
+connection state later changes. A transaction checks idempotent identity, inserts and
+prunes to 500 rows. Sequence ordering prevents device-clock changes from pruning a new
+mark. Labels use an atomic original-label comparison; list read failures are explicit.
+
+`BookmarkTimes` stores validated versioned state/elapsed/sample-age data only. Device
+calendar time (`WallClock`) is separate from freshness (`MonotonicClock`); neither is used
+to extrapolate OBS positions. No credentials, host, port, raw response, recording path or
+media content is persisted. Offline access does not depend on a live workspace. The first
+`:feature:history` surface is Bookmarks; W6 history/event tracking/export is still pending.

@@ -1,6 +1,6 @@
 # W5 recording and media tools
 
-Status: active. W5a is implemented and verified; W5b–d are incomplete. No rundown,
+Status: active. W5a–b are implemented and verified; W5c–d are incomplete. No rundown,
 cue sequence, timed advancement or Replay Buffer behavior is added.
 
 ## Recording controls
@@ -33,11 +33,6 @@ cue sequence, timed advancement or Replay Buffer behavior is added.
 
 ## Remaining W5 decisions/work
 
-Local persisted bookmarks (W5b) must capture OBS-reported stream and recording
-elapsed values separately, without extrapolating through recording pauses. They
-must work without chapter support, clearly describe uncertain/gapped context, and
-be usable in the later bounded session-history/export feature (W6).
-
 Media seeking (W5c) will use the existing shared Mixer media polling boundary.
 Validate duration/cursor, clamp seeks to the known duration, show elapsed/remaining,
 disable unknown-duration seeks, and reconcile actual OBS status after each write.
@@ -61,3 +56,44 @@ client-library upgrade or raw protocol logic outside the adapter is needed.
 Shared telemetry now records the recording read's start as well as its successful
 receipt. Pending confirmation excludes reads already in flight before acknowledgement,
 even when their delayed response arrives afterward. Events/failures invalidate both.
+
+## W5b bookmark decisions (verified)
+
+- More → Bookmarks is the first surface in `:feature:history`; W6 session history
+  and export are still separate incomplete work. Saved rows remain available offline
+  and identify their original connection profile and collection.
+- Mark now captures before suspension/name editing. It stores device calendar time
+  separately from OBS-reported stream and recording elapsed counters plus sample ages.
+  No counter extrapolation, additional polling or OBS write is involved. Paused values
+  retain the reported recording position; reconnecting stream status is explicit.
+  Missing, failed, wrong-session, negative or older-than-three-second values are unknown.
+  Inactive outputs have no invented zero timestamp. Counters represent outputs, not
+  guaranteed positions inside a particular split file.
+- Capture requires a synchronously current resolved workspace. An immutable captured
+  moment can save after disconnect without moving to another scope. Each capture has
+  one UUID for idempotent retry. An observation UUID changes on connection/collection
+  replacement or process/repository recreation; it does not invent continuous history
+  through gaps or claim to identify an actual OBS recording file.
+- Room schema 7 adds a standalone bookmark table, preserving previous tables. Keep
+  at most 500 bookmarks globally, ordered/pruned by insertion sequence so a changed
+  device clock cannot remove a new mark. The page explains automatic oldest removal.
+  W6 will add the broader history retention/export controls.
+- Optional labels are local, trimmed and limited to 120 characters. Edits compare
+  the original label; failed/stale edits preserve the draft. Delete confirms the
+  concrete bookmark. Failed saves retain the immutable capture for explicit retry or
+  discard; retries never recapture time or duplicate a committed row.
+
+Official source checked: [GetRecordStatus](https://github.com/obsproject/obs-websocket/blob/master/src/requesthandler/RequestHandler_Record.cpp)
+uses [GetOutputDuration](https://github.com/obsproject/obs-websocket/blob/master/src/utils/Obs_NumberHelper.cpp),
+which computes output duration from output frames/frame time. The app stores the
+reported value rather than estimating pause intervals from wall-clock time.
+
+## W5c resumption findings
+
+`MixerRepository` already owns a subscribed two-second media poll and
+`setMediaInputCursor`; `MediaStatus` already carries nullable cursor/duration. The current
+media cache has no read timestamps and silently retains prior values after failed reads.
+Before exposing progress/seeking, add freshness and read-order guards so a delayed earlier
+read cannot overwrite newer status or confirm a seek. Keep the existing shared polling
+boundary; validate duration, clamp targets, capability-gate writes, prevent duplicates,
+and reconcile a post-write status without automatically retrying uncertain writes.

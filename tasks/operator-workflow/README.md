@@ -2,7 +2,7 @@
 
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W4 and W5a are verified. Resume at **W5b — local timestamp bookmarks**, then W5c media tools.
+W1–W4 and W5a–b are verified. Resume at **W5c — media progress and bounded seeking**.
 
 ## Resume
 

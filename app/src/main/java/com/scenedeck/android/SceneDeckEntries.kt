@@ -9,6 +9,7 @@ import com.scenedeck.android.feature.alerts.AlertsScreen
 import com.scenedeck.android.feature.connections.ConnectionsScreen
 import com.scenedeck.android.feature.doctor.DoctorScreen
 import com.scenedeck.android.feature.graph.GraphScreen
+import com.scenedeck.android.feature.history.BookmarksScreen
 import com.scenedeck.android.feature.inventory.InventoryScreen
 import com.scenedeck.android.feature.live.LiveScreen
 import com.scenedeck.android.feature.mixer.MixerScreen
@@ -31,6 +32,7 @@ internal fun sceneDeckEntryProvider(
         inventoryEntry(selectTopLevel)
         graphEntry(selectTopLevel)
         doctorEntry(selectTopLevel)
+        entry<SceneDeckDestination.Bookmarks> { BookmarksScreen() }
         entry<SceneDeckDestination.Preflight> {
             PreflightScreen(
                 onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }

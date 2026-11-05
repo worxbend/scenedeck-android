@@ -300,6 +300,30 @@ background warnings are not replayed on return. There are no audible alerts or s
 alert notifications. Existing keep-alive output notifications stay unchanged; background
 monitoring and delivery depend on Android and the connection, not an alarm guarantee.
 
+### Local timestamp bookmarks
+
+More → **Bookmarks** saves moments on this device, independently of OBS chapters or
+recording-format support. **Mark now** captures before editing a label: device calendar
+time, original connection profile/collection, and separate stream/recording elapsed
+times reported by OBS. It sends no OBS request or write. Reads up to three seconds old
+are eligible; sample ages are retained. Missing, failed, invalid or stale values are
+unknown, while inactive outputs have no invented zero position. Paused recording keeps
+its reported position without extrapolation; reconnecting streaming is labeled explicitly.
+These are output times, not guaranteed positions in individual files after file splitting.
+
+Saved bookmarks remain readable, editable and deletable while disconnected or after the
+connection profile is removed. Labels are local, optional (default “Bookmark”), trimmed
+and limited to 120 characters. Failed/stale edits keep their draft; deletion confirms the
+specific bookmark. Capturing requires a resolved current workspace, but a captured moment
+can finish saving after disconnect without moving to a replacement workspace. Failed saves
+retain that exact moment for Retry save or Discard; retry cannot duplicate a committed row.
+
+The app retains the newest 500 bookmarks globally and automatically removes older ones.
+Insertion order determines retention, independently of device-clock changes. Captures
+have local observation IDs that change after reconnection, collection replacement or app
+recreation; they do not imply continuous history through gaps. Full session history and
+export remain tracked separately in the operator workflow.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

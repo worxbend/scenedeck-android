@@ -15,8 +15,10 @@ not operate a developer-hosted server that receives your OBS session data.
 
 Connection profiles, appearance settings, scene curation (including local scene labels),
 named decks (names, membership, order and selection), and preflight setup/manual checklist
-confirmations are stored on your device. Preflight reports are held in memory for the
-current workspace; optional signal checks inspect OBS meter values, not microphone
+confirmations are stored on your device. Local timestamp bookmarks store their label,
+connection-profile identity, collection name, device timestamp, and observed output
+elapsed times/states/sample ages. They contain no credentials or recording file paths.
+Preflight reports are held in memory for the current workspace; optional signal checks inspect OBS meter values, not microphone
 recordings. Live warnings, cooldowns, speech-monitoring consent and the alert-haptics
 preference are held in process memory. Ongoing speech monitoring inspects shared OBS
 meter values only after explicit consent; it does not capture or record your device's
@@ -61,7 +63,9 @@ before sharing; do not publish your OBS credentials.
 Local connection information remains until you delete the corresponding profile
 or clear the app's storage. Scene curation and deck definitions are retained when a
 connection profile is deleted; deleting a deck in Manage decks removes that deck's
-local definition and membership. Exported backup files remain at the destination you
+local definition and membership. Bookmarks remain when a profile is removed; you can
+delete individual marks in Bookmarks. The newest 500 are retained, with older marks
+removed automatically. Exported backup files remain at the destination you
 chose until you delete them there. Clearing app storage or uninstalling removes the app's
 local data. You can revoke camera and notification permissions in Android settings.
 SceneDeck has no user-account registration and holds no developer-side account

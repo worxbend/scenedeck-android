@@ -15,6 +15,7 @@ val SceneDeckDestination.icon: ImageVector
             SceneDeckDestination.Doctor -> SceneDeckIcons.Doctor
             SceneDeckDestination.Preflight -> SceneDeckIcons.Preflight
             SceneDeckDestination.Alerts -> SceneDeckIcons.Alerts
+            SceneDeckDestination.Bookmarks -> SceneDeckIcons.Bookmarks
             SceneDeckDestination.Settings -> SceneDeckIcons.Settings
             SceneDeckDestination.Connections -> SceneDeckIcons.Connections
             SceneDeckDestination.Onboarding -> SceneDeckIcons.Help

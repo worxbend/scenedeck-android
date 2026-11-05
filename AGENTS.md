@@ -183,6 +183,13 @@ must pass, and Compose preview(s) for changed screens must render.
   Split/chapter format rejection is sanitized. Decode nullable recording-event paths
   in the core OBS adapter (ktobs 0.5.0's built-in event model is too strict).
 
+- Bookmarks under More are local and offline-readable. Capture original workspace and
+  separate reported stream/record times before suspension; never extrapolate through a
+  recording pause or turn stale/unknown values into zero. A captured snapshot can finish
+  saving after disconnect without retargeting. Room schema 7 retains the newest 500 by
+  insertion sequence; retries use the same capture ID, label edits compare the original,
+  and persisted data excludes credentials, raw responses and recording paths.
+
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
 - Preflight is under More with optional links from start-output confirmations; the link

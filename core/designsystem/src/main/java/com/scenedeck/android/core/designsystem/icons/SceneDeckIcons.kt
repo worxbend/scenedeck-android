@@ -55,6 +55,9 @@ object SceneDeckIcons {
     val Search: ImageVector =
         appIcon("Search", "M3,11a8,8 0 1 0 16,0a8,8 0 1 0 -16,0", "M17,17L22,22")
 
+    val Bookmarks: ImageVector =
+        appIcon("Bookmarks", "M6,3h12a1,1 0 0 1 1,1v18l-7,-5l-7,5V4a1,1 0 0 1 1,-1z")
+
     val Alerts: ImageVector =
         appIcon(
             "Alerts",

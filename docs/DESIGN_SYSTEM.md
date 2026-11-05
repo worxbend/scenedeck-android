@@ -293,3 +293,16 @@ Pause becomes Resume only from confirmed OBS state. Pending disables all tool wr
 inline results announce politely and retain unknown/rejected wording. Chapter entry is
 optional, bounded, and cleared when the target recording context changes. Capture the
 sheet in SceneDeck/OBS light/dark and a compact-height uncertain-outcome state.
+
+### Bookmarks
+
+More → Bookmarks uses the shared bookmark glyph, StudioPageHeader and tonal cards. Keep
+Mark now near the top and explain that saved OBS times can be up to three seconds old.
+Show connection/collection and device time beside each local label. Output times use
+JetBrains Mono with explicit paused/reconnecting/inactive/unknown text. Never use a zero
+timecode to represent unknown state. The page scrolls below status-bar insets, including
+compact-height windows; label/delete actions remain 48dp targets. Label-save failures
+retain the draft and deletion names the concrete mark. Unsaved captures offer Retry save
+and Discard, with a polite inline message. Display the 500-mark retention limit and that
+local bookmarks do not create OBS chapters. Render SceneDeck/OBS light/dark and compact
+unknown-state variants.

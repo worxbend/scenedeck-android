@@ -136,6 +136,18 @@ class WorkspaceMigrationTest {
         assertEquals(null, upgraded.preflightConfigDao().get(7, "Studio"))
     }
 
+    @Test
+    fun upgradeFromVersionSixPreservesPreflightAndAddsEmptyBookmarks(): Unit = runBlocking {
+        createHistoricalDatabase(6)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL("INSERT INTO preflight_config VALUES (7, 'Studio', '{preserved}')")
+        }
+        val upgraded = openMigratedDatabase()
+        assertEquals("{preserved}", upgraded.preflightConfigDao().get(7, "Studio")?.payload)
+        assertTrue(upgraded.bookmarkDao().observe(500).first().isEmpty())
+        assertEquals("Studio", upgraded.connectionProfileDao().byId(7)?.name)
+    }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -144,6 +156,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_3_4,
                 SceneDeckMigrations.MIGRATION_4_5,
                 SceneDeckMigrations.MIGRATION_5_6,
+                SceneDeckMigrations.MIGRATION_6_7,
             )
             .build()
             .also { database = it }
