@@ -250,6 +250,14 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
+- W8 shortcut foundation: Room schema 12 stores at most 32 bindings per profile +
+  collection, with unique chords even when disabled, stable IDs and compared revisions.
+  Strict typed JSON is bounded to 8 KiB characters; target names stay literal. Configuration
+  never invokes actions and there are no default bindings. App key/text-input adapters
+  are not yet connected to MainActivity: editor, lifecycle/modal routing and guarded
+  execution remain incomplete. Resume `tasks/operator-workflow/shortcuts-design.md`;
+  do not mark W8 complete from persistence or adapter tests alone.
+
 - Preflight is under More with optional links from start-output confirmations; the link
   dismisses pending consent before navigation. No mandatory scan or automatic start.
   Room schema 6 stores bounded versioned setup/manual confirmations per profile +

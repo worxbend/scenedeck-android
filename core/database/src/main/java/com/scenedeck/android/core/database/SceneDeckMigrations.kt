@@ -6,6 +6,24 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** Explicit, lossless migrations shared by the production builder and migration tests. */
 object SceneDeckMigrations {
 
+    val MIGRATION_11_12 =
+        object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `shortcut_bindings` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`bindingId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `key` TEXT NOT NULL, " +
+                        "`modifiers` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `payload` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`, `bindingId`))"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "`index_shortcut_bindings_connectionProfileId_sceneCollectionName_key_modifiers` " +
+                        "ON `shortcut_bindings` (`connectionProfileId`, `sceneCollectionName`, `key`, `modifiers`)"
+                )
+            }
+        }
+
     val MIGRATION_1_2 =
         object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {

@@ -262,5 +262,8 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 - Next: keyboard/compatible foot-pedal bindings, demo mode, tablet operator layout and
   final integration checks in `tasks/operator-workflow/plan.md`. Checkboxes there remain
   the source of truth; all remaining authorized improvements are still required.
+- W8 foundation is in progress: scoped binding storage and isolated key/focus adapters.
+  Editor/help, app routing and guarded OBS invocation are still required; keyboard/pedal
+  support is not yet exposed and no W8 completion box is checked.
 - Show rundown, cue lists and timed advancement are excluded. Presets are invoked
   independently. No release or store publication is part of this workflow.

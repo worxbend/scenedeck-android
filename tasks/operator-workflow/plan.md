@@ -122,6 +122,10 @@ Real-OBS/device validation is not implied by fake-boundary/JVM/render evidence.
 
 ### W8 — Keyboard and compatible foot pedals
 
+Design and foundation: `shortcuts-design.md`. Scoped storage and input adapters are
+implemented separately from the still-required editor, app routing and OBS executor;
+all W8 boxes remain unchecked until the user flow and guards are verified together.
+
 - [ ] W8a: Add scoped configurable key bindings to supported actions, conflict
   reporting, clear/edit, and discoverable shortcut help.
 - [ ] W8b: Respect text-entry focus, modifiers, key-up/repeat semantics, Studio mode,

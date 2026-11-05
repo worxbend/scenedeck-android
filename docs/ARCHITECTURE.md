@@ -419,6 +419,28 @@ process-local; durable results belong to History. Shared action/result wording l
 `:core:ui`, which depends on `:core:data`; feature modules remain peers without dependencies
 on each other. See `tasks/operator-workflow/presets-design.md`.
 
+Shortcut configuration and invocation remain pending under W8.
+
+Room schema 12 adds `shortcut_bindings`, keyed by profile + collection + stable binding
+ID, with a unique scoped key/modifier index. `ShortcutRepository` stores at most 32
+definitions, retains disabled chord reservations, compares complete original revisions
+inside transactions and guards the originating workspace before/after suspension.
+Configuration never executes OBS actions. Profile removal retains definitions. Payloads
+are strict versioned typed JSON, bounded to 8 KiB characters; exact scene/input names are
+nonblank and at most 1,024 characters. Unknown/corrupt/excess records fail closed instead
+of becoming a default or partial list. The migration preserves prior tables and adds no
+default bindings.
+
+App-local `ShortcutKeyRouter` accepts already-dispatched Android key events and an explicit
+active context. Its bounded device/key latches suppress repeats and duplicate downs;
+key-up only releases ownership. It canonicalizes letters, digits, F1–F12 and numpad digits,
+collapses modifier sides and ignores lock-state bits, reserving editing/navigation/system
+keys. `ShortcutTextInputBoundary` tracks Compose input-session leases independently of
+IME visibility. These adapters are not yet wired into MainActivity or the shell. The
+configuration UI, lifecycle/route/modal admission and guarded OBS executor remain W8 work;
+storage and adapter tests alone do not complete keyboard/pedal support. See
+`tasks/operator-workflow/shortcuts-design.md`.
+
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused
 source leases), `MediaPlaybackStore` (one lock for current context, read ordering and

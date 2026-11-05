@@ -435,6 +435,15 @@ History storage status. Process interruption never resumes a run or confirmation
 Presets are individually invoked; they do not add cue scheduling, delays, loops,
 scripting or collection editing.
 
+### Keyboard and compatible foot pedals — W8 pending
+
+Shortcut configuration and invocation are not yet available in the app. The current
+foundation adds scoped local storage without default bindings and isolated input/focus
+adapters. More → Shortcuts, supported-action editing/help and guarded execution still
+require integration and verification. The planned scope and acceptance checks are in
+`tasks/operator-workflow/shortcuts-design.md`; no global/background or universal pedal
+support is implied by this foundation.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

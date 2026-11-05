@@ -251,6 +251,48 @@ class WorkspaceMigrationTest {
             )
         }
 
+    @Test
+    fun upgradeFromVersionElevenPreservesPriorDataAndStartsWithoutShortcuts(): Unit = runBlocking {
+        createHistoricalDatabase(11)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL(
+                "INSERT INTO action_presets VALUES (7, 'Studio', 'preset', 'Interview', 'interview', 2, ?)",
+                arrayOf(
+                    "{\"version\":1,\"steps\":[{\"type\":\"mute\",\"inputName\":\"Mic\",\"muted\":true}]}"
+                ),
+            )
+            sqlite.execSQL(
+                "INSERT INTO history_sessions VALUES " +
+                    "(1, 'observation', 'owner', 0, 7, 'Studio', 1000, 1000, 0, NULL, NULL, 0, 0, 0)"
+            )
+            sqlite.execSQL(
+                "INSERT INTO history_preset_runs VALUES ('run', 'observation', 'owner', 0, 1, 0, '{}')"
+            )
+        }
+        val upgraded = openMigratedDatabase()
+        assertEquals("Studio", upgraded.connectionProfileDao().byId(7)?.name)
+        assertEquals(
+            2L,
+            upgraded.actionPresetDao().list(7, "Studio", 33).single().decodePreset().revision,
+        )
+        upgraded.openHelper.readableDatabase
+            .query("SELECT runId, payload FROM history_preset_runs")
+            .use { rows ->
+                assertTrue(rows.moveToFirst())
+                assertEquals("run", rows.getString(0))
+                assertEquals("{}", rows.getString(1))
+            }
+        assertTrue(upgraded.shortcutBindingDao().list(7, "Studio", 33).isEmpty())
+        val origin = TEST_WORKSPACE
+        val repository = ShortcutRepository(upgraded, MutableWorkspaceContext())
+        repository.save(
+            origin,
+            null,
+            ShortcutDraft(chord = ShortcutChord("F8"), action = ShortcutAction.TakePreview),
+        )
+        assertEquals(1, repository.snapshot(origin).size)
+    }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -264,6 +306,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_8_9,
                 SceneDeckMigrations.MIGRATION_9_10,
                 SceneDeckMigrations.MIGRATION_10_11,
+                SceneDeckMigrations.MIGRATION_11_12,
             )
             .build()
             .also { database = it }

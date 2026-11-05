@@ -3,12 +3,11 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W2 — local aliases and preview freshness**.
-- Design/contracts: `aliases-preview-design.md`; alias persistence is being implemented.
-- W1a–W1d are implemented and verified. Named decks are ready locally; all W2–W11
-  milestones remain incomplete. Start with the first unchecked item in `plan.md`.
-- Full feature delivery: **in progress**. This checkpoint completes workspace isolation
-  and named decks, not the entire goal. No release or remote publication was performed.
+- Active slice: **W8 — keyboard and compatible foot-pedal bindings**.
+- Design/contracts: `shortcuts-design.md`; storage and isolated key-input foundations are verified.
+- W1–W7 are implemented and verified. W8–W11 remain required. The editor, app routing
+  and guarded shortcut executor still need integration; W8 remains unchecked.
+- Full feature delivery: **in progress**. No release or remote publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
 ## 2026-11-05 — Workflow started
@@ -1039,6 +1038,62 @@
   output safety, text-entry, modifier, repeat/key-up and originating-workspace guards.
   Devices must emit Android key events; do not promise universal pedal support or global
   background interception. W9 demo isolation, W10 tablet layout and W11 remain authorized.
+
+## 2026-11-05 — W8 scoped storage and input foundation verified
+
+- Continued from the verified W7 checkpoint `5dd9a21`, preserving the full authorized
+  scope. W8a/b/c remain unchecked: no shortcut editor, shell/Activity integration or
+  OBS executor is exposed yet. W9–W11 remain required; the durable goal stays active.
+- Added `ShortcutBinding`/`ShortcutDraft` and strict typed action payloads for literal
+  scene selection, Take preview, explicit mute/unmute and stream/recording start/stop.
+  Room schema 12 adds a scoped unique chord index and a registered lossless migration.
+  `ShortcutRepository` bounds each workspace to 32 bindings, reserves disabled chords,
+  compares original revisions transactionally, supports idempotent create retries and
+  checks the originating workspace through suspension/commit. No default bindings,
+  OBS actions or schema/profile-deletion cascades are introduced.
+- Payloads require version 1 and supported typed actions, at most 8 KiB characters,
+  raw nonblank target names up to 1,024 characters, canonical finite keys and four
+  modifier bits. Unknown, malformed or excess rows fail closed. Added real Room tests
+  for migration/reopen, scope isolation, concurrent chord/editor conflicts, stale saves
+  and deletes, bounds, failed-save retries, corruption recovery and cancellation rollback.
+- Added isolated app `ShortcutKeyRouter`: child-first contract, device/key ownership,
+  32 held-key limit, single initial-down admission, duplicate/repeat suppression,
+  key-up cleanup, and activation/session/revision reset. Left/right modifiers collapse;
+  Caps/Num/Scroll lock bits are ignored. Navigation/editing/system/media and unsupported
+  modifier keys stay reserved. Disabled or child-owned downs cannot be acquired later
+  while held. There is no Activity interception until runtime admission is integrated.
+- Added `ShortcutTextInputBoundary`/`ShortcutTextInputGuard`, using the pinned Compose
+  input-session API. Native-graphics Robolectric Compose tests send actual Activity
+  hardware-key events: F8 is unhandled by the child yet blocked during focused editing,
+  including with the software keyboard hidden. Focus loss/disposal releases the guard;
+  overlapping-session cleanup cannot clear a newer lease. This is simulator evidence,
+  not a physical keyboard/pedal or device claim.
+- Verification corrections: split complex key conditions without new suppressions;
+  selected SDK 34 to match existing app Robolectric tests after its default SDK failed
+  in JDK internal-access setup before test execution. The session-reset fixture initially
+  used an equal default token; corrected it to a distinct ID and added collection-revision
+  and connection-attempt reset coverage. No product guard was relaxed.
+- Final targeted storage/input/migration tests and static analysis passed **exit 0, 8s,
+  398 tasks** (`/tmp/scenedeck-shortcuts-input.log`). Full JDK21/uv
+  `scripts/check-quality.sh` passed **exit 0, 2m 44s Gradle phase, 1,177 tasks**
+  (`/tmp/scenedeck-shortcuts-foundation-quality.log`): build, unit tests, lint, formatting,
+  complexity, existing render verification, Semgrep (7 rules, 384 files, 0 findings)
+  and Gitleaks (75 commits plus working tree, no leaks). No visible screen changed and
+  no new screenshot golden is required for these isolated adapters.
+- Final XML totals: **1,026 tests across 180 suites, zero failures/errors/skips**
+  (+31 tests). The explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` also passed
+  **exit 0, 2s, 928 tasks** (`/tmp/scenedeck-shortcuts-foundation-explicit.log`). Updated architecture/spec/roadmap,
+  AGENTS and workflow files to distinguish foundation from available app behavior.
+  Corrected this progress file's stale W2 summary at the top; the detailed history stays.
+- **Next:** implement the guarded shortcut action boundary and concrete one-use output
+  confirmation, then More → Shortcuts with capture/edit/disable/clear/conflict/help and
+  exact-name/alias-aware target choices. Install Activity child-first dispatch only with
+  live foreground/window/route/modal/text-input checks and an activation epoch. Studio
+  selection needs a fresh captured mode; Take needs explicit advertised capability
+  mapping in `:core:obs`. Reuse session-bound controls and Mixer mute pending tokens;
+  validate definition/policy/target/context at dispatch and never retry unknown writes.
+  Verify user flows, rename/context races and theme/compact/accessibility renders before
+  checking any W8 box. W9 demo, W10 tablet and W11 final integration remain required.
 
 ## Decisions / limitations
 
