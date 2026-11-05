@@ -265,7 +265,10 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   on navigation/background. Failed/unknown results remain visible without write retries.
   Room, lifecycle/input and required theme/compact/large-text checks pass; no physical
   keyboard/pedal or real-OBS verification is claimed.
-- Next: offline demo mode, tablet operator layout and final integration checks in
+- In progress: offline demo foundation with a transport-free typed simulator and isolated
+  process-selected database/preferences/credential/client bindings. Entry/exit, persistent
+  labeling and complete lifecycle verification are not yet implemented; W9 stays open.
+- Next: finish offline demo mode, tablet operator layout and final integration checks in
   `tasks/operator-workflow/plan.md`. All remaining authorized improvements are required.
 - Show rundown, cue lists and timed advancement are excluded. Presets are invoked
   independently. No release or store publication is part of this workflow.

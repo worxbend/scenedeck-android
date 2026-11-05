@@ -192,6 +192,10 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
     }
 
     companion object {
+        /** New independent, process-local settings; never reads or writes live preferences. */
+        fun ephemeral(): SceneDeckSettingsStore =
+            SceneDeckSettingsStore(EphemeralPreferencesStore())
+
         /** Fresh isolated store for unit tests (avoids the delegate's singleton cache). */
         @VisibleForTesting
         fun forTesting(dataStore: DataStore<Preferences>): SceneDeckSettingsStore =

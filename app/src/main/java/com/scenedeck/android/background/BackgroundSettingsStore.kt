@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.scenedeck.android.core.datastore.EphemeralPreferencesStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -31,7 +32,10 @@ class BackgroundSettingsStore private constructor(private val dataStore: DataSto
         dataStore.edit { it[KEY_KEEP_ALIVE] = value }
     }
 
-    private companion object {
-        val KEY_KEEP_ALIVE = booleanPreferencesKey("keepAliveEnabled")
+    companion object {
+        fun ephemeral(): BackgroundSettingsStore =
+            BackgroundSettingsStore(EphemeralPreferencesStore())
+
+        private val KEY_KEEP_ALIVE = booleanPreferencesKey("keepAliveEnabled")
     }
 }

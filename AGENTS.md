@@ -250,6 +250,15 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
+- W9 demo foundation is not yet exposed in the app. DemoObsClient is transport-free,
+  accepts only its fixed local target without credentials, stamps events/meters and
+  rejects obsolete request origins. Exact OS process identity selects isolated in-memory
+  Room/preferences and a no-credential store; unknown processes fail closed. Demo must
+  never initialize live widget/reconnect services or send keep-alive start/stop intents.
+  Separate connection tests use the injected ObsClientFactory before credential lookup.
+  Resume `tasks/operator-workflow/demo-design.md` for entry/exit, sample previews and
+  persistent labeling; do not mark W9 complete from simulator/provider tests alone.
+
 - Shortcuts under More: Room schema 12 stores at most 32 bindings per profile +
   collection, with unique chords even when disabled, stable IDs and compared revisions.
   Strict typed JSON is bounded to 8 KiB characters; target names stay literal. Configuration

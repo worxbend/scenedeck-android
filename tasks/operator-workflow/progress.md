@@ -3,10 +3,11 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W8 — keyboard and compatible foot-pedal bindings**.
-- Design/contracts: `shortcuts-design.md`; storage, isolated key-input and action backend are verified.
-- W1–W7 are implemented and verified. W8–W11 remain required. The shortcut editor,
-  confirmation UI and foreground app routing still need integration; W8 remains unchecked.
+- Active slice: **W9 — offline demo mode**.
+- Design/contracts: `demo-design.md`; typed simulation and isolated process providers are
+  implemented and verified as a foundation; the complete demo flow is still pending.
+- W1–W8 are implemented and verified. W9–W11 remain required. Demo entry/exit, sample
+  previews, persistent labeling and lifecycle integration are not yet exposed; W9 stays unchecked.
 - Full feature delivery: **in progress**. No release or remote publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
@@ -1215,6 +1216,53 @@
   deliberate onboarding/More entry and exit; demonstrate no real credentials/network/
   curation reachability, process recreation and return to real profiles. Then W10/W11.
   F-Droid parity/final integration are still explicit W11 requirements, not claimed here.
+
+## W9 — Simulator and isolated runtime foundation verified (2026-11-05)
+
+- Continued from the verified W8 commit `20cb065`. W1–W8 remain complete; W9–W11 and
+  the durable goal remain active. Show rundown/cue lists/timed advancement stay excluded.
+- Added transport-free `DemoObsClient` behind the existing typed interface: five fixed
+  scenes, Studio preview/program/Take and transitions, scene-item runtime visibility,
+  audio controls and subscribed synthetic meters, stream/record/VCam, recording pause,
+  elapsed clocks and media playback/seeking. Ordinary hosts/passwords and unknown names
+  fail explicitly; no files, camera capture or broadcast are created. Every connection
+  resets simulated runtime state; stamped events/meters and caller-bound origin checks
+  reject replaced sessions. Optional local screenshots retain compressed-byte bounds.
+- Chose a separate private demo process/task with its own Hilt graph; only the exact OS
+  process name selects it, and unknown identities fail closed. Added in-memory Room,
+  atomic ephemeral preferences and a no-credential secrets provider. Default live
+  providers retain their existing storage and protocol client. No demo Activity/manifest
+  route or user-facing entry is present yet, so this foundation is not a completed mode.
+- Application lazily creates/starts widget updates and reconnect triggers only in live
+  mode. Demo KeepAliveController refuses both service starts and stops. Connection tests
+  use an injected ObsClientFactory before resolving saved passwords; the demo factory
+  refuses creation. This closes the independent throwaway-client connection path.
+- Added 18 tests in four suites. Simulator coverage includes independent/paused output
+  clocks, duplicate actions, Studio/Take, exact capabilities/names, session replacement,
+  cancellation, meter stamps, media bounds and screenshots. Real in-memory Room provider
+  tests run destructive curation/history/bookmark retention and deletion while proving
+  live database sentinels survive. Context mocks reject any demo preference/credential/
+  service call; the Connections ViewModel test proves denial precedes password lookup.
+  Preferences tests cover concurrent updates, immutable snapshots, cancellation and
+  independent fresh graphs. These are JVM/Robolectric checks, not device/real-OBS proof.
+- Fixed a member-function import, a test DSL import and provider-object complexity found
+  by focused checks. Split protocol/process bindings into ObsProcessModule instead of
+  weakening detekt. Final focused tests passed: `/tmp/scenedeck-demo-bindings-tests3.log`
+  (exit 0, 12s, 415 tasks); simulator tests and static checks passed in their focused runs.
+- Ran ktfmt separately. Full JDK21/uv `scripts/check-quality.sh` passed **exit 0**,
+  Gradle **2m 6s / 1,242 tasks** (`/tmp/scenedeck-demo-foundation-quality.log`).
+  **1,098 tests / 191 suites, zero failures/errors/skips**; Semgrep seven rules over
+  424 files with zero findings; Gitleaks 78 commits plus worktree with no leaks.
+  Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 9s,
+  981 tasks** (`/tmp/scenedeck-demo-foundation-explicit.log`). Existing screenshot
+  goldens verify in the gate; no UI was changed and no new screen render is claimed.
+  `git diff --check` passed. No dependency versions, schema, release or remote changed.
+- Updated AGENTS, architecture/roadmap and durable resumption/design records. Next:
+  isolated DemoActivity bootstrap/exit, onboarding/More entry, persistent simulation
+  chrome and bounded local preview frames. Settle existing-process re-entry explicitly;
+  Hilt singletons survive Activity destruction, and raw database clearing must not erase
+  History generation tombstones before old queued starts reject. Verify lifecycle,
+  normal/F-Droid parity and themes before completing W9, then continue W10/W11.
 
 ## Decisions / limitations
 

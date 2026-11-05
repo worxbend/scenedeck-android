@@ -14,7 +14,8 @@ import com.scenedeck.android.core.database.SceneDeckMigrations
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.WorkspaceSceneDao
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
-import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.demo.AppProcess
+import com.scenedeck.android.demo.DemoSecretsStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,22 +32,28 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): SceneDeckDatabase =
-        Room.databaseBuilder(context, SceneDeckDatabase::class.java, "scenedeck.db")
-            .addMigrations(
-                SceneDeckMigrations.MIGRATION_1_2,
-                SceneDeckMigrations.MIGRATION_2_3,
-                SceneDeckMigrations.MIGRATION_3_4,
-                SceneDeckMigrations.MIGRATION_4_5,
-                SceneDeckMigrations.MIGRATION_5_6,
-                SceneDeckMigrations.MIGRATION_6_7,
-                SceneDeckMigrations.MIGRATION_7_8,
-                SceneDeckMigrations.MIGRATION_8_9,
-                SceneDeckMigrations.MIGRATION_9_10,
-                SceneDeckMigrations.MIGRATION_10_11,
-                SceneDeckMigrations.MIGRATION_11_12,
-            )
-            .build()
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+        process: AppProcess,
+    ): SceneDeckDatabase =
+        if (process == AppProcess.DEMO) {
+            Room.inMemoryDatabaseBuilder(context, SceneDeckDatabase::class.java).build()
+        } else
+            Room.databaseBuilder(context, SceneDeckDatabase::class.java, "scenedeck.db")
+                .addMigrations(
+                    SceneDeckMigrations.MIGRATION_1_2,
+                    SceneDeckMigrations.MIGRATION_2_3,
+                    SceneDeckMigrations.MIGRATION_3_4,
+                    SceneDeckMigrations.MIGRATION_4_5,
+                    SceneDeckMigrations.MIGRATION_5_6,
+                    SceneDeckMigrations.MIGRATION_6_7,
+                    SceneDeckMigrations.MIGRATION_7_8,
+                    SceneDeckMigrations.MIGRATION_8_9,
+                    SceneDeckMigrations.MIGRATION_9_10,
+                    SceneDeckMigrations.MIGRATION_10_11,
+                    SceneDeckMigrations.MIGRATION_11_12,
+                )
+                .build()
 
     @Provides
     fun provideConnectionProfileDao(database: SceneDeckDatabase): ConnectionProfileDao =
@@ -65,27 +72,33 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSettingsStore(@ApplicationContext context: Context): SceneDeckSettingsStore =
-        SceneDeckSettingsStore(context)
+    fun provideSettingsStore(
+        @ApplicationContext context: Context,
+        process: AppProcess,
+    ): SceneDeckSettingsStore =
+        if (process == AppProcess.DEMO) SceneDeckSettingsStore.ephemeral()
+        else SceneDeckSettingsStore(context)
 
     @Provides
     @Singleton
-    fun provideSecretsStore(@ApplicationContext context: Context): SecretsStore =
-        KeystoreSecretsStore(context)
+    fun provideSecretsStore(
+        @ApplicationContext context: Context,
+        process: AppProcess,
+    ): SecretsStore =
+        if (process == AppProcess.DEMO) DemoSecretsStore else KeystoreSecretsStore(context)
 
     @Provides
     @Singleton
     fun provideBackgroundSettingsStore(
-        @ApplicationContext context: Context
-    ): BackgroundSettingsStore = BackgroundSettingsStore(context)
+        @ApplicationContext context: Context,
+        process: AppProcess,
+    ): BackgroundSettingsStore =
+        if (process == AppProcess.DEMO) BackgroundSettingsStore.ephemeral()
+        else BackgroundSettingsStore(context)
 
     @Provides
     @Singleton
     @ApplicationScope
     fun provideApplicationScope(): CoroutineScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    @Provides
-    @Singleton
-    fun provideObsClient(@ApplicationScope scope: CoroutineScope): ObsClient = ObsClient(scope)
 }

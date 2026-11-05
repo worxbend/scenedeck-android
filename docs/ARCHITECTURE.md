@@ -118,6 +118,22 @@ one module owns the wire protocol.**
 
 ## Process model
 
+The W9 demo foundation is not yet reachable from app navigation. `DemoObsClient` implements
+the same typed boundary using only local state and an injected elapsed clock. Request
+origin checks and context-stamped events/meters reject obsolete sessions. Its subscribed
+meter loop stops on disconnect; each connect resets outputs, media and Studio state.
+It has no transport, camera, file or credential dependency. Optional sample screenshot
+bytes must be supplied locally through its bounded capture callback.
+
+`ObsProcessModule` resolves only the exact OS application process name. The default live
+graph is unchanged; the planned private `:demo` process binds in-memory Room and atomic
+ephemeral preferences, a no-credential secrets store and the simulator. Unknown process
+identity fails closed. Demo skips widget/reconnect startup and its KeepAliveController
+refuses both start and stop service intents. Connection tests use an injected client
+factory before resolving credentials; the demo factory refuses creation. Entry/exit,
+persistent simulation labeling and lifecycle integration remain W9 requirements, not
+shipped behavior. See `tasks/operator-workflow/demo-design.md`.
+
 - Foreground service (type `dataSync`/media) **only** when "keep alive in background"
   is enabled (M7); otherwise the session is activity-scoped and reconnects on resume.
 - Rotation/process death: repositories live in `@Singleton` scope; ViewModels restore

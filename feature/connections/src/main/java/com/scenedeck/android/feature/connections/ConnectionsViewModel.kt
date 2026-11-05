@@ -10,7 +10,8 @@ import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsVersionInfo
-import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.ObsClientFactory
+import com.scenedeck.android.core.obs.ObsConnectionTestingUnavailableException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -74,6 +75,7 @@ constructor(
     private val secrets: SecretsStore,
     private val settings: SettingsRepository,
     private val sessionHolder: ObsSessionHolder,
+    private val clients: ObsClientFactory,
 ) : ViewModel() {
 
     val profileList: StateFlow<List<ConnectionProfile>> =
@@ -183,8 +185,8 @@ constructor(
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         return try {
             withTimeout(TEST_TIMEOUT_MS) {
+                val client = clients.create(scope)
                 val effectivePassword = persistence.passwordForTest(password, profileId)
-                val client = ObsClient(scope)
                 client.connect(
                     host = host,
                     port = port,
@@ -199,6 +201,10 @@ constructor(
                         )
                 }
             }
+        } catch (_: ObsConnectionTestingUnavailableException) {
+            TestConnectionState.Failure(
+                ConnectionError.Protocol("Connection tests are unavailable in demo")
+            )
         } catch (e: TimeoutCancellationException) {
             TestConnectionState.Failure(ConnectionError.Unreachable(e))
         } catch (e: CancellationException) {
