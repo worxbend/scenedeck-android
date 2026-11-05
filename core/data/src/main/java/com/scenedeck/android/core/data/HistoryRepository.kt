@@ -43,8 +43,11 @@ class HistoryRepository @Inject constructor(private val database: SceneDeckDatab
         writer.touch(position, reason)
 
     /** A prior process's open observation has an unknown end, never an inferred output stop. */
-    suspend fun recover(ownerId: String) = database.withTransaction {
-        sessions.closeOpen(HistoryEndReason.PROCESS_ENDED.name, ownerId.checkedHistoryId())
+    suspend fun recover(
+        ownerId: String,
+        reason: HistoryEndReason = HistoryEndReason.PROCESS_ENDED,
+    ) = database.withTransaction {
+        sessions.closeOpen(reason.name, ownerId.checkedHistoryId())
     }
 
     suspend fun configure(enabled: Boolean, sessionLimit: Int) = database.withTransaction {

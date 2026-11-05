@@ -271,6 +271,7 @@ private val SceneDeckDestination.description: String
                 SceneDeckDestination.Preflight -> R.string.preflight_description
                 SceneDeckDestination.Alerts -> R.string.alerts_description
                 SceneDeckDestination.Bookmarks -> R.string.bookmarks_description
+                SceneDeckDestination.History -> R.string.history_description
                 SceneDeckDestination.Connections -> R.string.connections_description
                 SceneDeckDestination.Settings -> R.string.settings_description
                 else -> R.string.help_description

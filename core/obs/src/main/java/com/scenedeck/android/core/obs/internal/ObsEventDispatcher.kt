@@ -216,7 +216,11 @@ internal class ObsEventDispatcher(
             when (event.eventType) {
                 StreamStateChangedEvent ->
                     event.get<StreamStateChangedEventData>().let {
-                        ObsEvent.StreamStateChanged(it.outputActive, it.outputState)
+                        ObsEvent.StreamStateChanged(
+                            it.outputActive,
+                            it.outputState,
+                            it.outputState == "OBS_WEBSOCKET_OUTPUT_RECONNECTING",
+                        )
                     }
                 VirtualcamStateChangedEvent ->
                     event.get<VirtualcamStateChangedEventData>().let {

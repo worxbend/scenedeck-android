@@ -27,6 +27,7 @@ constructor(
     private val stats: StatsRepository,
     private val monotonicClock: MonotonicClock,
     private val wallClock: WallClock,
+    private val history: HistoryBookmarkOrigin = HistoryBookmarkOrigin { null },
 ) {
     private val dao = database.bookmarkDao()
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,6 +69,7 @@ constructor(
                 wallClock.nowMs(),
                 "Bookmark",
                 times,
+                history.capture(origin),
             )
         workspaces.requireCurrent(origin)
         return captured
@@ -80,13 +82,16 @@ constructor(
             val existing = dao.get(bookmark.id)
             if (existing != null && existing.copy(sequence = 0) != entity)
                 throw BookmarkEditException()
-            if (existing == null) dao.insert(entity)
+            if (existing == null) {
+                dao.insert(entity)
+                database.linkHistoryBookmark(bookmark)
+            }
             dao.prune(MAX_BOOKMARKS)
         }
     }
 
     suspend fun rename(bookmark: LocalBookmark, label: String) {
-        val checked = checkedLabel(label)
+        val checked = checkedBookmarkLabel(label)
         if (dao.rename(bookmark.id, bookmark.label, checked) != 1) throw BookmarkEditException()
     }
 
@@ -101,28 +106,9 @@ constructor(
             sceneCollectionName = bookmark.workspace.collectionName,
             observationId = bookmark.observationId,
             createdAtMs = bookmark.createdAtMs,
-            label = checkedLabel(bookmark.label),
+            label = checkedBookmarkLabel(bookmark.label),
             times = json.encodeToString(bookmark.times.checked()),
         )
 
-    private fun decode(row: BookmarkEntity): LocalBookmark {
-        if (row.times.length > 4_096) throw BookmarkEditException()
-        val times = json.decodeFromString<BookmarkTimes>(row.times).checked()
-        return LocalBookmark(
-            row.bookmarkId,
-            WorkspaceKey(row.connectionProfileId, row.sceneCollectionName),
-            row.observationId,
-            row.createdAtMs,
-            checkedLabel(row.label),
-            times,
-        )
-    }
-
-    private fun checkedLabel(label: String): String =
-        label
-            .trim()
-            .ifBlank { "Bookmark" }
-            .also {
-                if (it.length > MAX_BOOKMARK_LABEL_LENGTH) throw BookmarkEditException()
-            }
+    private fun decode(row: BookmarkEntity): LocalBookmark = row.decodeBookmark()
 }

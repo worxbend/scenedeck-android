@@ -26,7 +26,7 @@ one module owns the wire protocol.**
 ├─ :feature:doctor          diagnostics report
 ├─ :feature:preflight       scoped readiness setup, finite checks and manual checklist
 ├─ :feature:alerts          live warning details, speech consent and compact shell bar
-├─ :feature:history         local timestamp bookmarks (session history/export pending)
+├─ :feature:history         local timestamp bookmarks, observation history and JSON export
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -234,8 +234,9 @@ UI ticks. Stop/context replacement clears consent, and failed meters age to unkn
 The app shell owns alert navigation; feature modules do not depend on each other.
 `AlertsViewModel` exposes repository StateFlow. UI haptics collect only while RESUMED,
 reset their seen-occurrence baseline on resume, and respect both explicit alert opt-in
-and Settings Haptics. No warning persistence, service alarm or OS alert notification is
-introduced; history remains a separate future checkpoint.
+and Settings Haptics. Detection state stays in memory; the separate History recorder
+persists context-matched warning categories/transitions when capture is enabled.
+There is no service alarm or OS alert notification.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously
@@ -315,13 +316,13 @@ mark. Labels use an atomic original-label comparison; list read failures are exp
 `BookmarkTimes` stores validated versioned state/elapsed/sample-age data only. Device
 calendar time (`WallClock`) is separate from freshness (`MonotonicClock`); neither is used
 to extrapolate OBS positions. No credentials, host, port, raw response, recording path or
-media content is persisted. Offline access does not depend on a live workspace. The first
-`:feature:history` surface is Bookmarks; W6 history/event tracking/export is still pending.
+media content is persisted. Offline access does not depend on a live workspace.
+`:feature:history` provides Bookmarks and offline History list/detail with explicit export.
 
-Room schema 8 prepares `history_sessions`, `history_events` and `history_preferences`.
-`HistoryRepository` is a local-only boundary; it is not yet wired to a recorder or
-History UI. `HistoryWriter` serializes mutations in transactions. Session insertion
-sequence and event ordinals provide ordering independent of device calendar changes.
+Room schema 8 adds `history_sessions`, `history_events` and `history_preferences`.
+`HistoryRepository` is a local-only boundary. `HistoryWriter` serializes mutations in
+transactions. Session insertion sequence and event ordinals provide ordering independent
+of device calendar changes.
 Per-session retention preserves separate omitted and missing counts; foreign-key
 cascade removes events with their parent. Preference generation invalidates starts
 queued before deletion or capture changes, and append never recreates a parent.
@@ -331,8 +332,36 @@ offline snapshots. `HistoryExport` uses explicit serializable DTOs, excluding pr
 ownership, endpoints, credentials, raw errors/protocol and output paths. Process
 recovery closes an old open observation with an unknown end rather than an output
 stop. Defaults are 30 observations (supported 10/30/100), each at most 500 events.
-The shared-state recorder, bookmark/preset producers, user export flow and privacy
-activation are still W6 work; see `tasks/operator-workflow/history-design.md`.
+Schema 9 adds `history_bookmarks`, with cascading references to the history observation
+and the original bookmark. A new bookmark and its optional link save in one transaction.
+Late saves keep the captured association if its parent still exists; they never recreate
+deleted history. Current labels/times are joined on read, so edits/deletion/retention do
+not leave duplicate label text in history. All-history snapshots also include unlinked
+marks; export uses the same 500-mark global bound. A late saved moment can extend the last
+observed point of an open/unknown-ended observation without mutating queued event order.
+
+`SceneDeckApplication` starts the singleton `HistoryRecorder`. `SharedHistorySource`
+adapts the existing workspace, scene, telemetry, alert and context-event feeds without
+another OBS poller. `HistoryCaptureEngine` guards identity synchronously and reduces
+events before enqueueing, retaining rapid program transitions. `HistoryObservation`
+seeds program state only before a program event/known seed, and `HistoryOutputCapture`
+excludes reads started before the latest event. Stream/camera read starts and camera
+receipt times travel in shared telemetry; event/failure invalidation preserves their
+meaning. `LiveAlertOrigin` binds warning snapshots to the target generation and token.
+
+The 128-command `HistoryCaptureQueue` uses non-suspending admission. Event overflow
+advances ordinals so a later entry/gap exposes missed history; failed start/end admission
+pauses capture rather than silently losing an observation boundary. The serial writer
+does not retarget already captured events when a connection changes. Storage/feed failure
+pauses until explicit Retry, which uses a new owner/observation and closes interrupted
+rows with unknown ends. Ten-second heartbeats update the last observed point without
+another history event or OBS request. The log does not claim exhaustive upstream events.
+
+`HistoryViewModel` exposes immutable list/detail/capture/operation state. `HistoryFileExport`
+takes and serializes a bounded offline snapshot before launching SAF; picker cancellation,
+expired prepared data and failed writes are explicit. Duplicate writes are gated and no
+raw storage/document errors are shown. W6's actual preset-outcome producer remains W7 work;
+see `tasks/operator-workflow/history-design.md`.
 
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused

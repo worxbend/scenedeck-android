@@ -56,6 +56,7 @@ class HistoryExportTest : HistoryTestFixture() {
                 "omittedEvents",
                 "missingEvents",
                 "events",
+                "bookmarks",
             ),
             keys,
         )

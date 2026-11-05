@@ -73,7 +73,12 @@ internal class LiveAlertEngine(private val isCurrent: (WorkspaceSession) -> Bool
                 armedSpeech = speech?.target,
                 diskThresholdMb = threshold,
                 connected = ready != null,
+                origin = historyOrigin(),
             )
+    }
+
+    private fun historyOrigin() = origin?.let {
+        LiveAlertOrigin(requireNotNull(it.target.profileId), it.target.generation, it.token)
     }
 
     private fun validSetup(

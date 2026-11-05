@@ -19,12 +19,21 @@ confirmations are stored on your device. Local timestamp bookmarks store their l
 connection-profile identity, collection name, device timestamp, and observed output
 elapsed times/states/sample ages. They contain no credentials or recording file paths.
 Preflight reports are held in memory for the current workspace; optional signal checks inspect OBS meter values, not microphone
-recordings. Live warnings, cooldowns, speech-monitoring consent and the alert-haptics
+recordings. Live warning detection, cooldowns, speech-monitoring consent and the alert-haptics
 preference are held in process memory. Ongoing speech monitoring inspects shared OBS
 meter values only after explicit consent; it does not capture or record your device's
 microphone. Live alerts add no system notifications or uploads. OBS passwords are stored using Android Keystore-backed encryption. Local
 OBS connections normally use `ws://`, which is not TLS encrypted. Network addresses,
 passwords, and OBS content are not sent to the SceneDeck developer by the app.
+
+Local History is enabled by default while SceneDeck observes a connected workspace.
+It stores local connection-profile identity, collection and program scene names,
+device timestamps, elapsed times, output states/counters, warning categories and known
+observation gaps. It also associates bookmarks captured during an observation, using
+their current saved labels/times. History contains no passwords, connection addresses,
+raw protocol/server comments, output file paths, or audio/video content. It does not
+record your device microphone. You can disable capture in More → History; saved history
+remains available offline, and no developer-hosted history service receives this data.
 
 ## Camera and QR pairing
 
@@ -54,9 +63,11 @@ SceneDeck does not include a developer-operated advertising or analytics service
 
 Notifications and an optional foreground service support keeping your OBS connection
 active in the background. Home-screen widgets display selected session information
-on your device. When you export local curation or named-deck metadata, or share information,
+on your device. When you export local curation, named decks, history/bookmarks, or share information,
 the destination you choose receives that exported/shared information. Review it
 before sharing; do not publish your OBS credentials.
+History exports can include OBS names and bookmark labels that you consider private.
+The document provider you choose may sync exported files according to its own settings.
 
 ## Retention and deletion
 
@@ -65,7 +76,13 @@ or clear the app's storage. Scene curation and deck definitions are retained whe
 connection profile is deleted; deleting a deck in Manage decks removes that deck's
 local definition and membership. Bookmarks remain when a profile is removed; you can
 delete individual marks in Bookmarks. The newest 500 are retained, with older marks
-removed automatically. Exported backup files remain at the destination you
+removed automatically. Deleting a bookmark removes its history association, and label
+edits appear in subsequent history reads/exports. History retains the newest 30
+observations by default (configurable to 10 or 100), each with up to 500 history entries.
+You can delete individual observations or clear history under More → History. This
+preserves independent bookmarks and does not disable future capture; use the capture
+switch to stop recording new history. History remains after connection-profile deletion.
+Exported backup/history files remain at the destination you
 chose until you delete them there. Clearing app storage or uninstalling removes the app's
 local data. You can revoke camera and notification permissions in Android settings.
 SceneDeck has no user-account registration and holds no developer-side account

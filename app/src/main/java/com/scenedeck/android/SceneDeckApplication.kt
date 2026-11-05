@@ -2,6 +2,7 @@ package com.scenedeck.android
 
 import android.app.Application
 import com.scenedeck.android.connectivity.ReconnectTriggers
+import com.scenedeck.android.core.data.HistoryRecorder
 import com.scenedeck.android.widget.SceneDeckWidgetUpdater
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -13,6 +14,8 @@ class SceneDeckApplication : Application() {
 
     @Inject lateinit var reconnectTriggers: ReconnectTriggers
 
+    @Inject lateinit var historyRecorder: HistoryRecorder
+
     override fun onCreate() {
         super.onCreate()
         // Push DeckState → home-screen widget for the whole process lifetime
@@ -20,5 +23,6 @@ class SceneDeckApplication : Application() {
         widgetUpdater.start()
         // Foreground return and network availability skip the OBS reconnect backoff.
         reconnectTriggers.start(this)
+        historyRecorder.start()
     }
 }

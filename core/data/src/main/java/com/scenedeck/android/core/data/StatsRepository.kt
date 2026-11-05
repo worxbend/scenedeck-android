@@ -116,8 +116,11 @@ constructor(
                     virtualCamActive = virtualCam.value ?: false,
                     targetFps = targetFps,
                     session = origin,
-                    receivedAt = TelemetryReadTimes(stats.atMs, stream.atMs, record.atMs),
+                    receivedAt =
+                        TelemetryReadTimes(stats.atMs, stream.atMs, record.atMs, virtualCam.atMs),
                     recordReadStartedAtMs = record.startedAtMs,
+                    streamReadStartedAtMs = stream.startedAtMs,
+                    virtualCamReadStartedAtMs = virtualCam.startedAtMs,
                 )
             val snapshot =
                 publishPoll(polled, OutputRevisions(streamVersion, recordVersion, cameraVersion))
@@ -156,24 +159,23 @@ constructor(
     /** Called under outputLock so revision comparisons and the publication stay atomic. */
     private fun mergeOutputReadings(polled: Telemetry, versions: OutputRevisions): Telemetry {
         val current = _telemetry.value
-        val streamFresh = versions.stream == streamRevision
-        val recordFresh = versions.record == recordRevision
+        val stream = if (versions.stream == streamRevision) polled else current
+        val record = if (versions.record == recordRevision) polled else current
+        val camera = if (versions.camera == cameraRevision) polled else current
         return polled.copy(
-            stream = if (streamFresh) polled.stream else current.stream,
-            record = if (recordFresh) polled.record else current.record,
-            recordReadStartedAtMs =
-                if (recordFresh) polled.recordReadStartedAtMs else current.recordReadStartedAtMs,
+            stream = stream.stream,
+            record = record.record,
+            recordReadStartedAtMs = record.recordReadStartedAtMs,
+            streamReadStartedAtMs = stream.streamReadStartedAtMs,
+            virtualCamReadStartedAtMs = camera.virtualCamReadStartedAtMs,
             receivedAt =
                 polled.receivedAt.copy(
-                    stream =
-                        if (streamFresh) polled.receivedAt.stream else current.receivedAt.stream,
-                    record =
-                        if (recordFresh) polled.receivedAt.record else current.receivedAt.record,
+                    stream = stream.receivedAt.stream,
+                    record = record.receivedAt.record,
+                    virtualCam = camera.receivedAt.virtualCam,
                 ),
-            virtualCamActive =
-                if (versions.camera == cameraRevision) polled.virtualCamActive
-                else current.virtualCamActive,
-            bitrateKbps = if (streamFresh) polled.bitrateKbps else current.bitrateKbps,
+            virtualCamActive = camera.virtualCamActive,
+            bitrateKbps = stream.bitrateKbps,
         )
     }
 
@@ -200,6 +202,7 @@ constructor(
                             stream = streamFromEvent(current.stream, event),
                             bitrateKbps = 0,
                             receivedAt = current.receivedAt.copy(stream = null),
+                            streamReadStartedAtMs = null,
                         )
                     }
                 }
@@ -217,7 +220,12 @@ constructor(
                 is ObsEvent.VirtualcamStateChanged -> {
                     cameraRevision++
                     _telemetry.update {
-                        it.copy(connection = connection, virtualCamActive = event.active)
+                        it.copy(
+                            connection = connection,
+                            virtualCamActive = event.active,
+                            virtualCamReadStartedAtMs = null,
+                            receivedAt = it.receivedAt.copy(virtualCam = null),
+                        )
                     }
                 }
                 else -> Unit
@@ -233,7 +241,7 @@ constructor(
             if (event.active && !old.active)
                 old.copy(timecode = "00:00:00.000", durationMs = 0, bytes = 0)
             else old
-        return base.copy(active = event.active, reconnecting = event.state.endsWith("RECONNECTING"))
+        return base.copy(active = event.active, reconnecting = event.reconnecting)
     }
 
     private fun recordFromEvent(

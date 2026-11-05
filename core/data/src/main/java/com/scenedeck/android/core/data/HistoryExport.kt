@@ -16,6 +16,7 @@ private data class HistoryExport(
     val exportedAtMs: Long,
     val retention: HistoryExportRetention,
     val observations: List<HistoryExportObservation>,
+    val unlinkedBookmarks: List<HistoryExportBookmark>,
 )
 
 @Serializable
@@ -41,13 +42,37 @@ private data class HistoryExportObservation(
     val omittedEvents: Long,
     val missingEvents: Long,
     val events: List<HistoryEvent>,
+    val bookmarks: List<HistoryExportBookmark>,
 )
+
+@Serializable
+private data class HistoryExportBookmark(
+    val id: String,
+    val profileId: Long,
+    val collectionName: String,
+    val createdAtMs: Long,
+    val label: String,
+    val times: BookmarkTimes,
+    val observationElapsedMs: Long?,
+)
+
+private fun LocalBookmark.exportBookmark(elapsedMs: Long?) =
+    HistoryExportBookmark(
+        id,
+        workspace.profileId,
+        workspace.collectionName,
+        createdAtMs,
+        label,
+        times,
+        elapsedMs,
+    )
 
 /**
  * JSON preserves unknown states and escapes names. The caller chooses where to write this snapshot.
  */
 fun HistorySnapshot.exportJson(exportedAtMs: Long): String {
     checkHistory(observations.size <= MAX_HISTORY_SESSIONS)
+    checkHistory(observations.sumOf { it.bookmarks.size } + unlinkedBookmarks.size <= MAX_BOOKMARKS)
     val exported = observations.map { detail ->
         checkHistory(detail.events.size <= MAX_HISTORY_EVENTS)
         val session = detail.session
@@ -64,6 +89,7 @@ fun HistorySnapshot.exportJson(exportedAtMs: Long): String {
             session.omittedEvents,
             session.missingEvents,
             detail.events,
+            detail.bookmarks.map { it.bookmark.exportBookmark(it.elapsedMs) },
         )
     }
     return historyExportJson.encodeToString(
@@ -71,6 +97,7 @@ fun HistorySnapshot.exportJson(exportedAtMs: Long): String {
             exportedAtMs = exportedAtMs,
             retention = HistoryExportRetention(preferences.sessionLimit),
             observations = exported,
+            unlinkedBookmarks = unlinkedBookmarks.map { it.exportBookmark(null) },
         )
     )
 }

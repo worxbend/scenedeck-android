@@ -55,7 +55,11 @@ sealed interface ObsEvent {
 
     // ── Outputs ─────────────────────────────────────────────────────────────
     /** [state] is the raw OBS state (e.g. `OBS_WEBSOCKET_OUTPUT_STARTED`). */
-    data class StreamStateChanged(val active: Boolean, val state: String) : ObsEvent
+    data class StreamStateChanged(
+        val active: Boolean,
+        val state: String,
+        val reconnecting: Boolean = false,
+    ) : ObsEvent
 
     data class VirtualcamStateChanged(val active: Boolean, val state: String) : ObsEvent
 

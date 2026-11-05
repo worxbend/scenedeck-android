@@ -198,14 +198,23 @@ must pass, and Compose preview(s) for changed screens must render.
   Unknown duration disables seeking; locked channels remain readable. New behavior stays
   within the existing core OBS request boundary.
 
-- Room schema 8 adds a history storage/export foundation only; no history recorder or
-  History UI is active yet. Sessions mean local observations, not OBS output runs.
-  Keep calendar time separate from elapsed/ordinal ordering, mark process interruption
-  with an unknown end, retain explicit missing/omitted counts, and never recreate a
-  deleted parent from queued appends. Starts use the deletion/capture generation.
-  Default retention is 30 observations (10/30/100 options), 500 events each. Export
-  uses an explicit typed allow-list. Resume W6 from `tasks/operator-workflow/history-design.md`;
-  bookmark/preset integration and user export flow remain unverified and incomplete.
+- History under More records local observations from shared feeds, not OBS output runs.
+  Subscribe before seeding snapshots; preserve rapid program events, reject obsolete
+  contexts/pre-event reads, and never treat untimed virtual-camera false as known idle.
+  Alert projections carry target/token identity. Capture uses a bounded 128-command
+  queue; known dropped entries get ordinal gaps, and lost boundaries/storage/feed
+  failures pause until explicit Retry. Do not promise a complete OBS audit trail.
+- Room schemas 8/9 retain 30 observations by default (10/30/100), 500 events each.
+  Keep calendar time separate from elapsed/ordinal ordering; process interruption has
+  an unknown end. Clear/delete invalidate pending starts; append never recreates a
+  deleted parent. Clearing history preserves independent bookmarks and the capture setting.
+  Bookmark links are saved atomically to their original observation; current labels
+  are resolved at read/export time, and bookmark deletion/retention removes links.
+- History export captures an offline snapshot before opening the document picker.
+  Selected exports keep that observation's identity; all-history exports also include
+  unlinked saved bookmarks. Export only the typed allow-list, excluding credentials,
+  endpoints, raw protocol/comments and private output paths. Failed reads/exports are
+  explicit and sanitized. W6 preset-result integration remains pending W7.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 

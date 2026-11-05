@@ -17,4 +17,5 @@
     <string name="output_status_off_air">OFF AIR</string>
     <string name="alerts_description">Sustained warnings and optional speech monitoring</string>
     <string name="bookmarks_description">Local timestamp bookmarks</string>
+    <string name="history_description">Local observations and export</string>
 </resources>

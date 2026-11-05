@@ -163,9 +163,35 @@ class WorkspaceMigrationTest {
         assertEquals("old-observation", bookmark.observationId)
         assertEquals("Interview", bookmark.label)
         assertEquals("{preserved}", bookmark.times)
-        val snapshot = HistoryRepository(upgraded).exportSnapshot()
-        assertEquals(HistoryPreferences(), snapshot.preferences)
-        assertTrue(snapshot.observations.isEmpty())
+        val state =
+            HistoryRepository(upgraded).state.first { it is HistoryState.Ready }
+                as HistoryState.Ready
+        assertEquals(HistoryPreferences(), state.preferences)
+        assertTrue(state.sessions.isEmpty())
+    }
+
+    @Test
+    fun upgradeFromVersionEightPreservesHistoryWithoutInventingBookmarkLinks(): Unit = runBlocking {
+        createHistoricalDatabase(8)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL(
+                "INSERT INTO history_sessions VALUES " +
+                    "(9, 'observation', 'owner', 0, 7, 'Studio', 1000, 1100, 100, NULL, NULL, 1, 0, 0)"
+            )
+            sqlite.execSQL(
+                "INSERT INTO history_events VALUES ('observation', 1, 1100, 100, 0, ?)",
+                arrayOf("{\"event\":{\"type\":\"gap\",\"reason\":\"OBSERVATION_INTERRUPTED\"}}"),
+            )
+            sqlite.execSQL(
+                "INSERT INTO bookmarks VALUES (42, 'mark', 7, 'Studio', 'legacy', 1200, 'Old mark', '{}')"
+            )
+        }
+        val snapshot = HistoryRepository(openMigratedDatabase()).exportSnapshot()
+        val observation = snapshot.observations.single()
+        assertEquals("observation", observation.session.id)
+        assertEquals(1, observation.events.size)
+        assertTrue(observation.bookmarks.isEmpty())
+        assertEquals("Old mark", snapshot.unlinkedBookmarks.single().label)
     }
 
     private fun openMigratedDatabase(): SceneDeckDatabase =
@@ -178,6 +204,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_5_6,
                 SceneDeckMigrations.MIGRATION_6_7,
                 SceneDeckMigrations.MIGRATION_7_8,
+                SceneDeckMigrations.MIGRATION_8_9,
             )
             .build()
             .also { database = it }

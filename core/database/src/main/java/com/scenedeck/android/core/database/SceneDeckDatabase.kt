@@ -16,8 +16,9 @@ import androidx.room.RoomDatabase
             HistorySessionEntity::class,
             HistoryEventEntity::class,
             HistoryPreferencesEntity::class,
+            HistoryBookmarkEntity::class,
         ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
@@ -38,4 +39,6 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun historyEventDao(): HistoryEventDao
 
     abstract fun historyPreferencesDao(): HistoryPreferencesDao
+
+    abstract fun historyBookmarkDao(): HistoryBookmarkDao
 }

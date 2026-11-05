@@ -104,4 +104,23 @@ object SceneDeckMigrations {
         }
 
     val MIGRATION_7_8: Migration = HistoryMigration()
+
+    val MIGRATION_8_9 =
+        object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `history_bookmarks` (" +
+                        "`bookmarkId` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `elapsedMs` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`bookmarkId`), " +
+                        "FOREIGN KEY(`bookmarkId`) REFERENCES `bookmarks`(`bookmarkId`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                        "FOREIGN KEY(`sessionId`) REFERENCES `history_sessions`(`sessionId`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_history_bookmarks_sessionId` " +
+                        "ON `history_bookmarks` (`sessionId`)"
+                )
+            }
+        }
 }

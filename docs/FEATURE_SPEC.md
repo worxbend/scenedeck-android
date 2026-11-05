@@ -347,13 +347,48 @@ retain that exact moment for Retry save or Discard; retry cannot duplicate a com
 The app retains the newest 500 bookmarks globally and automatically removes older ones.
 Insertion order determines retention, independently of device-clock changes. Captures
 have local observation IDs that change after reconnection, collection replacement or app
-recreation; they do not imply continuous history through gaps. Full session history and
-export remain tracked separately in the operator workflow.
+recreation; they do not imply continuous history through gaps. A mark captured while a
+history observation is active links to that original observation, even if saving finishes
+after disconnect. Marks captured before history starts or while disabled stay independent.
 
-W6 currently has a local history storage and JSON serialization foundation only.
-History capture, History screens, retention controls, bookmark/preset integration and
-user-initiated file export are not active. The design and remaining work are recorded in
-`tasks/operator-workflow/history-design.md`; schema support does not complete the feature.
+### Local session history and export
+
+More → **History** shows offline observations and their timelines. An observation is a
+period when SceneDeck was watching one connected workspace, not a stream, recording file
+or show run. Initial readings describe what was already present; they do not claim that
+an output started or a scene switched. Device timestamps and observation elapsed time
+remain separate from reported OBS output counters.
+
+Capture is enabled by default and uses shared state/events without an additional OBS
+poller. It records output-state changes, program changes, warning categories/uncertainty,
+and linked local bookmarks. Connection or collection changes end one observation and
+begin a new one when identity is resolved. App interruption preserves the last known
+point with an unknown end; disconnected output state is never assumed inactive. Known
+capture gaps and retention omissions are displayed separately. This is a bounded local
+observation log, not a complete audit of every OBS action.
+
+Capture settings retain the newest **10, 30 (default), or 100 observations**, each with
+up to **500 history entries**. Disabling capture stops new observations and retains saved
+data. Clearing history or deleting an observation confirms the action, preserves saved
+bookmarks, and allows capture to continue while enabled. Storage/feed failures pause
+capture with a sanitized Retry action; retry starts a new observation and marks the gap.
+
+Bookmark labels in history reflect current saved labels. Editing or deleting a bookmark
+updates subsequent history reads and exports; labels are not duplicated into permanent
+event payloads. Bookmark retention remains independently limited to the newest 500 marks.
+Deleting history removes associations without deleting the marks themselves.
+
+**Export observation** exports the selected timeline and its linked bookmarks. **Export
+history & bookmarks** includes all retained observations plus independent saved bookmarks.
+Both take a consistent snapshot before Android's document picker opens and save versioned
+JSON to the chosen document. A canceled picker writes nothing. Later changes do not
+retarget a prepared export; failed/expired exports remain explicit. Files include local
+profile identity, OBS collection/scene names, bookmark labels, timestamps and typed status
+data; they exclude connection endpoints, credentials, raw protocol/comments and output
+file paths. Previously exported files are not changed by later edits/deletion in the app.
+
+Actual multi-action preset results will join history with W7; that producer is not yet
+implemented. Show rundown, cue lists and timed advancement remain excluded.
 
 ## 9. Settings
 

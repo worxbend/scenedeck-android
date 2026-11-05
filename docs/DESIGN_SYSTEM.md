@@ -318,3 +318,24 @@ confirmed elapsed time; a source/duration change cancels the held gesture. It se
 on release (including accessibility adjustment), with preference-controlled gesture-end
 haptics. Pending/outcome text uses a polite live region. Locked channels can inspect the
 sheet; disabled seeking explains why. Preserve the direct compact transport on each strip.
+
+### History
+
+More → History uses StudioPageHeader, the shared history glyph and tonal observation
+cards. Apply status-bar insets outside the scrolling content. Capture status is separate
+from the saved list, with explicit paused/retry, disabled and waiting states; unavailable
+storage never looks like an empty successful read. Capture and retention controls show
+their saved values and disable duplicate writes. Explain local retention and private names
+before the explicit export action.
+
+Observation detail names the collection and connection, device start/last-observed time,
+interruption reason and known missed/retained-entry counts. Timeline elapsed times use
+JetBrains Mono. Initial readings, unknown outputs and warning disappearance keep literal
+wording without claiming output starts or recovery. Linked bookmarks show their current
+label and separate output times. Back returns to the list; clearing/deletion confirms the
+concrete target and explains that bookmarks remain and enabled capture continues.
+
+Use normal theme-native text and static state; history is readable without animation or
+tally colors. File-picker/write failures announce politely with sanitized copy. Controls
+and timeline stay reachable in compact height. Render list/detail in SceneDeck and OBS
+light/dark, plus compact observation/bookmark and failed-storage states.

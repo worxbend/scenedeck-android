@@ -800,6 +800,65 @@
   defining a payload type alone must not check off W6a. Update privacy documentation
   when capture becomes active and render every changed screen in required themes.
 
+## W6 shared capture and History user flow — 2026-11-05
+
+- The prior storage-foundation turn made **progress**, committed as `c9c7908`.
+  This turn makes **progress** toward W6. The full durable goal remains active;
+  W7–W11 and actual preset-result integration are still required. Show rundown,
+  cue lists and timed advancement remain excluded. No release/publication is requested.
+- Added one application-scoped HistoryRecorder with shared context/event/telemetry/
+  warning feeds and no additional OBS poller. Synchronous origin guards and reducers
+  preserve rapid program changes, reject stale reads/events and age evidence to unknown.
+  Stream reconnecting is now typed in the protocol adapter; stream/camera read timing
+  joins existing recording timing, with atomic revision-aware telemetry merging.
+- Capture feeds a bounded 128-command queue and serial Room writer. Known local lost
+  entries advance ordinals, explicit interruption/retry starts a new owner/observation,
+  and ten-second heartbeats preserve last observation without extra events/requests.
+  Failed start/end admission pauses capture. This log does not claim exhaustive upstream
+  delivery; known missing counts include failed gap markers, not just raw OBS events.
+- Schema 9 links bookmarks atomically to their original persisted observation. Delayed
+  saves never retarget or resurrect deleted history. Joined labels/times follow edits,
+  deletion and independent bookmark retention. Clear/delete history removes associations
+  but preserves bookmarks; all-history exports include unlinked saved marks. Open/unknown
+  end detail can include a saved bookmark beyond the last heartbeat.
+- Added More → History, offline list/detail, capture/retention settings, explicit retry,
+  concrete clear/delete confirmations and a selected/all-history JSON export. Export
+  captures its data before the document picker and preserves selection through later
+  changes; canceled/expired/duplicate callbacks cannot silently rewrite a file. Failed
+  writes are sanitized and explain that the selected document may be incomplete.
+- Focused UI/ViewModel/static/app compilation passed **14s, 268 tasks**, including
+  snapshot identity, picker cancellation, expired callbacks, write failure, duplicate
+  actions and retention/clear semantics (`/tmp/scenedeck-history-ui-tests.log`).
+- New recorder/bookmark/schema tests passed with the data suite. Initial visual tests
+  needed lazy-list scrolling before locating offscreen rows; fixed without changing
+  product layout. A fake-server test passed a JsonObject instead of its required JSON
+  string; corrected the fixture. Final focused recording/data/protocol run passed
+  **exit 0, 1m 2s, 141 tasks** (`/tmp/scenedeck-history-renders-data.log`).
+- Recorded 11 History renders: list/detail in SceneDeck and OBS light/dark, compact
+  observation and linked-bookmark views, and failed storage. Inspected SceneDeck list
+  light/dark, OBS detail light/dark, both compact views and storage failure. The render
+  tests assert reachable actions and readable paused bookmark time.
+- Final JDK21/uv `scripts/check-quality.sh` passed **exit 0, 2m 23s, 1,112 tasks**
+  (`/tmp/scenedeck-history-capture-quality.log`). Formatting, complexity, Android lint,
+  debug build, all unit tests and default Roborazzi verification passed. Semgrep ran
+  seven rules over 336 files with zero findings; Gitleaks scanned 71 commits and the
+  working tree with no leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 13s,
+  876 tasks** (`/tmp/scenedeck-history-capture-explicit.log`). Final debug XML totals:
+  **899 tests across 158 suites, zero failures/errors/skips**, 49 more tests than the
+  foundation checkpoint. `git diff --check` is clean. Only one Gradle owner ran at a time.
+- Updated AGENTS, FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, privacy policy and
+  durable workflow files. W6b/c are verified; W6a remains open for actual W7 preset
+  outcomes. No real OBS/device run, physical document-provider validation, measured
+  performance, release or publication is claimed.
+- Next: **W7 controlled multi-action presets**. Inspect the existing guarded control
+  repositories, output confirmations, capability/lock checks and workspace rename
+  handling. Design a bounded typed local preset store/editor and explicit invocation;
+  use target values, preflight missing/unsupported references, stop on failure/unknown/
+  replacement, preserve completed steps without rollback and never retry uncertain
+  writes automatically. Integrate real results into the original History observation
+  before checking W6a. W8–W11 remain in scope; rundown/cue scheduling stays excluded.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

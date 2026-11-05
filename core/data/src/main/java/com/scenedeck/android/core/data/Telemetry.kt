@@ -32,6 +32,8 @@ data class Telemetry(
      * Start of the successful recording read; confirmation must exclude earlier in-flight reads.
      */
     val recordReadStartedAtMs: Long? = null,
+    val streamReadStartedAtMs: Long? = null,
+    val virtualCamReadStartedAtMs: Long? = null,
 )
 
 /** Monotonic milliseconds for successful reads, not a wall-clock report timestamp. */
@@ -39,4 +41,5 @@ data class TelemetryReadTimes(
     val stats: Long? = null,
     val stream: Long? = null,
     val record: Long? = null,
+    val virtualCam: Long? = null,
 )

@@ -42,6 +42,8 @@ enum class HistoryEndReason {
     CAPTURE_DISABLED,
     PROCESS_ENDED,
     STORAGE_FAILURE,
+    CAPTURE_OVERFLOW,
+    CAPTURE_INTERRUPTED,
 }
 
 @Serializable
@@ -135,11 +137,18 @@ enum class HistoryAppendResult {
     UNAVAILABLE,
 }
 
-data class HistoryDetail(val session: HistorySession, val events: List<HistoryEvent>)
+data class HistoryLinkedBookmark(val bookmark: LocalBookmark, val elapsedMs: Long)
+
+data class HistoryDetail(
+    val session: HistorySession,
+    val events: List<HistoryEvent>,
+    val bookmarks: List<HistoryLinkedBookmark> = emptyList(),
+)
 
 data class HistorySnapshot(
     val preferences: HistoryPreferences,
     val observations: List<HistoryDetail>,
+    val unlinkedBookmarks: List<LocalBookmark> = emptyList(),
 )
 
 sealed interface HistoryState {

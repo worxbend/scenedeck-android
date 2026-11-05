@@ -58,6 +58,9 @@ object SceneDeckIcons {
     val Bookmarks: ImageVector =
         appIcon("Bookmarks", "M6,3h12a1,1 0 0 1 1,1v18l-7,-5l-7,5V4a1,1 0 0 1 1,-1z")
 
+    val History: ImageVector =
+        appIcon("History", "M3,12a9,9 0 1 0 2.6,-6.4L3,8", "M3,3v5h5", "M12,7v5l3,2")
+
     val Alerts: ImageVector =
         appIcon(
             "Alerts",

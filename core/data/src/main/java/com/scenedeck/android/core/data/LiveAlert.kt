@@ -1,5 +1,7 @@
 package com.scenedeck.android.core.data
 
+import com.scenedeck.android.core.model.ObsSessionToken
+
 /** Current evidence, distinct from the sustained warning shown to the operator. */
 enum class AlertCondition {
     INACTIVE,
@@ -34,6 +36,17 @@ data class LiveAlert(
 
 data class SpeechTarget(val origin: WorkspaceSession, val inputName: String)
 
+data class LiveAlertOrigin(
+    val profileId: Long,
+    val targetGeneration: Long,
+    val token: ObsSessionToken,
+) {
+    fun matches(workspace: WorkspaceSession): Boolean =
+        profileId == workspace.key.profileId &&
+            targetGeneration == workspace.targetGeneration &&
+            token == workspace.token
+}
+
 data class LiveAlertsState(
     val readings: List<AlertReading> = emptyList(),
     val alerts: List<LiveAlert> = emptyList(),
@@ -42,6 +55,7 @@ data class LiveAlertsState(
     val hapticsEnabled: Boolean = false,
     val diskThresholdMb: Long? = null,
     val connected: Boolean = false,
+    val origin: LiveAlertOrigin? = null,
 )
 
 internal const val ALERT_MAX_SAMPLE_AGE_MS = 3_000L

@@ -250,10 +250,11 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   bounded persistence, offline label editing/deletion, and exact-moment save retries.
 - Verified: Mixer Media tools with actual elapsed/remaining/duration, bounded seeking,
   fresh status, guarded gesture identity, pending/outcome feedback and off-program locks.
-- In progress: local session history/export has schema 8, bounded transactional storage
-  and typed JSON snapshot support. Shared-state capture, bookmark/preset integration,
-  History UI and file export remain open; the foundation alone does not complete W6.
-- Next: finish local session history/export, then the remaining authorized
+- Verified: local observation capture from shared state, original-observation bookmark
+  links, offline History list/detail, retention/capture controls, clear/delete and
+  explicit JSON document export. Known gaps, unknown ends and storage failures remain
+  visible. Actual preset outcomes still depend on W7, so W6a remains open.
+- Next: controlled multi-action presets and their History integration, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

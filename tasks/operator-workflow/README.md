@@ -2,9 +2,10 @@
 
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W5 are verified. Resume at **W6 — local session history and export**. The schema 8
-storage/JSON foundation is verified; shared-state capture and the History user flow
-are next. Read [history-design.md](history-design.md) before wiring the recorder.
+W1–W5 and the W6 History capture/user flow are verified. Resume at **W7 — controlled
+multi-action presets**. W6a remains open for actual preset outcomes; W6b/c are verified.
+Keep the original observation/unknown-result contract in [history-design.md](history-design.md)
+when connecting preset execution to History. W7–W11 remain required.
 
 ## Resume
 

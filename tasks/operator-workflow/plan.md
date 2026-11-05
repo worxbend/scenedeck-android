@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next incomplete checkpoint is W6.
+and progress evidence. The next implementation checkpoint is W7; W6a depends on it.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -92,16 +92,17 @@ and progress evidence. The next incomplete checkpoint is W6.
 
 ### W6 — Local session history and export
 
-Storage/export foundation is verified; evidence is in the progress log.
-See [history-design.md](history-design.md). No recorder or History UI is active; all W6
-checkboxes remain open, including actual W7 preset-outcome integration.
+Shared capture, bookmark links, offline History and file export are verified; evidence
+is in the progress log and [history-design.md](history-design.md). W6a remains open only
+for actual preset-result production, which must be implemented with W7. Do not count a
+placeholder payload type as this integration. Continue at W7 while retaining this dependency.
 
 - [ ] W6a: Persist bounded local sessions/events from shared state: output changes,
   program changes, reconnect gaps, warnings, bookmarks, and preset results.
-- [ ] W6b: Add history/detail, clear/delete, retention controls, and user-initiated
+- [x] W6b: Add history/detail, clear/delete, retention controls, and user-initiated
   export. Exclude credentials, raw protocol payloads, arbitrary server comments,
   and private paths; mark gaps and unknown outcomes honestly.
-- [ ] W6c: Verify event deduplication, retention, process recreation, context changes,
+- [x] W6c: Verify event deduplication, retention, process recreation, context changes,
   export escaping, and storage failure; update privacy documentation.
 
 ### W7 — Controlled multi-action presets

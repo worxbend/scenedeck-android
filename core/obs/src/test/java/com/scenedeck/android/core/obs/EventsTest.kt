@@ -8,6 +8,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,6 +55,23 @@ internal class EventsTest : ObsClientTestBase() {
                     ObsEvent.StreamStateChanged(
                         active = true,
                         state = "OBS_WEBSOCKET_OUTPUT_STARTED",
+                    ),
+                    awaitItem(),
+                )
+
+                server.sendEvent(
+                    "StreamStateChanged",
+                    buildJsonObject {
+                        put("outputActive", true)
+                        put("outputState", "OBS_WEBSOCKET_OUTPUT_RECONNECTING")
+                    }
+                        .toString(),
+                )
+                assertEquals(
+                    ObsEvent.StreamStateChanged(
+                        true,
+                        "OBS_WEBSOCKET_OUTPUT_RECONNECTING",
+                        reconnecting = true,
                     ),
                     awaitItem(),
                 )

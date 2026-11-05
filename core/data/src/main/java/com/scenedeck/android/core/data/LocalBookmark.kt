@@ -36,6 +36,8 @@ data class LocalBookmark(
     val createdAtMs: Long,
     val label: String,
     val times: BookmarkTimes,
+    /** Pending capture link only; saved labels/times are resolved from their original row. */
+    val history: HistoryBookmarkLink? = null,
 )
 
 sealed interface BookmarksState {
