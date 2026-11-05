@@ -118,21 +118,32 @@ one module owns the wire protocol.**
 
 ## Process model
 
-The W9 demo foundation is not yet reachable from app navigation. `DemoObsClient` implements
-the same typed boundary using only local state and an injected elapsed clock. Request
-origin checks and context-stamped events/meters reject obsolete sessions. Its subscribed
-meter loop stops on disconnect; each connect resets outputs, media and Studio state.
-It has no transport, camera, file or credential dependency. Optional sample screenshot
-bytes must be supplied locally through its bounded capture callback.
+`DemoActivity` is non-exported, uses a dedicated task affinity and private `:demo` process,
+and shares MainActivity's Compose/shortcut host. `ObsProcessModule` resolves the exact OS
+process name, never an intent extra or saved host. Unknown identities and Activity/process
+mismatches fail closed. The demo graph binds in-memory Room and atomic ephemeral preferences,
+a no-credential store and `DemoObsClient`; live bindings retain their existing storage and
+protocol client. This is application-graph isolation, not a separate permission sandbox.
+Application startup lazily creates widget/reconnect services only in live mode; demo's
+KeepAliveController refuses both start and stop intents. Separate connection tests use an
+injected client factory before credential lookup; demo refuses factory creation. Exported
+links/widgets/receivers and the keep-alive service remain in the live process.
 
-`ObsProcessModule` resolves only the exact OS application process name. The default live
-graph is unchanged; the planned private `:demo` process binds in-memory Room and atomic
-ephemeral preferences, a no-credential secrets store and the simulator. Unknown process
-identity fails closed. Demo skips widget/reconnect startup and its KeepAliveController
-refuses both start and stop service intents. Connection tests use an injected client
-factory before resolving credentials; the demo factory refuses creation. Entry/exit,
-persistent simulation labeling and lifecycle integration remain W9 requirements, not
-shipped behavior. See `tasks/operator-workflow/demo-design.md`.
+`DemoRuntime` serializes bounded startup by retained ViewModel visit identity, cancels and
+joins obsolete preparation, and seeds one local sample profile/curation before revealing
+the app. Exit synchronously invalidates the local simulator and ActiveConnection before
+removing the task; an obsolete visit cannot disconnect its replacement. Failed startup is
+sanitized and retryable, never a fallback to a live profile. A repeated retained visit does
+not reconnect; a new visit resets simulated runtime state. Local edits survive within the
+demo process only, avoiding unsafe global clears while History writes are pending. A new
+process gets fresh storage, idle outputs and no restored action/consent.
+
+`DemoObsClient` contains no transport, file, camera or credential dependency. Its typed
+controls use an injected elapsed clock, caller origin checks and stamped events/meters.
+The subscribed meter loop stops on disconnect/invalidation. Fixed local 360×360 JPEG
+slates pass through the existing thumbnail decode/freshness limits. `LocalSimulation` is
+presentation only: persistent app chrome, dialog notices, DEMO connection text and export
+filename prefixes. It never selects clients or storage. See `tasks/operator-workflow/demo-design.md`.
 
 - Foreground service (type `dataSync`/media) **only** when "keep alive in background"
   is enabled (M7); otherwise the session is activity-scoped and reconnects on resume.

@@ -3,11 +3,10 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W9 — offline demo mode**.
-- Design/contracts: `demo-design.md`; typed simulation and isolated process providers are
-  implemented and verified as a foundation; the complete demo flow is still pending.
-- W1–W8 are implemented and verified. W9–W11 remain required. Demo entry/exit, sample
-  previews, persistent labeling and lifecycle integration are not yet exposed; W9 stays unchecked.
+- Active slice: **W10 — tablet operator layout**.
+- W1–W9 are implemented and verified. W10–W11 remain required.
+- Demo entry/exit, process isolation, local previews, foreground shortcuts and lifecycle
+  checks are complete; see `demo-design.md` and `demo-device-check.md`.
 - Full feature delivery: **in progress**. No release or remote publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
@@ -1271,3 +1270,39 @@
 - Presets must work independently of rundown; tablet UI must not introduce cues.
 - Keep schemas and tests together; foundation-only work is not workspace completion.
 - No release, remote publication, or store upload has been performed.
+
+## W9 — Complete demo entry, lifetime and presentation
+
+- Added non-exported private-process/task DemoActivity with a retained DemoViewModel and
+  bounded DemoRuntime startup. One profile is reused across retries; output actions are
+  invalidated synchronously on Exit. Rotation preserves a visit; replacement owners cannot
+  be closed by old callbacks. Re-entry resets outputs, while temporary edits remain until
+  process death. No unsafe database reset or runtime process killing is used.
+- Added deliberate onboarding/More entry, persistent banner/Exit, restricted connection/
+  setup/background routes, DEMO status and simulated transport/shortcut consent. Generated
+  bounded local preview JPEGs and prefixed demo History export filenames. Live files,
+  credentials, profile selection and onboarding remain separate.
+- Updated FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, privacy policy, AGENTS and Android
+  skill guidance. Added real Room/runtime, manifest, local image and UI consent tests;
+  rendered four themes plus compact/large text (27 new goldens, three welcome updates).
+- Formatting and focused record/build checks passed. First full gate found a modifier
+  argument ordering lint and Bitmap KTX lint; fixed both without suppressions. Final full
+  JDK21/uv gate passed: `/tmp/scenedeck-demo-ui-quality-verified.log` (57s, 1,242 Gradle
+  tasks; seven Semgrep rules / 430 tracked targets / no findings; both Gitleaks scans clean).
+  New files are included in the post-stage security check recorded below.
+- Explicit `./gradlew assembleDebug testDebugUnitTest` passed:
+  `/tmp/scenedeck-demo-ui-explicit.log` (3s, 981 tasks). Aggregate XML results: **1,120 tests /
+  196 suites**, zero failures/errors/skips. Includes Gradle up-to-date results.
+- `./gradlew -PfdroidBuild=true :app:assembleDebug` passed (26s, 468 tasks):
+  `/tmp/scenedeck-demo-fdroid-build.log`. API36 emulator ran both variants: normal QR visible,
+  F-Droid QR absent/manual entry intact, demo works in both.
+- Device evidence and limitations: `demo-device-check.md`. Emulator verified output/mute,
+  rotation, separate tasks/processes, real preference/credential hash isolation, profile
+  preservation, F8 consent, restricted connection route, idle re-entry and fresh process.
+  Host SwiftShader crashed twice; host GPU ran the flow successfully. These native emulator
+  failures are not classified as app failures. No real-OBS/physical-device claim.
+- Restored the normal debug APK after the F-Droid check (debug downgrade flag required
+  because F-Droid uses version code 1010). Final normal assemble/test passed again in
+  `/tmp/scenedeck-demo-normal-final.log`; normal output is restored in the workspace.
+- W9a/b/c complete. Continue W10 adaptive Scenes/Mixer, then W11 integration. The durable
+  goal remains active and Show rundown remains excluded. No remote publication performed.

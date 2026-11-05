@@ -1,7 +1,7 @@
 # Offline demo mode — W9
 
-Status: **in progress; not exposed in the app**. W9a/b/c remain unchecked until the
-complete entry, isolated runtime, labeling and exit flow is verified. W1–W8 are verified.
+Status: **implemented and verified**. W9a/b/c are complete. W1–W9 are verified;
+W10 tablet layout and W11 integration remain required.
 Show rundown, cue lists and timed advancement remain excluded.
 
 ## Isolation decision
@@ -53,47 +53,50 @@ all More pages and compact windows. Transport/status text must make simulation u
 sample collection/profile names and exported observations must also identify demo.
 Live OBS may continue outside the demo; demo actions cannot affect that session.
 
-Bootstrap sample profiles/curation in the in-memory graph before connecting. Activity
-rotation keeps the current demo; process recreation creates a fresh local sample session
-with idle outputs and cannot fall back to a real profile. Exit disconnects the simulation,
-stops its jobs and removes its task; another deliberate entry resets the sample state.
-No automatic return-to-live command or resumption of output actions/consent is permitted.
+DemoRuntime creates one fixed local profile, connects the simulator, and seeds scoped
+curation/aliases and confirmation preferences before revealing the app. Startup has a
+15-second bound and a sanitized retry state. The retained ViewModel owns a visit identity;
+rotation keeps that visit and obsolete owners cannot close a replacement. Exit synchronously
+invalidates the simulator and active target before removing its task. Re-entry starts idle
+outputs; local edits, settings, shortcuts and history remain only while Android retains the
+demo process. Process recreation creates fresh samples with no resumed actions or consent.
+This explicit lifetime avoids clearing repositories while old History commands are queued.
+Runtime teardown never kills a process or clears live storage.
 
-## Verification required
+## Delivered UI and boundary
 
-- Deterministic simulation behavior, session replacement/cancellation, event/meter stamps,
-  clocks/paused recording, media bounds and exact advertised controls.
-- Provider/process tests proving no live DB/preferences/credential/network access; real
-  sentinel curation/history/bookmarks survive demo edits/deletion/retention unchanged.
-- Demo connection-test, widget/service/deep-link boundaries and no cross-process actions.
-- Entry/exit, rotation/process recreation, clear labeling, foreground shortcuts and
-  simulated output confirmations through existing feature/repository paths.
-- SceneDeck/OBS light/dark, compact/large-text previews; full JDK21/uv quality gate and
-  explicit assembleDebug/testDebugUnitTest. Normal/F-Droid parity remains required.
-- Report JVM/render evidence separately from any actual multi-process device/emulator test.
+- Non-exported DemoActivity has private process/task identity; MainActivity shares the
+  themed Compose/shortcut host but checks Activity/process agreement. External links,
+  widgets and background-service intents remain live-only.
+- Onboarding and More offer deliberate entry; the dialog explains that any live session
+  continues independently. DemoFrame owns the top safe inset, banner and Exit. Connections,
+  setup and background routes explain their restriction. More and output consent repeat
+  the simulation marker; the status strip identifies DEMO.
+- Local generated JPEG frames run through the existing thumbnail limits/freshness path.
+  Scene names, collection and profile identify demo; History filenames use `demo-`.
+  Explicit document exports still create the user-selected file.
+- DemoRuntime, DemoViewModel, DemoChrome and DemoPreviewFrames are under `app/.../demo`.
+  LocalSimulation is presentation-only, never the selector for storage/client authority.
 
-## Foundation checkpoint
+## Verification
 
-Implemented and foundation-verified, not exposed: the typed simulator in `core/obs/.../demo`, exact process
-selection in `ObsProcessModule`, in-memory Room/atomic preferences, no-credential store,
-lazy live widget/reconnect startup and guarded keep-alive service intents. Separate
-connection tests now use an injected factory, denied in demo before credential lookup.
-No DemoActivity/manifest entry, onboarding/More entry, banner or sample preview generator
-is present yet. Live navigation and default process behavior remain unchanged.
+Foundation commit `b073224` provides deterministic session/cancellation, clocks/pause,
+Studio, exact names/capabilities, meters, media and screenshot-bound tests. Provider tests
+exercise destructive demo curation/history/bookmark operations beside live Room sentinels;
+preferences/secrets/service guards assert no live Context access. These are JVM checks.
 
-Deterministic tests cover session replacement/cancellation, output clocks/pause, Studio,
-exact names/capabilities, audio/meters, media seeking and screenshot bounds. Provider tests
-exercise destructive demo curation/history/bookmark operations against a live Room sentinel
-database and assert that demo preferences/secrets/service guards never touch Context.
-These are JVM/Robolectric checks, not a multi-process device or real-OBS test.
+The complete UI/runtime slice adds startup failure/retry/cancellation, retained and
+replacement owners, synchronous exit, idle re-entry, fresh-graph behavior, manifest/process
+routing, local JPEG decode and consent callbacks. Roborazzi covers SceneDeck/OBS light/dark,
+compact height and large text; onboarding, transport and shortcut confirmations render.
+Full JDK21/uv quality gate and explicit debug build/unit tests pass: **1,120 tests / 196
+suites**, no failures/errors/skips. Normal and F-Droid debug APKs build and run.
 
-Next: guarded app entry/exit with sample preview frames and persistent simulation labeling.
-Settle reuse of an already-running demo process explicitly: Hilt singletons outlive an
-Activity, so exit must invalidate pending commands; recreating an Activity alone does not
-reset in-memory repositories. Any reset must preserve History generation tombstones until
-old queued starts are rejected. Never kill the process as a shortcut or reset live storage.
-Foundation alone does not complete W9 or the durable goal. W10/W11 remain required.
-
-Foundation verification: full JDK21/uv quality gate and explicit debug build/unit tests
-passed; 1,098 tests across 191 suites, no failures/errors/skips. See the W9 progress entry
-for exact commands/logs. W9 remains unchecked; no new UI or device behavior is claimed.
+API36 x86_64 emulator checks exercised separate processes/tasks, entry, simulated stream
+and recording, rotation retaining timers, Mixer mute, Stats, foreground F8 output consent,
+restricted connections, Exit and repeated entry. Demo settings changes left live DataStore
+and encrypted-secret bytes unchanged; the live saved profile survived. Killing only the
+owned demo process as a test produced a fresh idle demo with its old shortcut absent.
+F-Droid retained manual connections and demo while hiding Scan QR; normal Scan QR was visible.
+See [demo-device-check.md](demo-device-check.md) and the progress log for exact evidence.
+No physical pedal/device, real OBS broadcast, or measured-performance claim is made.

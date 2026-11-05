@@ -362,3 +362,15 @@ Material dialogs with reachable decisions in compact-height/large-text windows. 
 never invokes an OBS action. Native controls/text entry retain keyboard priority; only an
 explicit recording dialog captures a new supported key. Runtime confirmation names the
 concrete output action and its original workspace and never offers a generic toggle.
+
+## Demo presentation
+
+Demo keeps the normal studio controls inside a persistent secondary-container banner:
+**DEMO · Local simulation**, **No broadcast or recording**, and a 48dp Exit demo action.
+Apply the top safe-drawing inset outside its content, with horizontal banner insets and
+existing shell cutout handling. Labels wrap at large font sizes; Exit stays reachable in
+compact windows. The status connection label is DEMO. Output dialogs and Recording tools
+use the shared SimulationNotice so separate windows cannot imply a real broadcast.
+Synthetic preview slates use a restrained geometric test signal and small DEMO watermark,
+leaving scene text legible. Entry explains that a real OBS session can continue separately;
+restricted connection/setup/background routes offer Exit instead of live configuration.

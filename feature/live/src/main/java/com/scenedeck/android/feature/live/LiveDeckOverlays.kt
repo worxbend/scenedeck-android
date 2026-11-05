@@ -16,6 +16,8 @@ import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneMetadataEdit
 import com.scenedeck.android.core.data.WorkspaceState
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
+import com.scenedeck.android.core.designsystem.components.SimulationNotice
 import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 
@@ -44,17 +46,22 @@ internal fun TransportConfirmationDialog(
         },
         text = {
             Column {
+                SimulationNotice()
                 Text(
-                    when (pending) {
-                        TransportConfirmation.START_STREAM ->
-                            stringResource(R.string.confirm_start_stream_body)
-                        TransportConfirmation.STOP_STREAM ->
-                            stringResource(R.string.confirm_stop_stream_body)
-                        TransportConfirmation.START_RECORD ->
-                            stringResource(R.string.confirm_start_record_body)
-                        TransportConfirmation.STOP_RECORD ->
-                            stringResource(R.string.confirm_stop_record_body)
-                    }
+                    if (LocalSimulation.current)
+                        "This changes the local simulation only. " +
+                            "No broadcast or recording is created."
+                    else
+                        when (pending) {
+                            TransportConfirmation.START_STREAM ->
+                                stringResource(R.string.confirm_start_stream_body)
+                            TransportConfirmation.STOP_STREAM ->
+                                stringResource(R.string.confirm_stop_stream_body)
+                            TransportConfirmation.START_RECORD ->
+                                stringResource(R.string.confirm_start_record_body)
+                            TransportConfirmation.STOP_RECORD ->
+                                stringResource(R.string.confirm_stop_record_body)
+                        }
                 )
                 if (onPreflight != null && pending.canOpenPreflight) {
                     TextButton(onClick = onPreflight) { Text("Open Preflight") }

@@ -37,6 +37,9 @@ class DemoObsClient(
 
     override suspend fun disconnect() = session.disconnect()
 
+    /** Synchronous local invalidation for Activity teardown; never a network operation. */
+    fun invalidate() = session.invalidate()
+
     override suspend fun getVersion() = session.request { VERSION }
 
     override suspend fun getStats() = session.request {

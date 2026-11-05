@@ -2,13 +2,10 @@
 
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W8 are implemented and verified, including Presets and the scoped keyboard/compatible
-foot-pedal editor, foreground key routing, single-use output consent and cancellation.
-Resume at **W9 — offline demo mode**. W9–W11 remain required; the durable goal is active.
-Use [shortcuts-design.md](shortcuts-design.md) for the delivered W8 contract and evidence.
-The demo simulator and process-selected in-memory bindings are implemented but not exposed.
-Resume [demo-design.md](demo-design.md): add deliberate onboarding/More entry and exit,
-sample previews, persistent labeling and complete lifecycle/isolation verification.
+W1–W9 are implemented and verified, including Presets, foreground keyboard/compatible
+foot-pedal routing and the isolated offline demo. Resume at **W10 — tablet operator layout**.
+W10–W11 remain required; the durable goal is active. Use [shortcuts-design.md](shortcuts-design.md)
+and [demo-design.md](demo-design.md) for the delivered contracts and verification evidence.
 Keep the originating-workspace, consent and unknown-result contracts in
 [presets-design.md](presets-design.md) and [history-design.md](history-design.md) when
 adding shortcut entry points. Show rundown, cue lists and timed advancement remain excluded.

@@ -44,12 +44,15 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
+import com.scenedeck.android.core.designsystem.components.SimulationNotice
 import com.scenedeck.android.core.designsystem.components.StudioIconWell
 import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
 import com.scenedeck.android.core.designsystem.components.StudioTone
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.demo.DemoUnavailable
 import com.scenedeck.android.feature.alerts.LiveAlertsHost
 import com.scenedeck.android.feature.onboarding.OnboardingScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
@@ -77,6 +80,7 @@ fun SceneDeckApp(
     skipToConnections: Boolean,
     onOnboardingSkip: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenDemo: () -> Unit = {},
 ) {
     when (onboardingCompleted) {
         null ->
@@ -93,6 +97,7 @@ fun SceneDeckApp(
                         ),
                     onFinished = {},
                     onSkip = onOnboardingSkip,
+                    onDemo = onOpenDemo,
                 )
             }
 
@@ -102,6 +107,7 @@ fun SceneDeckApp(
                 connectionState = connectionState,
                 stripState = stripState,
                 startWithConnections = skipToConnections,
+                onOpenDemo = onOpenDemo,
                 modifier = modifier,
             )
     }
@@ -114,6 +120,7 @@ private fun SceneDeckShell(
     connectionState: ConnectionState,
     stripState: StatusStripState,
     startWithConnections: Boolean,
+    onOpenDemo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     KeepScreenOnEffect(enabled = appState.keepScreenOn && connectionState is ConnectionState.Ready)
@@ -185,7 +192,8 @@ private fun SceneDeckShell(
                         shortcuts?.admission?.navigating()
                         backStack.removeLastOrNull()
                     },
-                    entryProvider = sceneDeckEntryProvider(appState, backStack, selectTopLevel),
+                    entryProvider =
+                        sceneDeckEntryProvider(appState, backStack, selectTopLevel, onOpenDemo),
                 )
             },
             statusStrip = { stripInsets ->
@@ -211,7 +219,7 @@ private fun SceneDeckShell(
     }
 
     if (backgroundSheetOpen) {
-        BackgroundSettingsSheet(onDismiss = { backgroundSheetOpen = false })
+        SessionSettings(onDismiss = { backgroundSheetOpen = false })
     }
 
     if (moreSheetOpen) {
@@ -228,8 +236,21 @@ private fun SceneDeckShell(
                 moreSheetOpen = false
                 backgroundSheetOpen = true
             },
+            onOpenDemo = {
+                shortcuts?.admission?.navigating()
+                moreSheetOpen = false
+                onOpenDemo()
+            },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SessionSettings(onDismiss: () -> Unit) {
+    if (LocalSimulation.current) {
+        ModalBottomSheet(onDismissRequest = onDismiss) { DemoUnavailable() }
+    } else BackgroundSettingsSheet(onDismiss = onDismiss)
 }
 
 /**
@@ -308,6 +329,7 @@ private fun StudioToolsSheet(
     onDismiss: () -> Unit,
     onDestination: (SceneDeckDestination) -> Unit,
     onBackgroundSettings: () -> Unit,
+    onOpenDemo: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -315,6 +337,15 @@ private fun StudioToolsSheet(
                 stringResource(R.string.studio_tools),
                 Modifier.padding(horizontal = 24.dp),
             )
+            SimulationNotice(Modifier.padding(horizontal = 24.dp))
+            if (!LocalSimulation.current) {
+                ListItem(
+                    headlineContent = { Text("Try offline demo") },
+                    supportingContent = { Text("Practice with local sample scenes and controls") },
+                    leadingContent = { StudioIconWell(SceneDeckIcons.Scenes) },
+                    modifier = Modifier.clickable(onClick = onOpenDemo),
+                )
+            }
             (SceneDeckDestination.overflow + SceneDeckDestination.Onboarding).forEach { destination
                 ->
                 ListItem(

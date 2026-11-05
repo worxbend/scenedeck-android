@@ -97,3 +97,12 @@ Lazy lists with stable keys: `items(items, key = { it.id })`.
   string routes → type-safe `@Serializable` routes (Nav3 back stack owned by app).
 - Don't read state eagerly in composition when it can be deferred to draw/layout
   (lambda modifiers) for high-frequency values like meter levels.
+
+## Demo process boundary
+
+MainActivity and the non-exported DemoActivity share the Compose/shortcut host. Only the
+exact OS process identity selects live versus in-memory demo providers; presentation
+locals never select persistence or clients. Retain the demo visit through rotation and
+invalidate it on Exit/clear. Keep demo's top safe inset outside its scroll containers and
+its banner/Exit visible; output dialogs repeat SimulationNotice. Do not route demo to
+live connection/setup/background services. See `tasks/operator-workflow/demo-design.md`.

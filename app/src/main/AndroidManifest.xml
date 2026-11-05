@@ -42,6 +42,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".demo.DemoActivity"
+            android:process=":demo"
+            android:taskAffinity="${applicationId}.demo"
+            android:launchMode="singleTask"
+            android:label="@string/demo_app_name"
+            android:exported="false" />
+
         <!-- Keep-alive foreground service (M7): holds the OBS session in background. -->
         <service
             android:name=".background.ObsSessionService"

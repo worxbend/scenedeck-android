@@ -37,7 +37,7 @@ class OnboardingPreviewRoborazziTest {
                         Modifier.fillMaxSize().padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        WelcomeStep(onSetup = {}, onSkip = {})
+                        WelcomeStep(onSetup = {}, onSkip = {}, onDemo = {})
                     }
                 }
             }
@@ -52,6 +52,8 @@ class OnboardingPreviewRoborazziTest {
     fun sceneDeckLight() = capture(ThemeFamily.SCENEDECK, false, "onboarding_scenedeck_light.png")
 
     @Test fun obsDark() = capture(ThemeFamily.OBS, true, "onboarding_obs_dark.png")
+
+    @Test fun obsLight() = capture(ThemeFamily.OBS, false, "onboarding_obs_light.png")
 
     @Test
     fun connectStepDark() {

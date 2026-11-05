@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.ShortcutRunState
 import com.scenedeck.android.core.data.ShortcutTarget
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
+import com.scenedeck.android.core.designsystem.components.SimulationNotice
 import com.scenedeck.android.core.ui.label
 
 @Composable
@@ -56,12 +58,16 @@ internal fun ShortcutConfirmation(run: ShortcutRunState, confirm: () -> Unit, di
                 Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                SimulationNotice()
                 Text(
                     "${run.binding.chord.label()} requests this action in connection #${run.origin.key.profileId} " +
                         "· ${run.origin.key.collectionName}."
                 )
                 Text(
-                    "Confirm this one action. Output Safety is checked again before sending it to OBS. " +
+                    (if (LocalSimulation.current)
+                        "Confirm this simulated action. Nothing is sent to a real OBS session. "
+                    else
+                        "Confirm this one action. Output Safety is checked again before sending it to OBS. ") +
                         "This confirmation expires after 60 seconds."
                 )
             }

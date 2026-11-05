@@ -462,6 +462,30 @@ success is quiet. Uncertain writes never retry automatically, and process recrea
 not resume an invocation. Verification evidence and hardware limitations are recorded in
 `tasks/operator-workflow/shortcuts-design.md` and `progress.md`.
 
+### Offline demo
+
+**Try offline demo** is available from onboarding and More. Its entry explains that any
+real OBS session continues separately. A private Demo task runs a local simulation with
+five sample scenes, Studio mode/Take, Mixer controls and synthetic meters, media playback,
+output timers and recording tools. It never broadcasts, records files or accesses a camera.
+Previews are bounded local test slates; telemetry is synthetic, not device-performance data.
+
+A persistent **DEMO · Local simulation** banner with **Exit demo** covers every page,
+including compact windows and More routes. The connection strip says DEMO; output
+confirmations and Recording tools repeat the simulation marker. Existing safety checks,
+preflight, presets and foreground shortcut rules still apply to this isolated workspace.
+Connections/setup/background tools explain the restriction and offer Exit. There are no
+real connection tests, credentials, widgets or keep-alive service actions in demo.
+
+Demo uses a separate in-memory database and settings. Its edits, bookmarks, history,
+presets and shortcuts cannot overwrite live data. Rotation retains the current visit;
+Exit immediately invalidates simulated commands and removes the Demo task. Re-entry
+starts idle simulated outputs; temporary edits can remain while Android retains the demo
+process. Process recreation starts a fresh sample workspace and never resumes actions or
+consent. No live connection is started or stopped by entering or exiting demo. Explicit
+exports still save to the user's chosen destination; History filenames start with `demo-`
+and their observations carry the DEMO collection identity.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

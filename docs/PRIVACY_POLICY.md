@@ -76,6 +76,17 @@ History exports can include OBS names, bookmark labels and preset names/targets 
 consider private.
 The document provider you choose may sync exported files according to its own settings.
 
+## Offline demo
+
+Demo runs local simulated OBS controls in a separate app process with in-memory settings
+and storage. It does not use saved OBS credentials, connect to a real OBS server, access
+a camera, create recordings, update widgets or operate the keep-alive service. A real
+session opened elsewhere in SceneDeck can continue separately. Demo changes do not modify
+live profiles, curation, bookmarks or history. Temporary demo data can survive re-entry
+while its process remains alive; Android ending that process clears it. Explicit exports
+save to the destination you choose and remain there until deleted. Demo History filenames
+start with `demo-`, and exported observations identify the sample DEMO collection.
+
 ## Retention and deletion
 
 Local connection information remains until you delete the corresponding profile

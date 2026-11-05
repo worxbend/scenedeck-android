@@ -50,6 +50,7 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
     onFinished: () -> Unit = {},
     onSkip: () -> Unit = {},
+    onDemo: (() -> Unit)? = null,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     var step by rememberSaveable { mutableIntStateOf(STEP_WELCOME) }
@@ -70,6 +71,7 @@ fun OnboardingScreen(
                 WelcomeStep(
                     onSetup = { step = STEP_CONNECT },
                     onSkip = onSkip,
+                    onDemo = onDemo,
                 )
 
             step == STEP_CONNECT ->
@@ -98,7 +100,7 @@ fun OnboardingScreen(
 }
 
 @Composable
-internal fun WelcomeStep(onSetup: () -> Unit, onSkip: () -> Unit) {
+internal fun WelcomeStep(onSetup: () -> Unit, onSkip: () -> Unit, onDemo: (() -> Unit)? = null) {
     Spacer(Modifier.height(48.dp))
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
@@ -152,6 +154,11 @@ internal fun WelcomeStep(onSetup: () -> Unit, onSkip: () -> Unit) {
         Text(stringResource(R.string.onboarding_setup))
     }
     Spacer(Modifier.height(8.dp))
+    onDemo?.let {
+        TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("Try offline demo")
+        }
+    }
     TextButton(onClick = onSkip) {
         Text(stringResource(R.string.onboarding_skip))
     }
@@ -217,7 +224,7 @@ private fun OnboardingWelcomePreview() {
     SceneDeckTheme {
         Surface {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                WelcomeStep(onSetup = {}, onSkip = {})
+                WelcomeStep(onSetup = {}, onSkip = {}, onDemo = {})
             }
         }
     }

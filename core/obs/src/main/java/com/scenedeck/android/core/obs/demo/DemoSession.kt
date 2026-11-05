@@ -110,6 +110,9 @@ internal class DemoSession(private val scope: CoroutineScope, private val clock:
         }
     }
 
+    /** Local-only teardown: exit invalidates queued work before returning to Android. */
+    fun invalidate() = synchronized(lock) { stop() }
+
     suspend fun <T> request(block: DemoState.() -> T): T {
         val caller = currentCoroutineContext()
         caller.ensureActive()

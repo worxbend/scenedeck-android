@@ -9,6 +9,7 @@ import com.scenedeck.android.core.obs.ObsClientFactory
 import com.scenedeck.android.core.obs.ObsConnectionTestingUnavailableException
 import com.scenedeck.android.core.obs.demo.DemoObsClient
 import com.scenedeck.android.demo.AppProcess
+import com.scenedeck.android.demo.DemoPreviewFrames
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +29,8 @@ object ObsProcessModule {
     @Provides
     @Singleton
     fun provideObsClient(@ApplicationScope scope: CoroutineScope, process: AppProcess): ObsClient =
-        if (process == AppProcess.DEMO) DemoObsClient(scope, SystemClock::elapsedRealtime)
+        if (process == AppProcess.DEMO)
+            DemoObsClient(scope, SystemClock::elapsedRealtime, DemoPreviewFrames::capture)
         else ObsClient(scope)
 
     @Provides

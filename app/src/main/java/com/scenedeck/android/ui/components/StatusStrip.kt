@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.R
 import com.scenedeck.android.core.designsystem.components.BroadcastStatus
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsVersionInfo
@@ -172,7 +173,8 @@ private fun ConnectionIndicator(
     val colors = SceneDeckTheme.colors
     val (dotColor, label, pulse) =
         when (state) {
-            is ConnectionState.Ready -> Triple(colors.preview, "OBS", false)
+            is ConnectionState.Ready ->
+                Triple(colors.preview, if (LocalSimulation.current) "DEMO" else "OBS", false)
             is ConnectionState.Connecting -> Triple(colors.warning, "Connecting", true)
             is ConnectionState.Identifying -> Triple(colors.warning, "Connecting", true)
             is ConnectionState.Reconnecting ->

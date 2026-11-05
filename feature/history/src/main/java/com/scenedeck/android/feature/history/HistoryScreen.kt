@@ -27,6 +27,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.HistorySession
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
@@ -39,6 +40,7 @@ fun HistoryScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val resolver = LocalContext.current.contentResolver
+    val simulation = LocalSimulation.current
     BackHandler(state.selection.id != null) { viewModel.select(null) }
     val picker =
         rememberLauncherForActivityResult(
@@ -49,7 +51,8 @@ fun HistoryScreen(
     LaunchedEffect(state.export.request) {
         state.export.request?.let { name ->
             viewModel.pickerOpened()
-            if (coroutineResult { picker.launch(name) }.isFailure) viewModel.pickerFailed()
+            if (coroutineResult { picker.launch(if (simulation) "demo-$name" else name) }.isFailure)
+                viewModel.pickerFailed()
         }
     }
     HistoryContent(

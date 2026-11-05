@@ -33,6 +33,7 @@ import com.scenedeck.android.core.data.RecordingNotice
 import com.scenedeck.android.core.data.RecordingResult
 import com.scenedeck.android.core.data.RecordingToolsRepository
 import com.scenedeck.android.core.data.RecordingToolsState
+import com.scenedeck.android.core.designsystem.components.SimulationNotice
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSectionHeader
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
@@ -79,6 +80,7 @@ internal fun RecordingToolsContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         StudioPageHeader("Recording tools", recordingStatus(state), SceneIcon.RECORD.imageVector)
+        SimulationNotice()
         Text(
             "Controls apply to the current OBS recording. Streaming continues while recording is paused."
         )

@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next implementation checkpoint is W9; W6/W7 user flows are verified.
+and progress evidence. The next implementation checkpoint is W10; W6/W7 user flows are verified.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -137,11 +137,11 @@ is implied by the JVM and render results.
 
 ### W9 — Demo mode
 
-- [ ] W9a: Add a clearly labeled local simulated session with scenes, Mixer,
+- [x] W9a: Add a clearly labeled local simulated session with scenes, Mixer,
   telemetry, Studio mode, and controllable outputs through the existing boundary.
-- [ ] W9b: Ensure demo cannot open a real OBS connection, use real credentials,
+- [x] W9b: Ensure demo cannot open a real OBS connection, use real credentials,
   send real actions, overwrite real curation, or imply an actual broadcast.
-- [ ] W9c: Provide entry from onboarding/More and a clear exit; verify process
+- [x] W9c: Provide entry from onboarding/More and a clear exit; verify process
   recreation, transition back to real profiles, and normal/F-Droid behavior.
 
 ### W10 — Tablet operator layout

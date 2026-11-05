@@ -4,6 +4,8 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import com.scenedeck.android.core.designsystem.components.LocalSimulation
+import com.scenedeck.android.demo.DemoUnavailable
 import com.scenedeck.android.feature.alerts.AlertDestination
 import com.scenedeck.android.feature.alerts.AlertsScreen
 import com.scenedeck.android.feature.connections.ConnectionsScreen
@@ -28,6 +30,7 @@ internal fun sceneDeckEntryProvider(
     appState: SceneDeckAppState,
     backStack: NavBackStack<NavKey>,
     selectTopLevel: (SceneDeckDestination) -> Unit,
+    onOpenDemo: () -> Unit = {},
 ) =
     entryProvider<NavKey> {
         liveEntry(selectTopLevel)
@@ -78,7 +81,7 @@ internal fun sceneDeckEntryProvider(
         }
         settingsEntry(appState)
         connectionsEntry()
-        onboardingEntry(backStack)
+        onboardingEntry(backStack, onOpenDemo)
     }
 
 private fun EntryProviderScope<NavKey>.liveEntry(selectTopLevel: (SceneDeckDestination) -> Unit) {
@@ -154,14 +157,22 @@ private fun EntryProviderScope<NavKey>.settingsEntry(appState: SceneDeckAppState
 }
 
 private fun EntryProviderScope<NavKey>.connectionsEntry() {
-    entry<SceneDeckDestination.Connections> { ConnectionsScreen() }
+    entry<SceneDeckDestination.Connections> {
+        if (LocalSimulation.current) DemoUnavailable() else ConnectionsScreen()
+    }
 }
 
-private fun EntryProviderScope<NavKey>.onboardingEntry(backStack: NavBackStack<NavKey>) {
+private fun EntryProviderScope<NavKey>.onboardingEntry(
+    backStack: NavBackStack<NavKey>,
+    onOpenDemo: () -> Unit,
+) {
     entry<SceneDeckDestination.Onboarding> {
-        OnboardingScreen(
-            onFinished = { backStack.removeLastOrNull() },
-            onSkip = { backStack.removeLastOrNull() },
-        )
+        if (LocalSimulation.current) DemoUnavailable()
+        else
+            OnboardingScreen(
+                onFinished = { backStack.removeLastOrNull() },
+                onSkip = { backStack.removeLastOrNull() },
+                onDemo = onOpenDemo,
+            )
     }
 }
