@@ -11,7 +11,11 @@ import com.scenedeck.android.core.designsystem.icons.imageVector
 internal fun filterScenes(scenes: List<SceneCardState>, query: String): List<SceneCardState> {
     val term = query.trim()
     return if (term.isEmpty()) scenes
-    else scenes.filter { it.name.contains(term, ignoreCase = true) }
+    else
+        scenes.filter {
+            it.name.contains(term, ignoreCase = true) ||
+                it.displayName.contains(term, ignoreCase = true)
+        }
 }
 
 /** 1-based deck positions by scene name, taken from the unfiltered list (first duplicate wins). */

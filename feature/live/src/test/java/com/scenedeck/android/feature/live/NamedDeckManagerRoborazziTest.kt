@@ -9,12 +9,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -69,6 +71,7 @@ class NamedDeckManagerRoborazziTest {
                         onImport = {},
                         onExport = {},
                         modifier = Modifier.fillMaxSize(),
+                        aliases = mapOf("Camera" to "Host"),
                     )
                 }
             }
@@ -131,6 +134,13 @@ class NamedDeckManagerRoborazziTest {
         composeRule.onNodeWithText("Interview").performClick()
         composeRule.onNodeWithText("Find scene to add or remove").performTextInput("Wide")
         composeRule.onNodeWithContentDescription("Order for Wide").assertIsNotEnabled()
+        composeRule.onNodeWithText("Find scene to add or remove").performTextReplacement("Host")
+        composeRule
+            .onNodeWithText("OBS · Camera · 1 · Available in OBS")
+            .assertTextContains("Host")
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(listOf("Remote guest", "Wide"), (draft as DeckEditorPage.Members).draft)
     }
 
     private fun captureImport(family: ThemeFamily, dark: Boolean) {

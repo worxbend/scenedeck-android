@@ -128,7 +128,9 @@ internal fun InventoryContent(
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
     onCopyPrevious: () -> Unit = {},
+    onSetAlias: suspend (InventoryScene, String?) -> Boolean = { _, _ -> false },
 ) {
+    var aliasEditorFor by remember { mutableStateOf<InventoryScene?>(null) }
     var roleMenuFor by remember { mutableStateOf<String?>(null) }
     var accentEditorFor by remember { mutableStateOf<String?>(null) }
     var iconEditorFor by remember { mutableStateOf<String?>(null) }
@@ -174,6 +176,7 @@ internal fun InventoryContent(
                 scenes = orderedScenes,
                 listState = listState,
                 reorderableState = reorderableState,
+                onAliasClick = { aliasEditorFor = it },
                 onIconClick = { iconEditorFor = it },
                 onRoleClick = { roleMenuFor = it },
                 onAccentClick = { accentEditorFor = it },
@@ -181,6 +184,10 @@ internal fun InventoryContent(
             )
         }
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+    }
+
+    aliasEditorFor?.let { scene ->
+        SceneAliasDialog(scene, { aliasEditorFor = null }) { alias -> onSetAlias(scene, alias) }
     }
 
     InventorySheets(
@@ -235,6 +242,7 @@ private fun InventoryList(
     onRoleClick: (String) -> Unit,
     onAccentClick: (String) -> Unit,
     onRemoveStale: (String) -> Unit,
+    onAliasClick: (InventoryScene) -> Unit,
 ) {
     LazyColumn(
         state = listState,
@@ -245,6 +253,12 @@ private fun InventoryList(
             ReorderableItem(reorderableState, key = scene.name) { _ ->
                 InventoryRow(
                     name = scene.name,
+                    localAlias = scene.entry?.localAlias,
+                    onAliasClick =
+                        if (scene.stale) null
+                        else {
+                            { onAliasClick(scene) }
+                        },
                     icon = sceneIconForInventory(scene.entry?.iconName),
                     roleLabel = inventoryRoleLabel(scene),
                     roleAssigned = scene.roleAssigned,

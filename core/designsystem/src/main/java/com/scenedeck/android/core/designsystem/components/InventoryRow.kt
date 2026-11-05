@@ -54,6 +54,8 @@ fun InventoryRow(
     onAccentClick: () -> Unit = {},
     onRemoveStale: () -> Unit = {},
     leadingContent: (@Composable () -> Unit)? = null,
+    localAlias: String? = null,
+    onAliasClick: (() -> Unit)? = null,
 ) {
     val rowPadding = SceneDeckTheme.spacing.rowPadding
     Surface(
@@ -69,14 +71,7 @@ fun InventoryRow(
             ) {
                 leadingContent?.invoke()
                 SceneIconButton(name, icon, accentColor, onIconClick)
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                InventorySceneName(name, localAlias, onAliasClick, Modifier.weight(1f))
                 AccentDot(name, accentColor, onAccentClick)
                 RoleChip(name, roleLabel, roleAssigned, onRoleClick)
             }
@@ -194,5 +189,45 @@ private fun RoleChip(
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         )
+    }
+}
+
+@Composable
+private fun InventorySceneName(
+    name: String,
+    alias: String?,
+    onAliasClick: (() -> Unit)?,
+    modifier: Modifier,
+) {
+    val displayName = alias ?: name
+    Column(
+        verticalArrangement = Arrangement.Center,
+        modifier =
+            modifier
+                .minimumInteractiveComponentSize()
+                .then(
+                    if (onAliasClick == null) Modifier
+                    else
+                        Modifier.clickable(
+                            onClickLabel = "Edit local label for $name",
+                            onClick = onAliasClick,
+                        )
+                ),
+    ) {
+        Text(
+            displayName,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (displayName != name)
+            Text(
+                "OBS · $name",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
     }
 }

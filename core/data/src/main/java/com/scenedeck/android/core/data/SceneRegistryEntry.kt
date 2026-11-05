@@ -28,6 +28,7 @@ data class SceneRegistryEntry(
     val accentColorArgb: Long? = null,
     val iconName: String? = null,
     val sortOrder: Int = 0,
+    val localAlias: String? = null,
 )
 
 internal fun SceneRegistryEntity.toDomain() =
@@ -39,6 +40,7 @@ internal fun SceneRegistryEntity.toDomain() =
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
+        localAlias = localAlias,
     )
 
 internal fun SceneRegistryEntry.toEntity() =
@@ -48,4 +50,5 @@ internal fun SceneRegistryEntry.toEntity() =
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
+        localAlias = checkedSceneAlias(localAlias),
     )

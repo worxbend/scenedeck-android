@@ -13,7 +13,7 @@ audio settings, output status, performance readings, and requested scene thumbna
 This information is used to display and control your OBS session. SceneDeck does
 not operate a developer-hosted server that receives your OBS session data.
 
-Connection profiles, appearance settings, scene curation, and named decks (their
+Connection profiles, appearance settings, scene curation (including local scene labels), and named decks (their
 names, scene membership, order, and workspace selection) are stored on your device. OBS passwords are stored using Android Keystore-backed encryption. Local
 OBS connections normally use `ws://`, which is not TLS encrypted. Network addresses,
 passwords, and OBS content are not sent to the SceneDeck developer by the app.

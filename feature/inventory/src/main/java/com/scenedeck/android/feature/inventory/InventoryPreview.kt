@@ -21,7 +21,7 @@ internal fun inventoryPreviewState(): InventoryUiState {
         listOf(
             InventoryScene(
                 "Cam 1",
-                SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0),
+                SceneRegistryEntry("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA", 0, "Host"),
                 stale = false,
             ),
             InventoryScene("Screen", null, stale = false),

@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
+import com.scenedeck.android.core.data.SceneMetadataEdit
 import com.scenedeck.android.core.data.WorkspaceState
 import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
@@ -82,7 +83,7 @@ internal fun DeckWorkspaceStatus(deckState: DeckState, onRetryWorkspace: () -> U
 internal fun DeckQuickEdit(
     scene: SceneCardState,
     onDismiss: () -> Unit,
-    onSave: (String, Boolean, Long?, String?) -> Unit,
+    onSave: suspend (String, SceneMetadataEdit) -> Boolean,
     sceneItemsVersion: Int,
     onLoadSceneItems: (suspend (String) -> List<com.scenedeck.android.core.model.SceneItemInfo>)?,
     onToggleSceneItem: (String, Int, Boolean) -> Unit,
@@ -90,10 +91,7 @@ internal fun DeckQuickEdit(
     QuickEditSheet(
         scene = scene,
         onDismiss = onDismiss,
-        onSave = { primary, accentArgb, iconName ->
-            onSave(scene.name, primary, accentArgb, iconName)
-            onDismiss()
-        },
+        onSave = { edit -> onSave(scene.name, edit) },
         sceneItemsVersion = sceneItemsVersion,
         onLoadSceneItems = onLoadSceneItems?.let { loader -> { loader(scene.name) } },
         onToggleSceneItem = { itemId, enabled -> onToggleSceneItem(scene.name, itemId, enabled) },

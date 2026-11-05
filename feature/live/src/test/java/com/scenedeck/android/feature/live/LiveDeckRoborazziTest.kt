@@ -145,7 +145,7 @@ class LiveDeckRoborazziTest {
                         onStreamClick = {},
                         onRecordClick = {},
                         onToggleVirtualCam = {},
-                        onQuickEditSave = { _, _, _, _ -> },
+                        onQuickEditSave = { _, _ -> true },
                         onReorder = {},
                         onStudioToggle = {},
                         onTransitionClick = {},

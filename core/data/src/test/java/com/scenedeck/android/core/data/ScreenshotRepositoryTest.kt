@@ -284,6 +284,8 @@ class ScreenshotRepositoryTest {
         advanceTimeBy(12_000)
         runCurrent()
         assertEquals(accepted, repository.thumbnails.value.frames)
+        assertEquals(accepted.keys, repository.thumbnails.value.failedScenes)
+        assertTrue(accepted.values.all { it.capturedAtMs == 0L })
     }
 
     @Test
@@ -353,6 +355,49 @@ class ScreenshotRepositoryTest {
         advanceTimeBy(6_001)
         runCurrent()
         assertTrue(slow.screenshotCalls.toSet().containsAll(setOf("Program", "Preview", "Cold")))
+    }
+
+    @Test
+    @Config(sdk = [34])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun validBlackCaptureReplacesOldImageAndClearsFailureWithoutFasterPolling() = runTest {
+        settings.settings.first()
+        val obsState =
+            ObsStateRepository(
+                client,
+                singleWorkspaceRegistry(FakeRegistryDao()),
+                backgroundScope,
+                settings,
+            )
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        repository.nowMs = { testScheduler.currentTime }
+        client.setReady()
+        obsState.deckState.first { it.allScenes.size == 3 }
+        backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        client.screenshotBytes = byteArrayOf(1, 2, 3)
+        advanceTimeBy(3_000)
+        runCurrent()
+        assertTrue("Hot" in repository.thumbnails.value.failedScenes)
+        val black = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        black.eraseColor(android.graphics.Color.BLACK)
+        val bytes =
+            java.io
+                .ByteArrayOutputStream()
+                .apply { black.compress(Bitmap.CompressFormat.PNG, 100, this) }
+                .toByteArray()
+        client.screenshotBytes = bytes
+        client.screenshotCalls.clear()
+        advanceTimeBy(2_001)
+        runCurrent()
+        val received = repository.thumbnails.value
+        assertEquals(
+            android.graphics.Color.BLACK,
+            received.frames.getValue("Hot").bitmap.getPixel(0, 0),
+        )
+        assertTrue(received.frames.getValue("Hot").capturedAtMs >= 5_000)
+        assertTrue("Hot" !in received.failedScenes)
+        assertEquals(listOf("Hot"), client.screenshotCalls)
     }
 
     private fun makeJpeg(): ByteArray {

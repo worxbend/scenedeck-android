@@ -21,4 +21,6 @@ data class SceneRegistryEntity(
     /** Zero plus an empty collection identifies recoverable pre-workspace curation. */
     val connectionProfileId: Long = 0,
     val sceneCollectionName: String = "",
+    /** Optional local display label; sceneName remains the OBS identity. */
+    val localAlias: String? = null,
 )

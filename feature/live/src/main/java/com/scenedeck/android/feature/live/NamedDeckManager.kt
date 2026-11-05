@@ -77,6 +77,10 @@ internal fun NamedDeckManagement(viewModel: NamedDeckViewModel, sceneState: Deck
                         exportFile.launch("scenedeck-decks.json")
                 },
                 modifier = Modifier.fillMaxHeight(0.9f),
+                aliases =
+                    sceneState.allScenes
+                        .mapNotNull { scene -> scene.localAlias?.let { scene.name to it } }
+                        .toMap(),
                 connectionName =
                     connections.find { it.id == editor.origin.key.profileId }?.name
                         ?: "Current connection",
@@ -97,6 +101,7 @@ internal fun NamedDeckManagerContent(
     onExport: () -> Unit,
     modifier: Modifier = Modifier,
     connectionName: String = "Current connection",
+    aliases: Map<String, String> = emptyMap(),
 ) {
     Column(
         modifier.imePadding().padding(horizontal = 20.dp),
@@ -109,7 +114,16 @@ internal fun NamedDeckManagerContent(
         )
         DeckEditorActions(state, onShow, onSave, onClose)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        DeckEditorBody(state, snapshot, scenes, onShow, onImport, onExport, Modifier.weight(1f))
+        DeckEditorBody(
+            state,
+            snapshot,
+            scenes,
+            aliases,
+            onShow,
+            onImport,
+            onExport,
+            Modifier.weight(1f),
+        )
     }
 }
 
@@ -118,6 +132,7 @@ private fun DeckEditorBody(
     state: DeckManagerState,
     snapshot: NamedDeckSnapshot,
     scenes: List<String>,
+    aliases: Map<String, String>,
     onShow: (DeckEditorPage) -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
@@ -145,7 +160,7 @@ private fun DeckEditorBody(
                 )
             }
         is DeckEditorPage.Members ->
-            DeckMemberEditor(page, scenes, !state.busy, { onShow(it) }, modifier)
+            DeckMemberEditor(page, scenes, !state.busy, { onShow(it) }, modifier, aliases)
         is DeckEditorPage.Delete ->
             Column(modifier.verticalScroll(rememberScrollState())) {
                 StudioSectionHeader("Delete ${page.target.name}?")

@@ -33,7 +33,12 @@ data class SceneCardState(
     val isActive: Boolean,
     /** On preview (studio mode only, green). */
     val isPreview: Boolean = false,
-)
+    val localAlias: String? = null,
+    val roleAssigned: Boolean = true,
+) {
+    val displayName: String
+        get() = localAlias ?: name
+}
 
 /** Everything the Live deck renders. */
 data class DeckState(
@@ -161,6 +166,8 @@ constructor(
                         entry?.sortOrder ?: UNPLACED_SORT_ORDER,
                         item.name == scene.program,
                         scene.studioMode && item.name == scene.preview,
+                        entry?.localAlias,
+                        entry?.role != null,
                     )
                 }
                 .sortedBy { it.sortOrder }
@@ -341,13 +348,27 @@ constructor(
     suspend fun setCurrentProgramScene(origin: WorkspaceSession, sceneName: String) =
         inWorkspace(origin) { setCurrentProgramScene(sceneName) }
 
+    fun hasScene(origin: WorkspaceSession, name: String): Boolean {
+        val current = snapshot.value
+        return isWorkspaceCurrent(origin) &&
+            current.context?.origin == origin &&
+            current.scenes?.any { it.name == name } == true
+    }
+
     suspend fun updateSceneMeta(
         origin: WorkspaceSession,
         sceneName: String,
-        role: SceneRole,
-        accentColorArgb: Long?,
-        iconName: String?,
-    ) = registry.update(origin, sceneName, role, accentColorArgb, iconName)
+        edit: SceneMetadataEdit,
+    ) =
+        registry.edit(origin, sceneName) {
+            require(hasScene(origin, sceneName)) { "Scene is no longer available" }
+            it.copy(
+                role = edit.role,
+                accentColorArgb = edit.accentColorArgb,
+                iconName = edit.iconName,
+                localAlias = checkedSceneAlias(edit.localAlias),
+            )
+        }
 
     suspend fun reorderDeck(origin: WorkspaceSession, orderedSceneNames: List<String>) =
         registry.reorder(origin, orderedSceneNames)

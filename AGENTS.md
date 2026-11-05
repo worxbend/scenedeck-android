@@ -113,6 +113,17 @@ must pass, and Compose preview(s) for changed screens must render.
   scoped persistence keys profile + collection + scene. Legacy DAO queries must never
   read/delete other scopes. Room schema 4 adds scoped named-deck/member/selection tables
   without deleting legacy curation; profile deletion never cascades into these tables.
+- Room schema 5 adds nullable localAlias. Raw OBS names remain all keys, command targets,
+  order and membership references. Label edits preserve unchanged nullable roles; validate
+  at most 80 trimmed characters, blank clears, controls reject. Raw identity stays visible
+  and accessible beside aliases; search matches both. Old-scene/workspace saves reject and
+  retain drafts. Version-1 registry YAML/JSON merges absent/null aliases by preserving
+  destination values; rename, Undo and recovery retain labels.
+- Thumbnail timestamps mean successful receipt/decode on the monotonic clock; failed
+  attempts never refresh age. Keep prior frames on failure, mark stale at 20s or failure,
+  and distinguish pending/unavailable/disconnected. Accept valid black images. Display
+  age ticks never drive captures; disabled previews hide images/captions. Disconnect and
+  workspace replacement clear frames; retain existing polling/admission/image limits.
 - ActiveConnection comes from ObsSessionHolder, never last-used preferences. A new
   command invalidates its identity before suspension; only the matching successful
   attempt confirms it. WorkspaceRepository resolves the collection on that target and

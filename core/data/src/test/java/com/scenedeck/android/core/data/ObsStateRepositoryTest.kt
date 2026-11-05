@@ -379,6 +379,26 @@ class ObsStateRepositoryTest {
         deckJob.cancel()
     }
 
+    @Test
+    fun aliasUsesLiteralObsAddressAndOldEditorCannotRecreateARenamedScene(): Unit = runBlocking {
+        client.setReady()
+        awaitDeck { it.allScenes.size == 3 }
+        val edit = SceneMetadataEdit(null, null, null, "Host")
+        repository.updateSceneMeta(TEST_WORKSPACE, "Cam 1", edit)
+        val labeled = awaitDeck { it.allScenes.any { it.localAlias == "Host" } }
+        val card = labeled.allScenes.single { it.displayName == "Host" }
+        assertFalse(card.roleAssigned)
+        repository.setCurrentProgramScene(TEST_WORKSPACE, card.name)
+        assertEquals("Cam 1", client.sceneSwitchCalls.last())
+        client.emit(ObsEvent.SceneNameChanged(oldSceneName = "Cam 1", sceneName = "Camera"))
+        awaitDeck { it.allScenes.any { it.name == "Camera" && it.localAlias == "Host" } }
+        assertTrue(
+            runCatching { repository.updateSceneMeta(TEST_WORKSPACE, "Cam 1", edit) }.isFailure
+        )
+        assertNull(registryDao.byName("Cam 1"))
+        assertEquals("Host", registryDao.byName("Camera")?.localAlias)
+    }
+
     private suspend fun awaitDeck(condition: (DeckState) -> Boolean): DeckState =
         withTimeout(5_000) { repository.deckState.first(condition) }
 

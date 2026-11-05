@@ -91,7 +91,8 @@ one module owns the wire protocol.**
 |---|---|---|
 | Connection state machine | `:core:obs` ObsSession | connection-scoped service |
 | Deck/scenes/audio/events | `ObsStateRepository` | process (survives rotation) |
-| Registry (roles/colors/order) | `RegistryRepository` → Room + DataStore | persisted, YAML export |
+| Registry (roles/colors/order/local aliases) | `RegistryRepository` → Room | persisted per workspace, YAML/JSON export |
+| Thumbnail frames, successful receipt time and failed captures | `ScreenshotRepository` | current workspace/session; cleared on disconnect |
 | Named decks, membership and selected deck | `NamedDeckRepository` → Room | persisted per workspace |
 | Connection profiles | `ProfileRepository` → Room | persisted |
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
@@ -178,6 +179,21 @@ Graph/Doctor and the widget Primary projection remain independent.
 Deck transfer uses bounded versioned JSON and an explicit destination preview. Import
 matches normalized deck names, retains stable destination IDs/selection, and rejects
 changes since preview before an atomic merge. It never exports device/profile IDs.
+
+Room schema 5 adds nullable `localAlias` without changing keys or existing rows.
+Alias validation and transfer normalization live in `:core:data`; OBS names remain
+command/order/member identifiers. Editor saves check the originating workspace and
+current scene snapshot inside the registry mutation lock, preventing old-name edits
+from recreating a renamed scene. Unchanged roles retain their original nullable value.
+Registry version-1 YAML/JSON remains compatible; absent/null aliases preserve existing
+destination values under merge semantics.
+
+`SceneThumbnail` stores the accepted bitmap and monotonic successful-receipt/decode time.
+Failed attempts update a separate scoped set and never refresh that time. The poller
+retains its existing admission/rate/image limits and accepts valid black images.
+`LiveViewModel` owns a lifecycle-subscribed one-second display clock; pure freshness
+reduction applies the 20-second threshold without scheduling captures. UI images are
+gated by the matching workspace, Ready state and preview setting.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously

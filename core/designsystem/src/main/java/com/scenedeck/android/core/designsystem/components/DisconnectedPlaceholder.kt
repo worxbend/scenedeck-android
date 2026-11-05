@@ -51,6 +51,7 @@ fun DisconnectedPlaceholder(
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
     onRetryNow: (() -> Unit)? = LocalRetryNow.current,
+    extraDetail: String? = null,
 ) {
     val waiting =
         connectionState is ConnectionState.Connecting ||
@@ -97,6 +98,14 @@ fun DisconnectedPlaceholder(
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 360.dp),
         )
+        if (extraDetail != null)
+            Text(
+                extraDetail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp),
+            )
         Spacer(Modifier.height(24.dp))
         if (waiting) {
             CircularProgressIndicator(modifier = Modifier.size(28.dp))

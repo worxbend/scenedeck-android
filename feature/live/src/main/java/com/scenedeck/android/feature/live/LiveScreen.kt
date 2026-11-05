@@ -55,6 +55,8 @@ import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.NamedDeckSnapshot
 import com.scenedeck.android.core.data.NamedDeckState
 import com.scenedeck.android.core.data.SceneCardState
+import com.scenedeck.android.core.data.SceneMetadataEdit
+import com.scenedeck.android.core.data.SceneThumbnail
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.components.BroadcastStatus
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
@@ -87,6 +89,7 @@ fun LiveScreen(
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val motionLevel by viewModel.motionLevel.collectAsStateWithLifecycle()
     val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
+    val previewTimeMs by viewModel.previewTimeMs.collectAsStateWithLifecycle()
     val previewsEnabled by viewModel.previewsEnabled.collectAsStateWithLifecycle()
     val sceneItemsVersion by viewModel.sceneItemsVersion.collectAsStateWithLifecycle()
     val virtualCamPending by viewModel.virtualCamPending.collectAsStateWithLifecycle()
@@ -118,12 +121,15 @@ fun LiveScreen(
                         hapticsEnabled = hapticsEnabled,
                         motionLevel = motionLevel,
                         thumbnails = thumbnails.takeIf { it.workspace == origin }?.frames.orEmpty(),
+                        thumbnailFailures =
+                            thumbnails.takeIf { it.workspace == origin }?.failedScenes.orEmpty(),
+                        previewTimeMs = previewTimeMs,
                         onSceneTap = { name -> origin?.let { viewModel.onSceneTap(it, name) } },
                         onStreamClick = viewModel::onStreamClick,
                         onRecordClick = viewModel::onRecordClick,
                         onToggleVirtualCam = viewModel::toggleVirtualCam,
-                        onQuickEditSave = { name, primary, accent, icon ->
-                            origin?.let { viewModel.saveSceneMeta(it, name, primary, accent, icon) }
+                        onQuickEditSave = { name, edit ->
+                            origin?.let { viewModel.saveSceneMeta(it, name, edit) } ?: false
                         },
                         sceneItemsVersion = sceneItemsVersion,
                         onLoadSceneItems = { name ->
@@ -161,6 +167,10 @@ fun LiveScreen(
                 DisconnectedPlaceholder(
                     connectionState = connection,
                     onConnect = onNavigateToConnections,
+                    extraDetail =
+                        if (previewsEnabled)
+                            "Previews disconnected. Connect to refresh scene images."
+                        else null,
                 )
         }
 
@@ -182,13 +192,12 @@ internal fun LiveDeckContent(
     pendingScene: String?,
     hapticsEnabled: Boolean,
     motionLevel: MotionLevel,
-    thumbnails: Map<String, android.graphics.Bitmap>,
+    thumbnails: Map<String, SceneThumbnail>,
     onSceneTap: (String) -> Unit,
     onStreamClick: () -> Unit,
     onRecordClick: () -> Unit,
     onToggleVirtualCam: () -> Unit,
-    onQuickEditSave:
-        (sceneName: String, primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
+    onQuickEditSave: suspend (sceneName: String, edit: SceneMetadataEdit) -> Boolean,
     modifier: Modifier = Modifier,
     sceneItemsVersion: Int = 0,
     onLoadSceneItems: (suspend (String) -> List<com.scenedeck.android.core.model.SceneItemInfo>)? =
@@ -207,10 +216,20 @@ internal fun LiveDeckContent(
     onDeckSelection: (DeckSelection) -> Unit = {},
     onManageDecks: () -> Unit = {},
     deckOptionsFailed: Boolean = false,
+    thumbnailFailures: Set<String> = emptySet(),
+    previewTimeMs: Long = 0L,
 ) {
     var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
 
     // Local order while dragging; re-syncs from the deck when not dragging.
+    val previews =
+        ScenePreviews(
+            thumbnails,
+            thumbnailFailures,
+            previewTimeMs,
+            previewsEnabled,
+            deckState.previewConnected,
+        )
     val selection = deckOptions?.selection ?: DeckSelection.All
     val projection = projectNamedDeck(deckState, deckOptions)
     var reorderMode by rememberSaveable { mutableStateOf(false) }
@@ -324,7 +343,8 @@ internal fun LiveDeckContent(
                         searchQuery.isBlank(),
                         motionLevel,
                         deckState.studioMode,
-                        thumbnails[scene.name],
+                        previews.image(scene.name),
+                        previews.label(scene.name),
                         pendingScene,
                         onSceneTap,
                         { quickEdit = it },
@@ -455,6 +475,7 @@ private fun DeckSceneTile(
     motionLevel: MotionLevel,
     studioMode: Boolean,
     thumbnail: android.graphics.Bitmap?,
+    previewStatus: String?,
     pendingScene: String?,
     onSceneTap: (String) -> Unit,
     onQuickEdit: (SceneCardState) -> Unit,
@@ -482,7 +503,8 @@ private fun DeckSceneTile(
             }
     ) {
         SceneCard(
-            label = scene.name,
+            label = scene.displayName,
+            obsName = scene.name.takeIf { it != scene.displayName },
             sceneNumber = position,
             motionLevel = motionLevel,
             studioMode = studioMode,
@@ -492,6 +514,7 @@ private fun DeckSceneTile(
             preview = scene.isPreview,
             accentColor = scene.accentColorArgb?.let { Color(it) },
             thumbnail = thumbnail?.asImageBitmap(),
+            previewStatus = previewStatus,
             pending = pendingScene == scene.name,
             onClick = tapScene,
             onLongClick = { onQuickEdit(scene) },

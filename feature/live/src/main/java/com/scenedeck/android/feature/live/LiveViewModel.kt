@@ -8,13 +8,14 @@ import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.data.OutputSafetyGate
-import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.SceneMetadataEdit
 import com.scenedeck.android.core.data.SceneThumbnails
 import com.scenedeck.android.core.data.ScreenshotRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.data.WorkspaceSession
+import com.scenedeck.android.core.data.previewMonotonicTimeMs
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
@@ -23,6 +24,7 @@ import com.scenedeck.android.core.obs.withSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +35,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -60,6 +64,14 @@ constructor(
 
     /** Scene thumbnails for deck cards (throttled inside the repository). */
     val thumbnails: StateFlow<SceneThumbnails> = screenshots.thumbnails
+    /** Visible-screen age clock, independent of the capture poller. */
+    val previewTimeMs: StateFlow<Long> = flow {
+        while (currentCoroutineContext().isActive) {
+            emit(previewMonotonicTimeMs())
+            delay(1_000)
+        }
+    }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), previewMonotonicTimeMs())
 
     val deckState: StateFlow<DeckState> = obsState.deckState
     val telemetry: StateFlow<Telemetry> = stats.telemetry
@@ -149,26 +161,11 @@ constructor(
         }
     }
 
-    fun saveSceneMeta(
+    suspend fun saveSceneMeta(
         origin: WorkspaceSession,
         sceneName: String,
-        primary: Boolean,
-        accentColorArgb: Long?,
-        iconName: String?,
-    ) {
-        viewModelScope.launch {
-            coroutineResult {
-                obsState.updateSceneMeta(
-                    origin = origin,
-                    sceneName = sceneName,
-                    role = if (primary) SceneRole.PRIMARY else SceneRole.SECONDARY,
-                    accentColorArgb = accentColorArgb,
-                    iconName = iconName,
-                )
-            }
-                .onFailure { _errors.tryEmit("Couldn't save scene details") }
-        }
-    }
+        edit: SceneMetadataEdit,
+    ): Boolean = coroutineResult { obsState.updateSceneMeta(origin, sceneName, edit) }.isSuccess
 
     // ── Virtual camera (M7) ────────────────────────────────────
 

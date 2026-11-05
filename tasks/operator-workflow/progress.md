@@ -3,7 +3,8 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Next slice: **W2 — local aliases and preview freshness**.
+- Active slice: **W2 — local aliases and preview freshness**.
+- Design/contracts: `aliases-preview-design.md`; alias persistence is being implemented.
 - W1a–W1d are implemented and verified. Named decks are ready locally; all W2–W11
   milestones remain incomplete. Start with the first unchecked item in `plan.md`.
 - Full feature delivery: **in progress**. This checkpoint completes workspace isolation
@@ -326,6 +327,79 @@
   import is covered by Robolectric; no physical-device, real-OBS or performance claim.
 - The original failed/intermediate logs above are historical. No remaining W1c defect
   or product decision blocks the next slice. Continue W2 from the current branch.
+
+## W2 — Implementation started
+
+- Previous goal turn was **progress**, committed as `9e987ed`; authoritative worktree
+  was clean before this slice. W1 remains verified; W2–W11 remain incomplete.
+- Added planned behavior and preservation rules in `aliases-preview-design.md`.
+- Started Room 5 optional alias storage, lossless migration, domain/transfer mapping,
+  label-only registry edits and card projection. This is unverified foundation, not
+  a finished feature. Next: compile schema, migration/alias tests and actual editor/UI.
+- Preview inspection found valid dark images discarded by the existing poller despite
+  its documented behavior. W2 will accept them and timestamp successful captures.
+
+## W2 — Integrated behavior; verification in progress
+
+- Added both local-label editors, shared field, alias/raw identity on cards/Inventory/
+  deck members, search by either name, and unchanged-role preservation. Failed saves
+  retain drafts; the registry mutation checks current scene identity so renamed-scene
+  editors cannot recreate an obsolete entry. Room 5 and optional version-1 transfer
+  fields preserve earlier curation/decks. Matching product/design/privacy/agent docs
+  now describe the implementation, but W2 checkboxes remain open until the full gate.
+- Frames now carry monotonic successful-receipt/decode timestamps, with failed captures
+  tracked separately. Captions show fresh age, stale (20s or failure), pending and
+  unavailable; disconnected Scenes explains its cleared previews. Valid black frames
+  replace prior images. A screen-only age clock leaves capture intervals/bounds intact.
+- Focused data tests exposed a historical schema-fixture assumption that every entity
+  has indices; corrected optional index loading. Core data tests subsequently passed.
+  Initial UI/static runs also exposed complexity/long-method issues, now refactored.
+  Those intermediate failures remain in `/tmp/scenedeck-alias-preview-focused.log`
+  and `/tmp/scenedeck-alias-preview-renders.log`; they are not passing evidence.
+- Inventory dialog tests encountered the upstream Robolectric dialog/text-field layout
+  loop with explicit window-width qualifiers (robolectric/robolectric#8460). Freezing
+  the clock and filling the layout did not solve it; those experiments were removed.
+  The actual dialog and failed-save assertions now pass at Robolectric's default 320dp
+  width, keeping the height/density qualifier. Evidence: **exit 0, 8s, 131 tasks** in
+  `/tmp/scenedeck-alias-dialog-default-width.log`; four theme captures generated, with
+  SceneDeck light and OBS dark inspected for visible identity/counter/Save/Cancel.
+  This is JVM render evidence, not device evidence.
+- Current focused data + Live/Inventory recording + detekt run:
+  `/tmp/scenedeck-alias-preview-renders-final.log`. Next: inspect result/screens,
+  resolve any failures, run the full JDK 21/uv gate and explicit build/tests, then
+  checkpoint W2 and continue W3. The full goal remains active; no rundown work.
+
+## W2 — Verified local labels and preview freshness
+
+- **W2a–c are complete.** This goal turn is **progress** toward the authorized scope;
+  W3–W11 remain open. Show rundown/cue lists/timed advancement remain excluded.
+- Focused final data + Live/Inventory renders + detekt passed: exit 0, 41s, 190 tasks
+  in `/tmp/scenedeck-alias-preview-renders-verified.log`. The prior final-named log
+  failed one selector that matched both search input and member text; the assertion
+  now targets the member's raw identity, verifies its alias and checks raw-key removal.
+- **Full JDK 21/uv quality gate passed**, exit 0: 926 tasks in 2m 8s, formatting,
+  complexity, Android lint, debug build/unit tests, seven Semgrep rules with zero
+  findings and clean Gitleaks history/working-tree scans. Evidence:
+  `/tmp/scenedeck-alias-preview-quality.log`.
+- The staged additions also passed the seven-rule Semgrep scan (262 source files,
+  zero findings), `/tmp/scenedeck-alias-preview-staged-security.log`.
+- **Explicit assembleDebug + testDebugUnitTest passed**, exit 0, 726 tasks, 1s:
+  `/tmp/scenedeck-alias-preview-explicit.log`. Aggregate XML: **688 tests / 123 suites,
+  zero failures/errors/skips** (29 tests added over W1).
+- Coverage includes migrations 1–4 to schema 5, alias round-trip/legacy merge, invalid
+  labels, rename conflict/Undo/workspace rejection, raw OBS command targets, original
+  unassigned/Archive role retention, failed-save drafts, dual-name search/member edits,
+  preview age boundary, failure timestamp retention, valid black captures, bounded
+  polling and existing reconnect/context invalidation regressions.
+- Sixteen new label-editor/freshness/disconnected theme goldens and an OBS-light
+  Inventory capture were generated. Existing Inventory/member/main-deck goldens were
+  refreshed and verified by the full gate. Inspected light/dark editors, light aliased
+  Inventory and member rows, preview statuses and actual disconnected placeholder.
+  Dialog fixture width limitation is documented above. No real-OBS, physical-device
+  or measured-performance claim is made.
+- Matching FEATURE_SPEC/ARCHITECTURE/DESIGN_SYSTEM/ROADMAP/privacy/AGENTS are updated.
+  Next: W3 scoped preflight configuration, bounded independent checks and More entry.
+  Keep the full workflow active; no release or publication is authorized here.
 
 ## Decisions / limitations
 

@@ -75,6 +75,7 @@ suspend fun RegistryRepository.importMerge(
                     role = entry.role?.name ?: existing?.role ?: UNASSIGNED_ROLE,
                     accentColorArgb = entry.accentColorArgb ?: existing?.accentColorArgb,
                     iconName = entry.iconName ?: existing?.iconName,
+                    localAlias = checkedSceneAlias(entry.localAlias) ?: existing?.localAlias,
                     sortOrder = existing?.sortOrder ?: UNPLACED_SORT_ORDER,
                 )
             filePosition.getOrPut(entry.sceneName) { entry.sortOrder to index }

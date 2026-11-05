@@ -23,6 +23,7 @@ data class RegistryExportEntry(
     val iconName: String? = null,
     /** Saved position; [UNPLACED_SORT_ORDER] follows OBS order. Missing values keep file order. */
     val sortOrder: Int = 0,
+    val localAlias: String? = null,
 )
 
 internal fun SceneRegistryEntry.toExport() =
@@ -32,6 +33,7 @@ internal fun SceneRegistryEntry.toExport() =
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
+        localAlias = checkedSceneAlias(localAlias),
     )
 
 internal fun RegistryExportEntry.toDomain() =
@@ -43,6 +45,7 @@ internal fun RegistryExportEntry.toDomain() =
         accentColorArgb = accentColorArgb,
         iconName = iconName,
         sortOrder = sortOrder,
+        localAlias = checkedSceneAlias(localAlias),
     )
 
 /** YAML (kaml) codec for the registry export. JSON fallback is one flag away. */

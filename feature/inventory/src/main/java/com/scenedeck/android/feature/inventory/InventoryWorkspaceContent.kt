@@ -31,6 +31,7 @@ internal fun InventoryWorkspaceContent(
             InventoryContent(
                 uiState = uiState,
                 snackbarHostState = snackbarHostState,
+                onSetAlias = { scene, alias -> viewModel.setAlias(origin, scene.name, alias) },
                 onSetRole = { name, role -> viewModel.setRole(origin, name, role) },
                 onSetAccent = { name, accent -> viewModel.setAccent(origin, name, accent) },
                 onSetIcon = { name, icon -> viewModel.setIcon(origin, name, icon) },

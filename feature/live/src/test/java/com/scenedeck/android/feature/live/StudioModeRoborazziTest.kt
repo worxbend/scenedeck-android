@@ -25,6 +25,7 @@ import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.NamedDeckSnapshot
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.SceneThumbnail
 import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
@@ -55,7 +56,7 @@ class StudioModeRoborazziTest {
     @Test
     fun studioDeckDark() {
         val deck = previewDeckState()
-        val thumbnails = mapOf("Cam 1" to thumbnail(0xFF336699.toInt()))
+        val thumbnails = mapOf("Cam 1" to SceneThumbnail(thumbnail(0xFF336699.toInt()), 0L))
 
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
@@ -74,7 +75,7 @@ class StudioModeRoborazziTest {
                         onStreamClick = {},
                         onRecordClick = {},
                         onToggleVirtualCam = {},
-                        onQuickEditSave = { _, _, _, _ -> },
+                        onQuickEditSave = { _, _ -> true },
                         onReorder = {},
                         onStudioToggle = {},
                         onTransitionClick = {},

@@ -11,6 +11,7 @@ import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.WorkspaceSession
 import com.scenedeck.android.core.data.WorkspaceState
 import com.scenedeck.android.core.data.assignRoleToUnassigned
+import com.scenedeck.android.core.data.checkedSceneAlias
 import com.scenedeck.android.core.data.reorder
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
@@ -134,6 +135,15 @@ constructor(
 
     val importPreview: StateFlow<ImportPreview?>
         get() = transfer.importPreview
+
+    suspend fun setAlias(origin: WorkspaceSession, name: String, alias: String?): Boolean =
+        coroutineResult {
+            registry.edit(origin, name) {
+                require(obsState.hasScene(origin, name)) { "Scene is no longer available" }
+                it.copy(localAlias = checkedSceneAlias(alias))
+            }
+        }
+        .isSuccess
 
     fun setRole(origin: WorkspaceSession, sceneName: String, role: SceneRole) {
         launchAction(origin) { bound -> registry.edit(bound, sceneName) { it.copy(role = role) } }

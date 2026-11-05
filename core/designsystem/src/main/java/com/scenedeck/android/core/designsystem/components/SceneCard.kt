@@ -83,6 +83,9 @@ fun SceneCard(
     studioMode: Boolean = false,
     /** Deck reorder mode: taps do nothing, the caller shows a drag grip instead. */
     reordering: Boolean = false,
+    /** Literal OBS identity when the display label is a local alias. */
+    obsName: String? = null,
+    previewStatus: String? = null,
 ) {
     val colors = SceneDeckTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
@@ -101,13 +104,15 @@ fun SceneCard(
             label = "sceneCardStateColor",
         )
     val shape = RoundedCornerShape(CardRadius)
-    val minimumHeight = 148.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val minimumHeight =
+        (148.dp + if (previewStatus == null) 0.dp else 20.dp) *
+            LocalDensity.current.fontScale.coerceAtLeast(1f)
 
     val description =
         sceneCardDescription(
             label,
             SceneCardMode(active, preview, pending, studioMode, reordering),
-        )
+        ) + (obsName?.let { ". OBS scene: $it" } ?: "") + (previewStatus?.let { ". $it" } ?: "")
 
     @OptIn(ExperimentalFoundationApi::class)
     Surface(
@@ -152,6 +157,8 @@ fun SceneCard(
             SceneCardArtwork(thumbnail, active || preview, stateColor)
             SceneCardLabels(
                 label,
+                obsName,
+                previewStatus,
                 icon,
                 SceneCardMode(active, preview, pending, studioMode, reordering),
                 thumbnail != null,
@@ -311,6 +318,8 @@ private fun SceneCardArtwork(thumbnail: ImageBitmap?, highlighted: Boolean, stat
 @Composable
 private fun SceneCardLabels(
     label: String,
+    obsName: String?,
+    previewStatus: String?,
     icon: ImageVector,
     mode: SceneCardMode,
     hasThumbnail: Boolean,
@@ -341,17 +350,17 @@ private fun SceneCardLabels(
             }
         }
         Column {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = foreground,
-                minLines = 2,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            SceneIdentityText(label, obsName, foreground)
             Spacer(Modifier.height(4.dp))
             SceneCardCaption(mode, hasThumbnail, stateColor)
+            if (previewStatus != null)
+                Text(
+                    previewStatus,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = foreground.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
         }
     }
 }

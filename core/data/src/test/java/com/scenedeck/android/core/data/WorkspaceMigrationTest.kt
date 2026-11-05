@@ -101,12 +101,35 @@ class WorkspaceMigrationTest {
             assertEquals(NamedDeckSnapshot(), decks)
         }
 
+    @Test
+    fun upgradeFromVersionFourPreservesDeckSelectionAndAddsEmptyAliases(): Unit = runBlocking {
+        createHistoricalDatabase(4)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL(
+                "INSERT INTO scene_registry VALUES ('Camera', 'ARCHIVE', NULL, NULL, 3, 7, 'Studio')"
+            )
+            sqlite.execSQL("INSERT INTO named_decks VALUES (7, 'Studio', 'show', 'Show', 'show')")
+            sqlite.execSQL(
+                "INSERT INTO named_deck_members VALUES (7, 'Studio', 'show', 'Camera', 0)"
+            )
+            sqlite.execSQL("INSERT INTO workspace_deck_selection VALUES (7, 'Studio', 'show')")
+        }
+        val upgraded = openMigratedDatabase()
+        val entry = requireNotNull(upgraded.workspaceSceneDao().byName(7, "Studio", "Camera"))
+        assertEquals(null, entry.localAlias)
+        assertEquals("ARCHIVE", entry.role)
+        val decks = upgraded.namedDeckDao().snapshot(7, "Studio").toDeckSnapshot()
+        assertEquals(DeckSelection.Named("show"), decks.selection)
+        assertEquals(listOf("Camera"), decks.decks.single().sceneNames)
+    }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
                 SceneDeckMigrations.MIGRATION_1_2,
                 SceneDeckMigrations.MIGRATION_2_3,
                 SceneDeckMigrations.MIGRATION_3_4,
+                SceneDeckMigrations.MIGRATION_4_5,
             )
             .build()
             .also { database = it }
@@ -124,6 +147,13 @@ class WorkspaceMigrationTest {
                 val entity = entities.getJSONObject(index)
                 sqlite.execSQL(
                     entity
+                        .getString("createSql")
+                        .replace("\${TABLE_NAME}", entity.getString("tableName"))
+                )
+                val indices = entity.optJSONArray("indices") ?: org.json.JSONArray()
+                for (indexId in 0 until indices.length()) sqlite.execSQL(
+                    indices
+                        .getJSONObject(indexId)
                         .getString("createSql")
                         .replace("\${TABLE_NAME}", entity.getString("tableName"))
                 )

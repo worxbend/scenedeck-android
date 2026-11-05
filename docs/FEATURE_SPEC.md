@@ -36,7 +36,7 @@ colors, icons, ordering) lives in a local registry on the device.
 
 - Grid of **scene cards**: all OBS scenes by default; an optional **Deck** filter shows
   scenes assigned local role `Primary`. Mixer controls live on their dedicated tab.
-- Scene-name search preserves the selected deck; reorder is disabled while searching.
+- Search matches the OBS name and local label, preserves the selected deck, and disables reorder.
 - **My decks** adds local named decks per connection profile + OBS collection. Create,
   rename, delete and select decks; selection is restored when the workspace resolves.
   Membership/order are independent of roles and canonical Inventory order. Explicitly
@@ -59,6 +59,16 @@ colors, icons, ordering) lives in a local registry on the device.
 - Uniform card tiles use an icon well, numbered positions and separate scene/state
   labels, with no accent rail; grips appear only in explicit reorder mode.
 - Per-scene optional **accent color** and **icon** (local metadata).
+- Optional **local label**, edited in quick edit or by tapping the Inventory scene name.
+  Labels are scoped to the workspace, trimmed, limited to 80 characters, and need not
+  be unique; blank restores the OBS name. Scene cards, Inventory and deck membership
+  editors show the raw OBS identity alongside a label; TalkBack includes both.
+  Commands, membership and ordering still use the literal OBS name. Saving only a
+  label preserves the existing role, including unassigned and Archive. Failed saves
+  retain the draft; renamed-scene or obsolete-workspace editors reject the save.
+  Registry YAML/JSON version 1 includes optional `localAlias`. Old or null fields keep
+  destination labels when merging; nonblank fields replace them. Explicit clearing
+  uses the editor. Rename, Undo and previous-curation recovery preserve labels.
 - All/Primary scene card order = the registry order, shared with Inventory and persisted locally.
   Scenes with a saved position come first; scenes never placed follow OBS's own list
   order (top scene has the highest `sceneIndex`), then name. Any drag (Scenes Reorder
@@ -188,6 +198,14 @@ colors, icons, ordering) lives in a local registry on the device.
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
 | Media controls (play/pause media sources) | **SHIPPED M7**: play/pause/restart + state chip on media-kind mixer strips (2 s poll) | M7 ✅ |
 | Quick-volume notification / foreground service | **SHIPPED M7**: keep-alive foreground service (dataSync, STICKY, timeout handling) + ongoing notification with connection, LIVE/REC output time (never a guessed idle) and program scene + Disconnect action; denied/blocked notification permission is explained with a notification-settings shortcut; `scenedeck://scene/{name}` deep link for automation with sanitized failure toasts (no profile, not connected, rejected switch) | M7 ✅ |
+
+Preview captions show elapsed time since successful receipt/decoding, using a monotonic
+clock. A frame becomes **Stale preview** at 20 seconds or when its latest capture fails;
+failure preserves the prior frame and timestamp. Before a first result, the caption is
+**Preview pending**; a failed first capture is **Preview unavailable**. Disconnection
+clears cached images and explains that previews are disconnected. Valid black images
+replace old frames. The visible age clock adds no screenshot requests, and disabling
+previews hides both images and captions. Existing capture intervals and bounds remain.
 
 Explicitly **out of scope** (same as desktop): input creation/editing, filters,
 scene item transforms, scripting, Twitch/StreamElements integration (v1).

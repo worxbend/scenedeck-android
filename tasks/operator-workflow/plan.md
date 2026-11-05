@@ -47,11 +47,11 @@ small useful improvements while establishing shared state before automation.
 
 ### W2 — Local aliases and preview freshness
 
-- [ ] W2a: Store/edit a local alias; show OBS identity where needed; search both names;
+- [x] W2a: Store/edit a local alias; show OBS identity where needed; search both names;
   preserve scene addressing, ordering, TalkBack, rename, and export/import behavior.
-- [ ] W2b: Timestamp successful screenshots using monotonic age; distinguish fresh,
+- [x] W2b: Timestamp successful screenshots using monotonic age; distinguish fresh,
   stale, unavailable, and disconnected images without increasing polling frequency.
-- [ ] W2c: Verify alias round-trips and stale/failed/reconnected preview rendering.
+- [x] W2c: Verify alias round-trips and stale/failed/reconnected preview rendering.
 
 ### W3 — Preflight
 

@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
             NamedDeckMemberEntity::class,
             WorkspaceDeckSelectionEntity::class,
         ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {

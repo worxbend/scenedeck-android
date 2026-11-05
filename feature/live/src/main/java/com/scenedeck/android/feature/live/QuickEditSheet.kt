@@ -26,11 +26,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,11 +47,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.scenedeck.android.core.data.MAX_SCENE_ALIAS_LENGTH
 import com.scenedeck.android.core.data.SceneCardState
+import com.scenedeck.android.core.data.SceneMetadataEdit
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.designsystem.components.SceneAliasField
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
 import com.scenedeck.android.core.designsystem.icons.imageVector
 import com.scenedeck.android.core.model.SceneItemInfo
+import kotlinx.coroutines.launch
 
 // Lucide-style eye glyphs for source visibility (icon catalogue is owned by
 // another agent, so these stay private to this file).
@@ -111,7 +117,7 @@ internal val AccentPalette: List<Color> =
 fun QuickEditSheet(
     scene: SceneCardState,
     onDismiss: () -> Unit,
-    onSave: (primary: Boolean, accentArgb: Long?, iconName: String?) -> Unit,
+    onSave: suspend (SceneMetadataEdit) -> Boolean,
     sceneItemsVersion: Int = 0,
     onLoadSceneItems: (suspend () -> List<SceneItemInfo>)? = null,
     onToggleSceneItem: (itemId: Int, enabled: Boolean) -> Unit = { _, _ -> },
@@ -119,8 +125,14 @@ fun QuickEditSheet(
     var primary by rememberSaveable { mutableStateOf(scene.role == SceneRole.PRIMARY) }
     var accentArgb by rememberSaveable { mutableStateOf(scene.accentColorArgb) }
     var iconName by rememberSaveable { mutableStateOf(scene.iconName) }
+    var alias by rememberSaveable { mutableStateOf(scene.localAlias.orEmpty()) }
+    var saving by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(
             modifier =
                 Modifier.fillMaxWidth()
@@ -129,7 +141,22 @@ fun QuickEditSheet(
                     .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(text = scene.name, style = MaterialTheme.typography.titleLarge)
+            Text(text = scene.displayName, style = MaterialTheme.typography.titleLarge)
+            SceneAliasField(
+                alias,
+                {
+                    alias = it
+                    failed = false
+                },
+                scene.name,
+                MAX_SCENE_ALIAS_LENGTH,
+                enabled = !saving,
+            )
+            if (failed)
+                Text(
+                    "Couldn't save scene details. Reopen this editor if the scene or workspace changed.",
+                    color = MaterialTheme.colorScheme.error,
+                )
 
             if (onLoadSceneItems != null) {
                 SceneItemsSection(
@@ -151,7 +178,7 @@ fun QuickEditSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = primary, onCheckedChange = { primary = it })
+                Switch(checked = primary, onCheckedChange = { primary = it }, enabled = !saving)
             }
 
             Text(
@@ -163,12 +190,14 @@ fun QuickEditSheet(
                     color = null,
                     selected = accentArgb == null,
                     onClick = { accentArgb = null },
+                    enabled = !saving,
                 )
                 AccentPalette.forEach { color ->
                     AccentSwatch(
                         color = color,
                         selected = accentArgb == argbLong(color),
                         onClick = { accentArgb = argbLong(color) },
+                        enabled = !saving,
                     )
                 }
             }
@@ -184,23 +213,29 @@ fun QuickEditSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(SceneIcon.entries.toList(), key = { it.name }) { icon ->
-                    SceneIconOption(icon, iconName) { iconName = icon.name }
+                    SceneIconOption(icon, iconName, !saving) { iconName = icon.name }
                 }
             }
 
-            Row {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-                Spacer(Modifier.weight(1f))
-                Button(onClick = { onSave(primary, accentArgb, iconName) }) {
-                    Text("Save")
-                }
-            }
+            QuickEditSaveActions(
+                saving,
+                scene.metadataEdit(primary, accentArgb, iconName, alias),
+                { saving = it },
+                { failed = true },
+                onSave,
+                onDismiss,
+            )
         }
     }
 }
 
 @Composable
-private fun AccentSwatch(color: Color?, selected: Boolean, onClick: () -> Unit) {
+private fun AccentSwatch(
+    color: Color?,
+    selected: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
     val borderColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
     if (color == null) {
         Column(
@@ -210,7 +245,7 @@ private fun AccentSwatch(color: Color?, selected: Boolean, onClick: () -> Unit) 
                     .clip(CircleShape)
                     .border(2.dp, borderColor, CircleShape)
                     .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    .clickable(onClick = onClick),
+                    .clickable(enabled = enabled, onClick = onClick),
             verticalArrangement = Arrangement.Center,
         ) {
             Text(text = "–", style = MaterialTheme.typography.labelMedium)
@@ -222,7 +257,7 @@ private fun AccentSwatch(color: Color?, selected: Boolean, onClick: () -> Unit) 
                     .clip(CircleShape)
                     .background(color)
                     .border(2.dp, borderColor, CircleShape)
-                    .clickable(onClick = onClick)
+                    .clickable(enabled = enabled, onClick = onClick)
         )
     }
 }
@@ -266,7 +301,12 @@ private fun SceneItemsSection(
 }
 
 @Composable
-private fun SceneIconOption(icon: SceneIcon, iconName: String?, onSelect: () -> Unit) {
+private fun SceneIconOption(
+    icon: SceneIcon,
+    iconName: String?,
+    enabled: Boolean,
+    onSelect: () -> Unit,
+) {
     val selected = iconName == icon.name || (iconName == null && icon == SceneIcon.SCENES)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -279,7 +319,7 @@ private fun SceneIconOption(icon: SceneIcon, iconName: String?, onSelect: () -> 
                         Color.Transparent
                     }
                 )
-                .clickable(onClick = onSelect)
+                .clickable(enabled = enabled, onClick = onSelect)
                 .padding(6.dp),
     ) {
         Icon(
@@ -323,6 +363,54 @@ private fun SceneSourceRow(item: SceneItemInfo, onToggle: (Int, Boolean) -> Unit
                 tint = iconTint,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+/** An untouched Primary toggle must not assign or downgrade an existing curation role. */
+internal fun SceneCardState.metadataEdit(
+    primary: Boolean,
+    accent: Long?,
+    icon: String?,
+    alias: String,
+): SceneMetadataEdit {
+    val editedRole =
+        when {
+            primary != (role == SceneRole.PRIMARY) ->
+                if (primary) SceneRole.PRIMARY else SceneRole.SECONDARY
+            roleAssigned -> role
+            else -> null
+        }
+    return SceneMetadataEdit(editedRole, accent, icon, alias)
+}
+
+@Composable
+private fun QuickEditSaveActions(
+    saving: Boolean,
+    edit: SceneMetadataEdit,
+    onSavingChange: (Boolean) -> Unit,
+    onFailure: () -> Unit,
+    onSave: suspend (SceneMetadataEdit) -> Boolean,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    Row {
+        TextButton(onClick = onDismiss) { Text("Cancel") }
+        Spacer(Modifier.weight(1f))
+        Button(
+            enabled = !saving && edit.localAlias.orEmpty().trim().length <= MAX_SCENE_ALIAS_LENGTH,
+            onClick = {
+                onSavingChange(true)
+                scope.launch {
+                    try {
+                        if (onSave(edit)) onDismiss() else onFailure()
+                    } finally {
+                        onSavingChange(false)
+                    }
+                }
+            },
+        ) {
+            Text(if (saving) "Saving…" else "Save")
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.scenedeck.android.feature.inventory
 
 import androidx.compose.material3.Surface
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -30,6 +32,10 @@ class InventoryScreenRoborazziTest {
     @Test
     fun inventoryScreenObsDark() =
         capture(ThemeFamily.OBS, darkTheme = true, name = "inventory_screen_obs_dark.png")
+
+    @Test
+    fun inventoryScreenObsLight() =
+        capture(ThemeFamily.OBS, darkTheme = false, name = "inventory_screen_obs_light.png")
 
     @Test
     fun inventoryScreenNordDark() =
@@ -71,6 +77,8 @@ class InventoryScreenRoborazziTest {
                 Surface { InventoryFixture() }
             }
         }
+        composeRule.onNodeWithText("Host").assertIsDisplayed()
+        composeRule.onNodeWithText("OBS · Cam 1").assertIsDisplayed()
         composeRule.onRoot().captureRoboImage(name)
     }
 }

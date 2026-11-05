@@ -234,3 +234,17 @@ checkbox rows; missing references say Unavailable in OBS and remain removable. M
 are disabled during search; the main grid also disables dragging with missing members.
 Import shows its destination and replacement counts before confirmation. Failed saves
 retain the editor draft; context changes dismiss the obsolete editor.
+
+### Scene labels and preview age
+
+Use shared `SceneAliasField` for local labels, with the literal OBS identity, blank-to-reset
+hint and 80-character counter. Quick edit opens expanded; Inventory exposes a focused
+label dialog from its 48dp name target. Failed saves retain the input and show an inline
+message. Label-only saves preserve the scene's existing role.
+
+Aliased cards have a primary local label and a secondary `OBS · name` line; TalkBack
+reads both. Inventory and deck membership rows retain the same identity distinction.
+Preview captions appear below the normal card state: age, Stale preview, Preview pending
+or Preview unavailable. Leave tally colors for program/preview/output state. The extra
+caption adds vertical space and scales with font size; hidden previews hide captions.
+Disconnected Scenes uses the shared placeholder with an explicit preview explanation.

@@ -34,13 +34,15 @@ internal fun DeckMemberEditor(
     enabled: Boolean,
     onChange: (DeckEditorPage.Members) -> Unit,
     modifier: Modifier = Modifier,
+    aliases: Map<String, String> = emptyMap(),
 ) {
     var query by remember(page.target) { mutableStateOf("") }
     val members = page.draft.toSet()
     val known = available.toSet()
     val rows =
         (page.draft + available.filter { it !in members }).filter {
-            it.contains(query.trim(), ignoreCase = true)
+            it.contains(query.trim(), ignoreCase = true) ||
+                aliases[it]?.contains(query.trim(), ignoreCase = true) == true
         }
     Column(modifier) {
         StudioSectionHeader("Scenes in ${page.target.name}")
@@ -59,8 +61,13 @@ internal fun DeckMemberEditor(
             items(rows, key = { it }) { name ->
                 val index = page.draft.indexOf(name)
                 ListItem(
-                    headlineContent = { Text(name) },
-                    supportingContent = { Text(memberDescription(index, name in known)) },
+                    headlineContent = { Text(aliases[name] ?: name) },
+                    supportingContent = {
+                        Text(
+                            (aliases[name]?.let { "OBS · $name · " } ?: "") +
+                                memberDescription(index, name in known)
+                        )
+                    },
                     leadingContent = {
                         Checkbox(checked = index >= 0, onCheckedChange = null, enabled = enabled)
                     },

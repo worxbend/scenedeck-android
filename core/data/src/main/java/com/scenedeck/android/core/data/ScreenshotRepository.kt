@@ -25,11 +25,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
-data class SceneThumbnails(
-    val workspace: WorkspaceSession? = null,
-    val frames: Map<String, Bitmap> = emptyMap(),
-)
-
 /**
  * Scene preview thumbnails via OBS `GetSourceScreenshot` (FEATURE_SPEC §8, M6).
  *
@@ -57,7 +52,7 @@ constructor(
     val thumbnails: StateFlow<SceneThumbnails> = _thumbnails.asStateFlow()
 
     /** Elapsed time must remain stable when the device wall clock changes. */
-    internal var nowMs: () -> Long = { System.nanoTime() / 1_000_000L }
+    internal var nowMs: () -> Long = ::previewMonotonicTimeMs
 
     // Owned by the poller; collectLatest joins all captures before changing configuration.
     private val lastFetchMs = mutableMapOf<String, Long>()
@@ -99,7 +94,10 @@ constructor(
                         val liveNames = configuration.scenes.toSet()
                         lastFetchMs.keys.retainAll(liveNames)
                         _thumbnails.update {
-                            it.copy(frames = it.frames.filterKeys { name -> name in liveNames })
+                            it.copy(
+                                frames = it.frames.filterKeys { name -> name in liveNames },
+                                failedScenes = it.failedScenes.intersect(liveNames),
+                            )
                         }
                         pollLoop(configuration)
                     } else {
@@ -165,7 +163,7 @@ constructor(
     }
 
     private suspend fun capture(origin: WorkspaceSession, sceneName: String) {
-        requestResult {
+        val bitmap = requestResult {
             val bytes =
                 client.withSession(origin.token) {
                     getSourceScreenshot(
@@ -177,16 +175,23 @@ constructor(
                         )
                     )
                 }
-            // ApplicationScope uses Dispatchers.Default, keeping decoding off main.
-            val bitmap = decodeBitmap(bytes)?.takeUnless(::isBlankFrame) ?: return@requestResult
-            currentCoroutineContext().ensureActive()
-            _thumbnails.update {
-                if (it.workspace == origin && obsState.isWorkspaceCurrent(origin))
-                    it.copy(frames = it.frames + (sceneName to bitmap))
-                else it
+            // A valid black image is still a successful capture and must replace the old frame.
+            decodeBitmap(bytes)
+        }
+            .getOrNull()
+        currentCoroutineContext().ensureActive()
+        val capturedAt = nowMs()
+        _thumbnails.update { state ->
+            when {
+                state.workspace != origin || !obsState.isWorkspaceCurrent(origin) -> state
+                bitmap == null -> state.copy(failedScenes = state.failedScenes + sceneName)
+                else ->
+                    state.copy(
+                        frames = state.frames + (sceneName to SceneThumbnail(bitmap, capturedAt)),
+                        failedScenes = state.failedScenes - sceneName,
+                    )
             }
         }
-        // On failure: keep the previous frame (or nothing → icon fallback).
     }
 
     internal fun decodeBitmap(bytes: ByteArray): Bitmap? {
@@ -200,27 +205,6 @@ constructor(
         return if (validDimensions) BitmapFactory.decodeByteArray(bytes, 0, bytes.size) else null
     }
 
-    /** True when the frame is (near-)uniformly black — e.g. audio-only scenes. */
-    internal fun isBlankFrame(bitmap: Bitmap): Boolean {
-        val cols = 16
-        val rows = 9
-        var lumaSum = 0L
-        for (row in 0 until rows) {
-            for (col in 0 until cols) {
-                val pixel =
-                    bitmap.getPixel(
-                        col * (bitmap.width - 1) / (cols - 1),
-                        row * (bitmap.height - 1) / (rows - 1),
-                    )
-                lumaSum +=
-                    (android.graphics.Color.red(pixel) * 299 +
-                        android.graphics.Color.green(pixel) * 587 +
-                        android.graphics.Color.blue(pixel) * 114) / 1000
-            }
-        }
-        return lumaSum / (cols * rows) < BLANK_LUMA_THRESHOLD
-    }
-
     private companion object {
         const val HOT_REFRESH_MS = 2_500L
         const val COLD_REFRESH_MS = 10_000L
@@ -229,8 +213,5 @@ constructor(
         const val JPEG_QUALITY = 50
         const val WIDTH_PX = 360
         const val MAX_DECODED_PIXELS = 1_048_576L
-
-        /** Mean luma (0..255) below which a frame counts as blank. */
-        const val BLANK_LUMA_THRESHOLD = 10L
     }
 }
