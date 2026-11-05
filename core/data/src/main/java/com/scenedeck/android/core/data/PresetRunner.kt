@@ -98,7 +98,10 @@ constructor(
             launch(start = CoroutineStart.UNDISPATCHED) {
                 requestResult {
                     source.events.collect { event ->
-                        if (event.token == plan.origin.token && event.event.invalidatesPreset(plan))
+                        if (
+                            event.token == plan.origin.token &&
+                                event.event.invalidatesPreset(plan.preset)
+                        )
                             cancellation.stop(PresetStopReason.TARGET_CHANGED)
                     }
                 }

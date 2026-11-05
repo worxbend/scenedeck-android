@@ -1,5 +1,6 @@
 package com.scenedeck.android.core.obs
 
+import com.scenedeck.android.core.model.ObsInputSummary
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneSummary
 import kotlinx.coroutines.runBlocking
@@ -9,6 +10,32 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 internal class RequestsTest : ObsClientTestBase() {
+
+    @Test
+    fun inputDirectoryPreservesExactNamesAndIncludesOffProgramInputs(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.responseData = { type, fixture ->
+                if (type == "GetInputList")
+                    """{"inputs":[
+                    {"inputName":" Mic/Aux ","inputKind":"pulse_input_capture","unversionedInputKind":"pulse_input_capture"},
+                    {"inputName":"Off-program clip","inputKind":"ffmpeg_source","unversionedInputKind":"ffmpeg_source"}
+                ]}"""
+                else fixture
+            }
+            server.start()
+            val client = connectedClient(server)
+            assertEquals(
+                listOf(
+                    ObsInputSummary(" Mic/Aux ", "pulse_input_capture"),
+                    ObsInputSummary("Off-program clip", "ffmpeg_source"),
+                ),
+                client.getInputList(),
+            )
+            assertEquals(1, server.receivedCount("GetInputList"))
+            assertEquals(0, server.receivedCount("GetSceneList"))
+            client.disconnect()
+        }
+    }
 
     @Test
     fun sceneRequests_roundTrip(): Unit = runBlocking {

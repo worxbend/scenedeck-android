@@ -339,3 +339,14 @@ Use normal theme-native text and static state; history is readable without anima
 tally colors. File-picker/write failures announce politely with sanitized copy. Controls
 and timeline stay reachable in compact height. Render list/detail in SceneDeck and OBS
 light/dark, plus compact observation/bookmark and failed-storage states.
+
+### Preset editor and review
+
+More → Presets uses the shared studio page/section headers and tonal cards. The editor
+uses a full scrollable page with a focused step form; searchable target sheets open fully
+expanded. Scene choices show local aliases and explicit OBS names. Move up/down controls
+retain 48dp targets and announce the step position. Review keeps check results beside
+each target and labels each required output checkbox with its concrete action. Run results
+show partial/unknown outcomes in text, retain the original workspace and offer scoped
+cancellation. Status/IME insets apply outside the scroll container; compact-height and
+large-font layouts remain scrollable. No cue list, timeline scheduling or rundown styling.

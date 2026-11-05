@@ -1,9 +1,9 @@
 # Local session history — W6 design
 
 Status: shared-state capture, bookmark links, offline History and SAF JSON export are
-implemented; verification evidence is in progress.md. The W7 runner now produces durable
-preset records and History can display/export them. **The Presets invocation UI remains
-unwired.** W6a stays open until that execution user flow is integrated and verified.
+implemented and verified; evidence is in progress.md. More → Presets now produces durable
+user-triggered results through its editor/consent/run flow. History displays/exports
+complete, partial and unknown outcomes at their original invocation point. W6a–c are verified.
 
 ## Meaning of an observation
 
@@ -127,7 +127,7 @@ retaining event ordinal ordering. Output readings never imply an observed start,
 unknown ends/omissions remain visible. Shared design components support both themes and
 compact height; privacy documentation describes capture, retention and export.
 
-## Remaining integration
+## Preset integration
 
 Schema 11 adds bounded child run records (50 per observation, separate from 500 events).
 They capture the original observation/elapsed position at invocation, save progress before
@@ -138,9 +138,10 @@ completed steps, marks interrupted writes unknown, leaves remaining steps not ru
 resumes. Timeline entries stay at invocation and export v2 includes typed results/limits.
 Run JSON is strict and bounded to 40 KiB characters, without raw errors or output paths.
 
-Connect the W7 editor/consent/invocation UI to this runner. W6a remains incomplete until
-actual user-triggered results, lifecycle behavior and failure paths are verified end to end.
-Keep full workflow verification and real-device/OBS limitations explicit in W11.
+The W7 editor/consent/invocation flow is connected and verified through the ViewModel,
+typed client and real Room storage. Tests cover complete, partial/unknown and cancelled
+results, clear/disabled capture and failed progress persistence without raw errors. Keep
+full workflow verification and real-device/OBS limitations explicit in W11.
 
 Show rundown, cue lists and timed advancement remain excluded. Presets are individually
 invoked actions.

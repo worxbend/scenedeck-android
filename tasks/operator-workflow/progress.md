@@ -987,6 +987,59 @@
   and theme/compact/accessibility renders. Only then check W7b/c/d and W6a. W8–W11 remain
   authorized and required; no scope was dropped.
 
+## 2026-11-05 — W7 editor, consent and user-triggered History verified
+
+- Resumed the clean `679338c` checkpoint; that prior goal turn made progress. Continued
+  the authorized workflow without expanding into Show rundown or changing the completed
+  historical review. W7b/c/d and the remaining W6a integration are now checked after
+  verification. W8–W11 remain required and the durable goal remains active.
+- Added `:feature:presets` under More: workspace list, named create/edit/delete, stable
+  ordered step editing, failed-save draft retention, exact OBS target fields and searchable
+  choices. Scene aliases remain display-only. Scope changes disable old drafts; stale
+  save/delete/callback tests preserve newer definitions and the original scope.
+- Added typed `GetInputList` in `:core:obs` and `PresetTargetsRepository`: subscribe before
+  reading, include off-program inputs, coalesce/cancel obsolete reads, reject oversized/
+  malformed directories, distinguish failed from empty and avoid polling. Protocol and
+  directory tests cover exact names, event races, replacement, cancellation and timeout.
+- `PresetReviewController` prepares read-only checks, shows every target and each required
+  Output Safety checkbox, watches invalidation, expires after 60 seconds and consumes its
+  review ID before launch. Navigation/disposal/lifecycle stop discard consent. Application-
+  scoped `PresetRunLauncher` keeps already-started runs across tabs, gates duplicates and
+  scopes Cancel to the displayed run. Results show original workspace and partial/unknown/
+  unrun steps with explicit History status. Shared action/result wording moved to `:core:ui`.
+- ViewModel flows exercise create/edit → prepare → consent → typed OBS writes → Room
+  History/export snapshots. Coverage includes single-use/expired consent, obsolete UI
+  callbacks, policy/target/scope changes, cancellation during an uncertain write, confirmed
+  prior steps, disabled/cleared/failed History and no automatic retries. Real recording
+  tools and off-program media seeks reject conflicting preset admission without being
+  cancelled by the rejected preset.
+- Test fixture corrections: Room queries use the same test scheduler as consent and
+  confirmation deadlines, avoiding artificial timeout while real-thread I/O is pending.
+  Navigation tests await the new review identity instead of reusing an old composed value;
+  that obsolete callback was correctly rejected. Media seek fixtures retain an observer
+  and use named duration/cursor arguments. Compact tests scroll lazy content into view
+  before operating controls. No production safety checks were relaxed to pass tests.
+- The final focused render/static pass passed **exit 0, 14s, 149 tasks**
+  (`/tmp/scenedeck-presets-renders.log`). Added **32 goldens**: SceneDeck and OBS light/dark
+  list/editor/step/review/consent/result/chooser views, three compact interactions and
+  1.3× text. Inspected representative dark/light, compact, chooser and unknown-result
+  images. Required output actions are named in checkbox semantics, reorder controls
+  announce position and target rows retain 48dp touch bounds.
+- Full JDK21/uv `scripts/check-quality.sh` passed **exit 0, 3m 20s, 1,177 tasks**
+  (`/tmp/scenedeck-presets-ui-quality.log`). Build, all unit tests, Android lint, formatting,
+  complexity and screenshot verification passed. Semgrep: seven rules, 378 files, zero
+  findings. Gitleaks: 74 commits and working tree, no leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 21s,
+  928 tasks** (`/tmp/scenedeck-presets-ui-explicit.log`). XML totals: **995 tests across
+  176 suites, zero failures/errors/skips** (+37 tests). Updated FEATURE_SPEC, ARCHITECTURE,
+  DESIGN_SYSTEM, ROADMAP, privacy docs, AGENTS, project module/protocol skills and resumption
+  files. No real-OBS/device or measured-performance claim; F-Droid final parity remains W11.
+- **Next:** W8 scoped keyboard and compatible foot-pedal bindings. Inspect app input/focus
+  handling, define supported actions and binding persistence/conflicts, and retain Studio,
+  output safety, text-entry, modifier, repeat/key-up and originating-workspace guards.
+  Devices must emit Android key events; do not promise universal pedal support or global
+  background interception. W9 demo isolation, W10 tablet layout and W11 remain authorized.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

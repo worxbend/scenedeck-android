@@ -16,6 +16,8 @@ import com.scenedeck.android.feature.live.LiveScreen
 import com.scenedeck.android.feature.mixer.MixerScreen
 import com.scenedeck.android.feature.onboarding.OnboardingScreen
 import com.scenedeck.android.feature.preflight.PreflightScreen
+import com.scenedeck.android.feature.presets.PresetsDestination
+import com.scenedeck.android.feature.presets.PresetsScreen
 import com.scenedeck.android.feature.settings.SettingsScreen
 import com.scenedeck.android.feature.stats.StatsScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
@@ -36,6 +38,20 @@ internal fun sceneDeckEntryProvider(
         entry<SceneDeckDestination.Bookmarks> { BookmarksScreen() }
         entry<SceneDeckDestination.History> {
             HistoryScreen(onBookmarks = { selectTopLevel(SceneDeckDestination.Bookmarks) })
+        }
+        entry<SceneDeckDestination.Presets> {
+            PresetsScreen(
+                onNavigate = { destination ->
+                    selectTopLevel(
+                        when (destination) {
+                            PresetsDestination.CONNECTIONS -> SceneDeckDestination.Connections
+                            PresetsDestination.PREFLIGHT -> SceneDeckDestination.Preflight
+                            PresetsDestination.SETTINGS -> SceneDeckDestination.Settings
+                            PresetsDestination.HISTORY -> SceneDeckDestination.History
+                        }
+                    )
+                }
+            )
         }
         entry<SceneDeckDestination.Preflight> {
             PreflightScreen(

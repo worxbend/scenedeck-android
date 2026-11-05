@@ -6,6 +6,7 @@ import com.scenedeck.android.core.model.MediaActionKind
 import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsInputSummary
 import com.scenedeck.android.core.model.ObsProfile
 import com.scenedeck.android.core.model.ObsSessionEvent
 import com.scenedeck.android.core.model.ObsSessionMeters
@@ -114,6 +115,9 @@ interface ObsClient {
 
     // ── Inputs / audio ──────────────────────────────────────────────────────
     suspend fun getSpecialInputs(): SpecialInputs
+
+    /** Full collection directory, including inputs outside the program scene. Read-only. */
+    suspend fun getInputList(): List<ObsInputSummary> = error(NOT_IMPLEMENTED)
 
     suspend fun getInputMute(inputName: String): Boolean
 

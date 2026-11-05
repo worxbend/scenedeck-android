@@ -17,6 +17,7 @@ val SceneDeckDestination.icon: ImageVector
             SceneDeckDestination.Alerts -> SceneDeckIcons.Alerts
             SceneDeckDestination.Bookmarks -> SceneDeckIcons.Bookmarks
             SceneDeckDestination.History -> SceneDeckIcons.History
+            SceneDeckDestination.Presets -> SceneDeckIcons.Presets
             SceneDeckDestination.Settings -> SceneDeckIcons.Settings
             SceneDeckDestination.Connections -> SceneDeckIcons.Connections
             SceneDeckDestination.Onboarding -> SceneDeckIcons.Help

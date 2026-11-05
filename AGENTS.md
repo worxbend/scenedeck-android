@@ -214,20 +214,24 @@ must pass, and Compose preview(s) for changed screens must render.
   Selected exports keep that observation's identity; all-history exports also include
   unlinked saved bookmarks. Export only the typed allow-list, excluding credentials,
   endpoints, raw protocol/comments and private output paths. Failed reads/exports are
-  explicit and sanitized. Export v2 includes bounded typed preset run snapshots. W6a
-  remains open until the W7 user flow is wired and verified.
+  explicit and sanitized. Export v2 includes bounded typed preset run snapshots.
 
-- W7 has scoped storage, read-only preparation and a guarded runner/History foundation;
-  the Presets editor, consent and executing user flow are not exposed yet. Room schema 10
-  retains 32 definitions per workspace, 1–12 typed target-value steps each. Preserve raw OBS names/order, stable
+- More → Presets owns scoped CRUD, ordered step editing, read-only preparation, concrete
+  output consent, bounded execution/cancellation and visible results. Room schema 10 retains
+  32 definitions per workspace, 1–12 typed target-value steps each. Preserve raw OBS names/order, stable
   draft IDs, optimistic revisions, transactional name/bound checks and cancellation.
-  Unknown/corrupt action payloads fail closed. Do not count foundation as full W7.
+  Unknown/corrupt action payloads fail closed. Failed saves retain drafts and their original scope.
 - Preset preparation requires advertised paired read/write capabilities, applies input
   locks/allow-list and OutputSafetyGate, probes at most three steps concurrently, and
   rechecks the saved revision, policy and origin. A current match is not permission to
-  skip a later executing step. No OBS writes are made during preparation. Resume from
-  `tasks/operator-workflow/presets-design.md`; consent/UI and end-to-end verification
-  remain required. Foundation checks do not complete W7 or W6a.
+  skip a later executing step. No OBS writes are made during preparation.
+- Preset review IDs are consumed before launch; required output-step checkboxes are concrete
+  and single-use. Navigation, lifecycle stop, target/definition/policy/context change or
+  expiry clears consent. Runs use application scope and continue across tabs; process death
+  never resumes them. Last results and Cancel retain the originating workspace/run ID.
+- Preset input choices use subscribed, event-driven GetInputList (including off-program
+  inputs), with no polling; failed reads are unknown, not empty. Cap at 2,000 entries and
+  retain exact names. Aliases are display-only; source kinds do not prove control support.
 - PresetRunner admits one invocation, rejects preparation older than 60 seconds and
   requires output-step acknowledgements. Recheck targets just in time; after each write,
   reconcile a read begun after acknowledgement within four seconds. Whole execution

@@ -388,14 +388,13 @@ data; they exclude connection endpoints, credentials, raw protocol/comments and 
 file paths. Previously exported files are not changed by later edits/deletion in the app.
 
 History can display and export preset run records, including partial and unknown results,
-at their original invocation point. The W7 runner produces these records, but the Presets
-editor and invocation UI are not exposed yet. Show rundown, cue lists and timed advancement
-remain excluded.
+at their original invocation point. More → Presets invokes these runs deliberately.
+Show rundown, cue lists and timed advancement remain excluded.
 
-### Controlled multi-action presets — implementation in progress
+### Controlled multi-action presets
 
-W7 has scoped storage, read-only preparation and a guarded execution foundation. It is
-**not yet exposed as a Presets editor or executing user flow**. The stored allow-list supports explicit
+More → **Presets** provides a workspace-scoped list, create/edit/delete, ordered step
+editing, review, execution and results. The allow-list supports explicit
 program/preview scene targets, mute, volume, media playing/paused/stopped, and stream/
 recording active targets. Definitions are bounded to 32 per workspace and 12 ordered
 steps each, with revision checks and failed-data states. Preparation checks advertised
@@ -418,9 +417,23 @@ with an explicit unrecorded result. A storage failure stops remaining steps. Pro
 marks unfinished runs interrupted, preserves completed steps and never resumes execution.
 JSON History export version 2 includes these bounded typed records and their limits.
 
-The editor, concrete consent summary, run/result UI and end-to-end user-flow verification
-remain required by `tasks/operator-workflow/plan.md`. Presets are individually invoked;
-they do not add cue scheduling, delays, loops, scripting or collection editing.
+The editor preserves failed-save drafts and their original workspace/revision. Names are
+unique within a workspace; steps can be added, edited, removed and moved up/down with
+accessible controls. Scene choices show local aliases alongside literal OBS names. Input
+choices include off-program sources from a read-only directory; source kind does not prove
+control support. Exact names can also be entered manually. Known missing references are
+shown explicitly and preparation blocks unavailable/unsupported targets.
+
+Review shows every concrete target and a separate checkbox for each output action that
+requires Output Safety consent. Consent is single-use, expires after one minute, and is
+cleared when leaving/backgrounding the screen or when the target, policy, definition or
+workspace changes. Opening Preflight or Settings also clears it. A run already started
+continues across tabs within the current process; return to Presets to stop remaining
+steps. Last results retain the original workspace, completed/unknown/unrun steps and
+History storage status. Process interruption never resumes a run or confirmation.
+
+Presets are individually invoked; they do not add cue scheduling, delays, loops,
+scripting or collection editing.
 
 ## 9. Settings
 

@@ -27,6 +27,7 @@ one module owns the wire protocol.**
 ├─ :feature:preflight       scoped readiness setup, finite checks and manual checklist
 ├─ :feature:alerts          live warning details, speech consent and compact shell bar
 ├─ :feature:history         local timestamp bookmarks, observation history and JSON export
+├─ :feature:presets         scoped step editor, preparation/consent and invocation results
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -360,8 +361,8 @@ another history event or OBS request. The log does not claim exhaustive upstream
 `HistoryViewModel` exposes immutable list/detail/capture/operation state. `HistoryFileExport`
 takes and serializes a bounded offline snapshot before launching SAF; picker cancellation,
 expired prepared data and failed writes are explicit. Duplicate writes are gated and no
-raw storage/document errors are shown. W6's end-to-end preset-outcome user flow remains W7 work;
-see `tasks/operator-workflow/history-design.md`.
+raw storage/document errors are shown. Preset outcomes follow the same original-observation
+contract; see `tasks/operator-workflow/history-design.md`.
 
 Room schema 10 adds `action_presets`, with composite profile/collection/UUID identity and
 a unique normalized name within each workspace. `PresetRepository` serializes bounded
@@ -401,8 +402,22 @@ start can extend the last observed point after abrupt interruption, not a known 
 History detail observes these rows, timeline positions them at invocation, and export v2
 includes typed run snapshots without internal process ownership or diagnostics.
 
-The editor and invocation/consent UI are still unwired. W7 and W6a stay open until their
-end-to-end flow and renders pass; see `tasks/operator-workflow/presets-design.md`.
+`:feature:presets` consumes repositories through one immutable ViewModel projection.
+Editor drafts keep stable IDs, original definitions and workspace identity in memory;
+failed saves retain them, and scope replacement disables their controls. The event-driven
+`PresetTargetsRepository` subscribes before reading `GetInputList`, cancels obsolete
+reads, rejects more than 2,000 entries or invalid names, and exposes failed/loading states
+separately from an empty directory. It does not poll or infer control support from kind.
+
+`PresetReviewController` subscribes to target events before preparation, invalidates on
+execution-source interruptions and expiry, and consumes the review ID before launching.
+Navigation/disposal and lifecycle stop clear pending consent. `PresetRunLauncher` admits
+runs synchronously into application scope so leaving the screen does not cancel execution;
+its bounded runner remains the single execution authority. ViewModel recreation cannot
+replay a consumed review, and cancellation uses the displayed run ID. Last-run state is
+process-local; durable results belong to History. Shared action/result wording lives in
+`:core:ui`, which depends on `:core:data`; feature modules remain peers without dependencies
+on each other. See `tasks/operator-workflow/presets-design.md`.
 
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused

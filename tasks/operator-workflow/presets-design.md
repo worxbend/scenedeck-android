@@ -1,9 +1,9 @@
 # Controlled multi-action presets — W7
 
-Status: scoped storage, read-only preparation, guarded execution and History run records
-are implemented; verification is recorded in progress.md. **There is no Presets editor or
-invocation UI yet.** W7b/c/d and W6a remain open until that user flow is verified. Foundations are not a completed
-operator feature. Show rundown, cue lists and timed advancement remain excluded.
+Status: **W7a–d and W6a verified**. Scoped storage, preparation, editor, concrete output
+consent, guarded execution/cancellation and History results are connected through More →
+Presets. Verification evidence is in progress.md. Show rundown, cue lists and timed
+advancement remain excluded.
 
 ## Stored definition
 
@@ -58,7 +58,7 @@ Reconnecting streaming is not a stopped output. Contradictory recording readings
 including currently matching outputs. This is preparation metadata, not authorization to
 write. The executing flow must retain explicit consent to the concrete ordered targets.
 
-## Executing foundation
+## Execution
 
 PresetRunner owns a singleton invocation gate and publishes immutable PresetRunState.
 Callers pass the concrete prepared plan and acknowledged output-step indices. Preparations
@@ -104,20 +104,43 @@ Timeline results remain at the original invocation point even if finished after 
 History export version 2 includes the typed records and their retention limit, excluding
 process identity, credentials, endpoints, raw errors and recording file paths.
 
-## Remaining UI and verification
+## Editor, consent and lifecycle
 
-1. Add Presets under More with scoped list, named CRUD, reorderable step editor and literal
-   target selection. Retain failed-save drafts, show unavailable references, use shared
-   Studio components and respect aliases without rewriting OBS target identities.
-2. Show a concrete prepared summary and required output confirmations. Opening unrelated
-   setup/Preflight dismisses pending consent. A stale/expired/changed selection cannot
-   execute. Clear a consumed plan so one dialog action cannot invoke twice.
-3. Wire the singleton runner to a deliberate user action, scoped cancellation and persistent
-   visible partial/unknown results. Keep the run tied to its original workspace while
-   navigating; resolve screen lifecycle deliberately, without duplicate runs on recreation.
-4. Exercise editor/run interaction, missing/renamed references, busy media/recording tools,
-   policy/context changes during consent/admission, History disabled/full/failure/clear,
-   caller cancellation, process interruption, export and required theme/compact renders.
-   Backend tests and History result renders alone do not complete W7b/c/d or W6a.
+`:feature:presets` is a peer of History and Live. The app owns More navigation and links
+to Connections, Preflight, Settings and History. Shared action/result text is in `:core:ui`.
+The editor keeps failed drafts, original scope/revision and stable step identities in memory;
+scope replacement disables editing/saving. Move up/down and removal use those identities,
+not volatile row positions. A stale callback cannot discard another editor or invoke a run.
+
+Scene choices display local aliases and literal OBS names, but commands always use literal
+names. `PresetTargetsRepository` subscribes before the first `GetInputList`, includes
+inputs outside the program scene, cancels obsolete reads and never polls. Failed/loading
+states are distinct from loaded-empty, and the directory rejects more than 2,000 entries,
+blank/overlong names or overlong kinds. Support still comes from preparation, not kind.
+The target sheets are searchable and fully expanded; exact manual entry remains available.
+
+`PresetReviewController` owns a unique review ID, prepared definition and required output
+acknowledgements. Target events are subscribed before preparation. Target/definition/policy/
+context changes and 60-second expiry invalidate the plan and clear acknowledgements.
+Navigation, disposal and lifecycle stop discard pending consent; setup/Preflight links
+clear it before navigation. The review is consumed synchronously before launch, so repeated
+or obsolete Run callbacks cannot repeat controls.
+
+`PresetRunLauncher` admits into application scope before suspension. A deliberate run
+continues across tabs, with progress and scoped cancellation on return to Presets. The UI
+explains this lifetime and shows the original workspace, every confirmed/unknown/unrun step,
+and History storage status. Process interruption does not restore consent or execution.
+
+## Verification
+
+Tests exercise persisted editor/review/ViewModel actions through the typed client, runner,
+Room History and export snapshot: complete and partial runs, cancellation, failed-save
+retention, stale callbacks, required output consent, expiry, target/policy/scope changes,
+clear/disabled/failed History, duplicate invocation and off-program input discovery.
+Real Mixer media-seek and recording-tool state block conflicting preset admission. Existing
+runner/protocol/storage tests cover deadlines, replacement, uncertain writes, retention,
+process interruption and export encoding. Roborazzi verifies SceneDeck/OBS light/dark
+list/editor/step/review/result/chooser views, compact interaction and larger text.
 
 No real OBS/device or performance measurement is established by JVM/fake-server checks.
+W8–W11 remain required; shortcuts must preserve this consent and originating-context contract.

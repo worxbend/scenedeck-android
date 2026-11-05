@@ -70,7 +70,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 | Studio (M6) | `GetStudioModeEnabled`, `SetStudioModeEnabled`, `Get/SetCurrentPreviewScene`, `TriggerStudioModeTransition`, `Get/SetCurrentSceneTransition`, `SetCurrentSceneTransitionDuration` |
 | Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection`, `GetVideoSettings` |
 | Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `PauseRecord`, `ResumeRecord`, `SplitRecordFile`, `CreateRecordChapter`, `ToggleVirtualCam` (M7) |
-| Audio | `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
+| Audio | `GetInputList`, `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
 | Media | `GetMediaInputStatus`, `SetMediaInputCursor`, `TriggerMediaInputAction` |
 | Sources (M6) | `GetSourceScreenshot` (JPEG, throttled) |
 

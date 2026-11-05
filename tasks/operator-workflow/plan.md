@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next implementation checkpoint is W7; W6a depends on it.
+and progress evidence. The next implementation checkpoint is W8; W6/W7 user flows are verified.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -92,12 +92,10 @@ and progress evidence. The next implementation checkpoint is W7; W6a depends on 
 
 ### W6 — Local session history and export
 
-Shared capture, bookmark links, offline History and file export are verified; evidence
-is in the progress log and [history-design.md](history-design.md). W6a remains open only
-for actual user-triggered preset results through the W7 editor/consent/run flow. The
-runner-to-History foundation alone does not complete this integration. Continue at W7 while retaining this dependency.
+Shared capture, bookmark links, offline History, file export and user-triggered preset
+outcomes are verified. Evidence is in the progress log and [history-design.md](history-design.md).
 
-- [ ] W6a: Persist bounded local sessions/events from shared state: output changes,
+- [x] W6a: Persist bounded local sessions/events from shared state: output changes,
   program changes, reconnect gaps, warnings, bookmarks, and preset results.
 - [x] W6b: Add history/detail, clear/delete, retention controls, and user-initiated
   export. Exclude credentials, raw protocol payloads, arbitrary server comments,
@@ -107,19 +105,19 @@ runner-to-History foundation alone does not complete this integration. Continue 
 
 ### W7 — Controlled multi-action presets
 
-W7a and the read-only preparation boundary are verified. The guarded runner and
-original-observation History records are implemented, with no Presets invocation UI yet.
-Continue with the editor/consent/run flow in [presets-design.md](presets-design.md). W7c/d
-and W6a remain open until the real user flow is wired and its lifecycle is verified.
+Scoped editing, preparation/consent, execution/cancellation and original-observation
+History results are verified. The screen lifecycle, typed boundary, real persistence and
+required renders are covered; see [presets-design.md](presets-design.md) and progress.
+Real-OBS/device validation is not implied by fake-boundary/JVM/render evidence.
 
 - [x] W7a: Persist scoped named presets using a small typed allow-list of existing
   runtime controls (scene, mute/volume, media, and confirmed output operations).
-- [ ] W7b: Build step editor and explicit invocation with a concrete step summary;
+- [x] W7b: Build step editor and explicit invocation with a concrete step summary;
   share output safety and advertise unsupported or missing targets before execution.
-- [ ] W7c: Execute one bounded sequence in its originating context; use target values,
+- [x] W7c: Execute one bounded sequence in its originating context; use target values,
   stop on failure/unknown result/disconnect, record completed steps, and never retry
   uncertain writes automatically. Cancellation is not rollback of completed actions.
-- [ ] W7d: Verify concurrent invocation, mid-sequence external changes, cancellation,
+- [x] W7d: Verify concurrent invocation, mid-sequence external changes, cancellation,
   session replacement, partial success, stale references, and screen rendering.
 
 ### W8 — Keyboard and compatible foot pedals

@@ -137,9 +137,9 @@ private suspend fun ObsClient.applyPresetOutput(step: PresetStep.Output) {
     }
 }
 
-internal fun ObsEvent.invalidatesPreset(plan: PresetPlan): Boolean {
-    val scenes = plan.preset.steps.filterIsInstance<PresetStep.Scene>().map { it.name }
-    val inputs = plan.preset.steps.mapNotNull { it.input }
+fun ObsEvent.invalidatesPreset(preset: ActionPreset): Boolean {
+    val scenes = preset.steps.filterIsInstance<PresetStep.Scene>().map { it.name }
+    val inputs = preset.steps.mapNotNull { it.input }
     return when (this) {
         is ObsEvent.SceneNameChanged -> oldSceneName in scenes
         is ObsEvent.SceneRemoved -> sceneName in scenes

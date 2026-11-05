@@ -83,8 +83,9 @@ delete individual marks in Bookmarks. The newest 500 are retained, with older ma
 removed automatically. Deleting a bookmark removes its history association, and label
 edits appear in subsequent history reads/exports. History retains the newest 30
 observations by default (configurable to 10 or 100), each with up to 500 history entries
-and 50 preset run records. Preset definitions survive connection-profile deletion; clearing app storage removes them. The Presets editor and
-invocation UI are still in development.
+and 50 preset run records. Preset definitions survive connection-profile deletion.
+More → Presets lets you delete a definition without deleting its past History results;
+clearing app storage removes both.
 You can delete individual observations or clear history under More → History. This
 preserves independent bookmarks and does not disable future capture; use the capture
 switch to stop recording new history. History remains after connection-profile deletion.

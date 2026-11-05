@@ -29,6 +29,8 @@ sealed interface SceneDeckDestination : NavKey {
 
     @Serializable data object History : SceneDeckDestination
 
+    @Serializable data object Presets : SceneDeckDestination
+
     @Serializable data object Alerts : SceneDeckDestination
 
     @Serializable data object Preflight : SceneDeckDestination
@@ -45,6 +47,7 @@ sealed interface SceneDeckDestination : NavKey {
             listOf(
                 Preflight,
                 Alerts,
+                Presets,
                 History,
                 Bookmarks,
                 Inventory,
@@ -71,6 +74,7 @@ val SceneDeckDestination.label: String
             SceneDeckDestination.Alerts -> "Live alerts"
             SceneDeckDestination.Bookmarks -> "Bookmarks"
             SceneDeckDestination.History -> "History"
+            SceneDeckDestination.Presets -> "Presets"
             SceneDeckDestination.Settings -> "Settings"
             SceneDeckDestination.Connections -> "Connections"
             SceneDeckDestination.Onboarding -> "Help"

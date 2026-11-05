@@ -13,6 +13,7 @@ import com.rejeq.ktobs.request.general.getVersion
 import com.rejeq.ktobs.request.inputs.getInputAudioBalance
 import com.rejeq.ktobs.request.inputs.getInputAudioMonitorType
 import com.rejeq.ktobs.request.inputs.getInputAudioSyncOffset
+import com.rejeq.ktobs.request.inputs.getInputList
 import com.rejeq.ktobs.request.inputs.getInputMute
 import com.rejeq.ktobs.request.inputs.getInputVolume
 import com.rejeq.ktobs.request.inputs.getSpecialInputs
@@ -56,6 +57,7 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.MediaActionKind
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsInputSummary
 import com.scenedeck.android.core.model.ObsSessionEvent
 import com.scenedeck.android.core.model.ObsSessionMeters
 import com.scenedeck.android.core.model.ObsSessionToken
@@ -306,6 +308,10 @@ internal class KtobsObsClient(
     }
 
     override suspend fun getSpecialInputs() = request { it.getSpecialInputs().toDomain() }
+
+    override suspend fun getInputList() = request { session ->
+        session.getInputList().map { ObsInputSummary(it.name, it.kind) }
+    }
 
     override suspend fun getInputMute(inputName: String) = request {
         it.getInputMute(inputName = inputName)
