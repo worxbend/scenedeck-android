@@ -25,6 +25,7 @@ one module owns the wire protocol.**
 ├─ :feature:graph           scene dependency graph
 ├─ :feature:doctor          diagnostics report
 ├─ :feature:preflight       scoped readiness setup, finite checks and manual checklist
+├─ :feature:alerts          live warning details, speech consent and compact shell bar
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -104,6 +105,7 @@ one module owns the wire protocol.**
 | Named decks, membership and selected deck | `NamedDeckRepository` → Room | persisted per workspace |
 | Preflight configuration and manual confirmations | `PreflightRepository` → Room | persisted per workspace |
 | Preflight report and one-run signal consent | `PreflightViewModel` / Compose | current displayed workspace only |
+| Live warnings, cooldowns and speech arming | `LiveAlertsRepository` / `LiveAlertEngine` | process; reset by connection/collection identity |
 | Connection profiles | `ProfileRepository` → Room | persisted |
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
 | Resolved workspace identity | `WorkspaceRepository` | connection/collection revision |
@@ -218,6 +220,21 @@ seconds with no extra protocol subscription/poller. Reports retain their origina
 setup and session; the ViewModel clears them at run start/cancel/config/context change.
 App navigation owns the More entry and optional start-confirmation detour; feature
 modules do not depend on each other. The detour clears pending output consent.
+
+`LiveAlertsRepository` consumes shared Stats telemetry and stamped meters, with a local
+one-second reduction clock and no extra OBS requests/subscription changes. Its lock
+serializes inputs, consent, dismissal and immutable state publication. `LiveAlertEngine`
+keys monitoring to the confirmed ActiveConnection generation plus Ready token; unresolved
+local setup leaves disk/microphone checks unknown while connection/performance monitoring
+continues. Five bounded condition machines keep onset/recovery/cooldown evidence and
+monotonic occurrence IDs. Counter deltas never cross a session or stale gap. Speech
+processing keeps scalar peak/continuity state per sample; brief signal survives between
+UI ticks. Stop/context replacement clears consent, and failed meters age to unknown.
+The app shell owns alert navigation; feature modules do not depend on each other.
+`AlertsViewModel` exposes repository StateFlow. UI haptics collect only while RESUMED,
+reset their seen-occurrence baseline on resume, and respect both explicit alert opt-in
+and Settings Haptics. No warning persistence, service alarm or OS alert notification is
+introduced; history remains a separate future checkpoint.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously

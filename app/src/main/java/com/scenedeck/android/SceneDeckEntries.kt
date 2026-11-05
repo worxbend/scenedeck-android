@@ -4,6 +4,8 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import com.scenedeck.android.feature.alerts.AlertDestination
+import com.scenedeck.android.feature.alerts.AlertsScreen
 import com.scenedeck.android.feature.connections.ConnectionsScreen
 import com.scenedeck.android.feature.doctor.DoctorScreen
 import com.scenedeck.android.feature.graph.GraphScreen
@@ -32,6 +34,20 @@ internal fun sceneDeckEntryProvider(
         entry<SceneDeckDestination.Preflight> {
             PreflightScreen(
                 onNavigateToConnections = { selectTopLevel(SceneDeckDestination.Connections) }
+            )
+        }
+        entry<SceneDeckDestination.Alerts> {
+            AlertsScreen(
+                onNavigate = { destination ->
+                    selectTopLevel(
+                        when (destination) {
+                            AlertDestination.STATS -> SceneDeckDestination.Stats
+                            AlertDestination.MIXER -> SceneDeckDestination.Mixer
+                            AlertDestination.CONNECTIONS -> SceneDeckDestination.Connections
+                            AlertDestination.PREFLIGHT -> SceneDeckDestination.Preflight
+                        }
+                    )
+                }
             )
         }
         settingsEntry(appState)

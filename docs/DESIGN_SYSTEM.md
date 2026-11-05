@@ -264,3 +264,20 @@ Show raw OBS identity beside aliases and retain unavailable scene references for
 Validation and save failure appear inline while retaining the draft. Start-confirmation
 links explain that leaving for Preflight cancels that pending start; stop dialogs keep
 their focused confirmation actions.
+
+
+### Live alerts
+
+Use the shared bell icon, StudioPageHeader and StudioSectionHeader under More. The shell
+places a compact tonal warning/monitoring bar above persistent output status, without
+owning extra system insets. Keep Details a 48dp target and announce status changes politely;
+there is no flashing/pulsing warning or motion dependency. Use the shared warning tone
+for the icon, with readable theme-native text. The scrollable detail page keeps explicit
+unknown/uncertain wording, current readings, source navigation and per-occurrence dismissal.
+
+Microphone monitoring names the literal OBS input and requires a separate speech-expected
+confirmation. A changed target dismisses old consent. Stop monitoring stays direct; failed
+arming shows an inline explanation. The optional foreground haptics switch is off by
+default and explains its session lifetime and global Settings dependency. Keep notification
+limitations and cooldown behavior available in the details page, without implying all-clear
+from the absence of a warning. Capture page/bar in SceneDeck and OBS light/dark themes.

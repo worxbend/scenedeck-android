@@ -25,6 +25,8 @@ sealed interface SceneDeckDestination : NavKey {
 
     @Serializable data object Doctor : SceneDeckDestination
 
+    @Serializable data object Alerts : SceneDeckDestination
+
     @Serializable data object Preflight : SceneDeckDestination
 
     @Serializable data object Settings : SceneDeckDestination
@@ -36,7 +38,7 @@ sealed interface SceneDeckDestination : NavKey {
     companion object {
         val primary: List<SceneDeckDestination> = listOf(Live, Mixer, Stats)
         val overflow: List<SceneDeckDestination> =
-            listOf(Preflight, Inventory, Graph, Doctor, Connections, Settings)
+            listOf(Preflight, Alerts, Inventory, Graph, Doctor, Connections, Settings)
         val topLevel: List<SceneDeckDestination> = primary + overflow
     }
 }
@@ -52,6 +54,7 @@ val SceneDeckDestination.label: String
             SceneDeckDestination.Graph -> "Graph"
             SceneDeckDestination.Doctor -> "Doctor"
             SceneDeckDestination.Preflight -> "Preflight"
+            SceneDeckDestination.Alerts -> "Live alerts"
             SceneDeckDestination.Settings -> "Settings"
             SceneDeckDestination.Connections -> "Connections"
             SceneDeckDestination.Onboarding -> "Help"

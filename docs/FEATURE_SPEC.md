@@ -240,6 +240,46 @@ No scan starts an output or changes OBS. Start confirmations optionally link her
 dismissing their pending consent first; starting afterward requires a new deliberate
 action. Existing output-confirmation settings remain unchanged, with no mandatory scan.
 
+### Live alerts
+
+More → **Live alerts** shows sustained warnings and current evidence. A compact bar above
+persistent output status links to details while warnings or speech monitoring are active.
+Warning cards show their reading and link to Stats (frame drops/render), Preflight
+(recording-space checks/threshold), Mixer (microphone), or Connections. No alert changes OBS.
+
+- Frame drops: streaming counter deltas, at least 1% for five seconds; recover below
+  0.5% for five seconds. Counter resets, invalid counters and zero frame progress are
+  unknown and establish a new baseline; lifetime dropped-frame ratios are not alerts.
+- Render time: during streaming or recording, at least 90% of the canvas frame budget
+  for five seconds; recover below 70% for five seconds. Canvas FPS comes from OBS,
+  with 60 fps used only while unknown. Recording-only operation is supported.
+- Recording space: below the workspace's Preflight minimum for five seconds while
+  recording (including paused recording); recover at least 256 MB or 10% above that
+  minimum, whichever is larger, for five seconds. Preflight defaults to 2,048 MB;
+  failed/unresolved configuration is unknown, not an assumed lower threshold.
+- Unexpected connection loss warns after two seconds and says output state is unknown.
+  Deliberate disconnect/profile replacement and collection changes clear the old context.
+
+Stats/output readings older than three seconds, invalid numbers and failed reads are
+unknown. Sample gaps interrupt accumulation; repeated samples cannot advance timers.
+A warning whose evidence becomes unavailable stays explicitly uncertain until fresh
+readings prove recovery. Dismiss hides that occurrence for 60 seconds; a continuing
+problem may warn again afterward. Old dismissal callbacks cannot hide newer occurrences.
+
+Speech monitoring is off until the user chooses a microphone in Preflight and explicitly
+confirms **Speech expected — arm**. Ten seconds of continuously sampled post-fader peaks
+at or below -50 dB warns; detected signal recovers immediately, including brief signal
+between UI updates. Missing/invalid meters or gaps over two seconds are unknown, not
+silence. Stop monitoring is direct. Reconnect, workspace replacement, loss of workspace
+identity, microphone selection changes and process recreation require arming again.
+No audio is recorded and no additional OBS requests/subscriptions are introduced.
+
+Alert haptics are off by default and last only for the app process. They also require
+the Settings Haptics toggle and run only for new warnings while the activity is resumed;
+background warnings are not replayed on return. There are no audible alerts or system
+alert notifications. Existing keep-alive output notifications stay unchanged; background
+monitoring and delivery depend on Android and the connection, not an alarm guarantee.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

@@ -99,8 +99,18 @@ must pass, and Compose preview(s) for changed screens must render.
   stats/stream/record reads. The clock includes device sleep. Events never refresh old
   counter timestamps; failed reads have no timestamp. Replacement tokens reject late
   reads/events and clear history/canvas cache. Polling does not depend on local workspace
-  discovery; alert consumers must independently guard identity/freshness. Live alert UI
-  remains planned under W4 until its behavior and verification checkpoints are complete.
+  discovery; alert consumers must independently guard identity/freshness.
+- Live alerts reuse shared telemetry/meters with a local reduction clock, never extra OBS
+  requests. Five bounded warning conditions use sustained onset/recovery, explicit unknown
+  readings and 60-second dismissal cooldowns. Counter deltas cannot cross resets or gaps;
+  missing readings cannot prove recovery. Deliberate target/collection changes clear context.
+- Speech monitoring requires explicit consent for the selected Preflight microphone;
+  ten seconds of observed quiet at/below -50 dB warns, valid signal clears, and missing
+  meters remain unknown. Disconnect/context/configured-microphone changes disarm it.
+  Consent is never persisted. Haptics require alert opt-in plus Settings Haptics, apply
+  only to new foreground warnings, and never replay background warnings on resume.
+  There are no audible alerts or OS alert notifications; existing keep-alive output
+  notifications are unchanged. The compact alert bar preserves status-strip insets.
 - Thumbnail polling admits at most two capture jobs per awaited batch, prunes removed
   scenes, and rejects images above 2 MiB compressed or 1,048,576 pixels before bitmap
   allocation. Cached memory still scales with eligible scenes; do not claim measured

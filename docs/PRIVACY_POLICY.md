@@ -17,7 +17,10 @@ Connection profiles, appearance settings, scene curation (including local scene 
 named decks (names, membership, order and selection), and preflight setup/manual checklist
 confirmations are stored on your device. Preflight reports are held in memory for the
 current workspace; optional signal checks inspect OBS meter values, not microphone
-recordings. OBS passwords are stored using Android Keystore-backed encryption. Local
+recordings. Live warnings, cooldowns, speech-monitoring consent and the alert-haptics
+preference are held in process memory. Ongoing speech monitoring inspects shared OBS
+meter values only after explicit consent; it does not capture or record your device's
+microphone. Live alerts add no system notifications or uploads. OBS passwords are stored using Android Keystore-backed encryption. Local
 OBS connections normally use `ws://`, which is not TLS encrypted. Network addresses,
 passwords, and OBS content are not sent to the SceneDeck developer by the app.
 

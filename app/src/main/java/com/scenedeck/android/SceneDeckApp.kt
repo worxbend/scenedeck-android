@@ -48,6 +48,7 @@ import com.scenedeck.android.core.designsystem.components.StudioTone
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
+import com.scenedeck.android.feature.alerts.LiveAlertsHost
 import com.scenedeck.android.feature.onboarding.OnboardingScreen
 import com.scenedeck.android.navigation.SceneDeckDestination
 import com.scenedeck.android.navigation.ShellLayout
@@ -171,14 +172,20 @@ private fun SceneDeckShell(
                 )
             },
             statusStrip = { stripInsets ->
-                StatusStrip(
-                    state = stripState,
-                    onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
-                    onConnectionLongClick = { backgroundSheetOpen = true },
-                    animateConnection = appState.motionLevel == MotionLevel.FULL,
-                    compact = layout.compactStatusStrip,
-                    windowInsets = stripInsets,
-                )
+                Column {
+                    LiveAlertsHost(
+                        onOpen = { selectTopLevel(SceneDeckDestination.Alerts) },
+                        hapticsAllowed = appState.haptics,
+                    )
+                    StatusStrip(
+                        state = stripState,
+                        onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
+                        onConnectionLongClick = { backgroundSheetOpen = true },
+                        animateConnection = appState.motionLevel == MotionLevel.FULL,
+                        compact = layout.compactStatusStrip,
+                        windowInsets = stripInsets,
+                    )
+                }
             },
         )
     }
@@ -262,6 +269,7 @@ private val SceneDeckDestination.description: String
                 SceneDeckDestination.Graph -> R.string.graph_description
                 SceneDeckDestination.Doctor -> R.string.doctor_description
                 SceneDeckDestination.Preflight -> R.string.preflight_description
+                SceneDeckDestination.Alerts -> R.string.alerts_description
                 SceneDeckDestination.Connections -> R.string.connections_description
                 SceneDeckDestination.Settings -> R.string.settings_description
                 else -> R.string.help_description

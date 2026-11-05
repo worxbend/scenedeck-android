@@ -193,7 +193,11 @@ class MixerViewModelTest {
         awaitState { it.inputs.isNotEmpty() }
         viewModel.setMode(TEST_WORKSPACE, MixerMode.SELECTED)
         viewModel.selectScene(TEST_WORKSPACE, "Quiet A")
-        awaitState { it.displayedScene == "Quiet A" }
+        // Selection publishes before discovery. Rename an already populated selected deck.
+        awaitState {
+            it.displayedScene == "Quiet A" &&
+                it.inputs.map { input -> input.name } == listOf("Desktop Audio", "Mic/Aux")
+        }
         val events = client.events as MutableSharedFlow<ObsEvent>
         withTimeout(5_000) {
             settings.settings.first { it.mixerSelectedScene == "Quiet A" }

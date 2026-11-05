@@ -241,9 +241,10 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   compatible registry transfer and preview age/stale/failure/disconnection captions.
 - Verified: workspace-scoped Preflight setup, manual checks and bounded independent
   results, optional one-run microphone signal check, and entry from start confirmations.
-- Live-alert foundation verified: shared telemetry rejects replaced session/collection
-  reads/events and exposes individual receipt times. Warning behavior/UI remains planned.
-- Next: live alerts, then the remaining authorized
+- Verified: sustained live warnings with scoped/current telemetry, cooldowns and explicit
+  unknown states; More/details and compact shell bar; deliberately armed microphone
+  monitoring and optional foreground haptics. No audible or OS alert notifications.
+- Next: recording and media tools, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

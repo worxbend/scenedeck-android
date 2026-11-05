@@ -67,16 +67,16 @@ small useful improvements while establishing shared state before automation.
 
 ### W4 — Live alerts
 
-Telemetry identity/freshness foundation is verified; see `live-alerts-design.md` and
-progress evidence. Warning reduction, UI and speech monitoring remain to implement.
+Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
+and progress evidence. The next incomplete checkpoint is W5.
 
-- [ ] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
+- [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
-- [ ] W4b: Add contextual inline warnings and navigation to affected readings;
+- [x] W4b: Add contextual inline warnings and navigation to affected readings;
   optional haptics, accessible descriptions, dismissal/recovery behavior.
-- [ ] W4c: Add explicitly armed microphone silence detection only when speech is
+- [x] W4c: Add explicitly armed microphone silence detection only when speech is
   expected; unavailable meters are unknown, not silence. No audible default alert.
-- [ ] W4d: Verify thresholds against canvas FPS, counter resets, stale samples,
+- [x] W4d: Verify thresholds against canvas FPS, counter resets, stale samples,
   recording-only behavior, disconnection, rearming, and notification limitations.
 
 ### W5 — Recording and media tools

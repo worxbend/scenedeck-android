@@ -503,6 +503,68 @@
   alert work and original Show rundown exclusion. Next: sustained condition reducer,
   contextual inline warnings/navigation/dismissal and explicit speech-monitor consent.
 
+## W4 — Live alerts implemented; full verification pending
+
+- Previous goal turn was **progress**: `43c3f88` committed the telemetry foundation,
+  and the worktree was clean. The full scope/exclusion remains intact; W4 is still open.
+- Added bounded sustained-warning state machines, streaming counter-delta checks,
+  canvas-derived render thresholds, scoped disk minimum and unexpected connection loss.
+  Unknown/stale/gapped data cannot prove recovery. Dismissals use 60-second cooldowns
+  and occurrence identity. Ready tokens and ActiveConnection generations reset context.
+- Added process-local, explicitly armed microphone monitoring with continuous sampled
+  quiet detection, brief-signal preservation, invalid/missing-meter unknown states and
+  disarming on context/configured-microphone changes. Added no OBS requests or writes.
+- `:feature:alerts` provides More/detail navigation, warning cards with readings, direct
+  Stop monitoring, consent/error handling, optional foreground-only haptics and a compact
+  shell bar above output status. Haptics honor global Settings and do not replay on resume.
+  Disk alerts link to Preflight (the disk-check/threshold surface); other alerts link to
+  Stats, Mixer or Connections. No sounds or OS alert notifications were added.
+- Initial static checks found complexity/return-count/long-fixture issues in core logic
+  and long UI strings. Refactored without suppressions; these intermediate failures remain
+  in `/tmp/scenedeck-alerts-engine.log` and `/tmp/scenedeck-alerts-ui-compile.log`.
+- Engine tests passed (18s, 56 tasks, `/tmp/scenedeck-alerts-engine-final.log`). Real Room/
+  repository integration verifies shared polling (seven reads over six virtual seconds),
+  synchronous command invalidation and canceled subscriptions; data checks passed (11s,
+  56 tasks, `/tmp/scenedeck-alerts-data-final.log`).
+- Final focused data tests, app/feature static checks and theme renders passed, **exit 0,
+  17s, 135 tasks**, `/tmp/scenedeck-alerts-focused-final.log`. Ten engine tests cover
+  sustained/recovery bands, canvas fallback, resets, invalid/stale data, recording-only,
+  cooldowns, old dismissal, connection changes, unavailable configuration, speech consent,
+  brief signal and missing/wrong-session meters. UI tests cover consent, target replacement,
+  rejected arming, direct stop, navigation/dismissal and lifecycle-gated haptics.
+- Eight SceneDeck/OBS light/dark page/bar goldens were generated; inspected light page,
+  dark page and both light/dark bars for readable states, wrapping and action targets.
+  No physical-device, real-OBS, measured-performance or background-delivery claim is made.
+- Updated product/architecture/design/privacy/AGENTS and module-map guidance. Next:
+  full JDK21/uv gate and explicit build/tests, final audit and W4 checkpoint; W5–W11 remain.
+
+## W4 — Verified live alerts
+
+- **W4a–d are complete.** This goal turn is **progress**; W5–W11 remain open and the
+  Show rundown/cue-list/timed-advancement exclusion is unchanged.
+- The first full gate (`/tmp/scenedeck-alerts-quality.log`, 1m 28s, 946 tasks) exposed
+  an existing Mixer test synchronization race: it renamed a selected scene after the
+  selection label appeared but before its asynchronous input discovery completed.
+  The test now waits for the populated initial selection and retains its strict final
+  rename/input assertion. Mixer production behavior was unchanged. The focused Mixer
+  ViewModel regression class passed (34s, 130 tasks,
+  `/tmp/scenedeck-alerts-mixer-regression.log`).
+- Final JDK 21/uv quality gate passed, **exit 0, 1m 20s, 1,050 tasks**:
+  `/tmp/scenedeck-alerts-quality-final.log`. Formatting/complexity, Android lint,
+  debug build and unit/Roborazzi checks passed; seven Semgrep rules across 287 source
+  files reported zero findings; Gitleaks history (66 commits) and tree scans were clean.
+- Explicit `assembleDebug testDebugUnitTest` passed, **exit 0, 19s, 826 tasks**:
+  `/tmp/scenedeck-alerts-explicit.log`. Aggregate XML: **742 tests / 136 suites,
+  zero failures/errors/skips**, including 10 alert-engine, one repository integration,
+  and 12 UI/consent/haptic/render tests. Eight page/bar goldens passed verification.
+- Documentation, module-map guidance and the roadmap now reflect the feature. No real
+  OBS, physical-device, background-delivery or measured-performance claim is made.
+- Next: W5 capability-gated recording controls, local bookmarks and media progress/seek.
+  Initial source inspection: ObsVersionInfo carries versions/platform only; inspect its
+  GetVersion mapper and preserve advertised capabilities before enabling new recording
+  actions. `setMediaInputCursor` already exists in ObsClient and KtobsObsClient, so reuse
+  that boundary. The full durable goal remains active; no release/publication performed.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

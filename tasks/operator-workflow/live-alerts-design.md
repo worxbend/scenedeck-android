@@ -1,7 +1,7 @@
 # W4 — Actionable live alerts
 
-Status: telemetry foundation **verified**; alert implementation remains active.
-Preflight is committed as `1f8ee30`. W4a–d remain open.
+Status: **implemented and verified**. W4a–d are complete; full quality/build/test evidence
+is in `progress.md`. W5–W11 remain active in the durable workflow.
 Show rundown/cue lists/timed advancement remain excluded.
 
 ## Foundation
@@ -13,11 +13,10 @@ reject replacement sessions. Output events invalidate counter receipt times inst
 of pretending old counters are newly sampled. Disconnect/collection replacement clears
 history and cached canvas FPS. Output polling stays independent of local workspace
 resolution so collection discovery failures do not disable output readings/controls.
-The full quality gate and explicit build/tests passed; see `progress.md`. This is
-foundation work, not a delivered alert feature. Next: implement sustained warning
-conditions/cooldowns, wire them into foreground UI, and add deliberate speech monitoring.
+The foundation was verified and committed as `43c3f88` before the alert behavior below.
+Shared telemetry remains independent of the warning UI and local setup resolution.
 
-## Planned behavior
+## Implemented behavior
 
 - A process-scoped reducer consumes shared telemetry and context-stamped meters; it
   creates no additional OBS polling or subscriptions. All warnings have explicit
@@ -26,8 +25,9 @@ conditions/cooldowns, wire them into foreground UI, and add deliberate speech mo
   Counter resets/reconnects establish a new baseline. Only active streaming qualifies.
 - Render pressure derives from the canvas frame budget; 60 fps remains the unknown
   fallback. Recording-only operation can still warn about render load and disk space.
-- Disk warnings use the scoped Preflight threshold when available, with an explicitly
-  documented default otherwise; no recording-path information is collected/displayed.
+- Disk warnings use the scoped Preflight threshold (2,048 MB for a default setup).
+  Failed or unresolved setup is unknown; it never substitutes a lower threshold.
+  No recording-path information is collected/displayed.
 - Sustained onset and recovery, separate threshold bands and dismissal cooldowns keep
   warnings from flickering or repeating on every sample. Sample gaps break accumulation;
   a clock tick cannot turn a repeated stale counter into new evidence.
@@ -42,8 +42,14 @@ conditions/cooldowns, wire them into foreground UI, and add deliberate speech mo
   change/process recreation. Missing/invalid/stale meter samples are unknown, not silent.
   The UI must explain monitoring state and provide Stop monitoring and rearm actions.
 
-Finalize numerical thresholds/cooldowns with deterministic reducer tests, then add
-shell/contextual UI, microphone consent, accessibility and four-theme renders. Verify
-counter resets, stale individual reads, same-name replacement, canceled/late work,
-recording-only cases, sample gaps, rearming and notification limitations. Full quality,
-explicit build/unit tests and matching behavior docs are required before checking W4.
+Implemented thresholds: drops >=1% / recovery <0.5%; render >=90% / recovery <70% of
+frame budget; disk below configured minimum / recovery at least max(256 MB, 10%) above.
+All require five seconds of fresh evidence for onset/recovery. Connection loss uses two
+seconds. Speech requires ten seconds of actual quiet meter samples and recovers on signal;
+brief signal between UI ticks is preserved. Telemetry expires after three seconds and
+meters after two. Dismissal lasts 60 seconds, with monotonic occurrence identity.
+
+The More page and compact shell bar link to affected tools; warning cards include their
+current reading. Disk alerts link to Preflight, which owns the threshold and disk check.
+Eight page/bar theme captures and consent/haptic/navigation tests passed. Full quality and explicit build/tests passed (742 tests / 136 suites). No device or
+real-OBS claim is made. Next: W5 recording and media tools.
