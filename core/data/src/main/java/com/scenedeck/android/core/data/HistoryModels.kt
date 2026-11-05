@@ -143,6 +143,7 @@ data class HistoryDetail(
     val session: HistorySession,
     val events: List<HistoryEvent>,
     val bookmarks: List<HistoryLinkedBookmark> = emptyList(),
+    val presetRuns: List<HistoryPresetRun> = emptyList(),
 )
 
 data class HistorySnapshot(

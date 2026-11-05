@@ -94,8 +94,8 @@ and progress evidence. The next implementation checkpoint is W7; W6a depends on 
 
 Shared capture, bookmark links, offline History and file export are verified; evidence
 is in the progress log and [history-design.md](history-design.md). W6a remains open only
-for actual preset-result production, which must be implemented with W7. Do not count a
-placeholder payload type as this integration. Continue at W7 while retaining this dependency.
+for actual user-triggered preset results through the W7 editor/consent/run flow. The
+runner-to-History foundation alone does not complete this integration. Continue at W7 while retaining this dependency.
 
 - [ ] W6a: Persist bounded local sessions/events from shared state: output changes,
   program changes, reconnect gaps, warnings, bookmarks, and preset results.
@@ -107,9 +107,10 @@ placeholder payload type as this integration. Continue at W7 while retaining thi
 
 ### W7 — Controlled multi-action presets
 
-W7a and the read-only preparation boundary are verified. No Presets UI or executing
-runner is active yet. Continue with the bounded runner/original-observation History
-integration and the concrete editor/invocation flow in [presets-design.md](presets-design.md).
+W7a and the read-only preparation boundary are verified. The guarded runner and
+original-observation History records are implemented, with no Presets invocation UI yet.
+Continue with the editor/consent/run flow in [presets-design.md](presets-design.md). W7c/d
+and W6a remain open until the real user flow is wired and its lifecycle is verified.
 
 - [x] W7a: Persist scoped named presets using a small typed allow-list of existing
   runtime controls (scene, mute/volume, media, and confirmed output operations).

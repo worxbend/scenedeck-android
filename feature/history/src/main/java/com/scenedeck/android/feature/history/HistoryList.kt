@@ -160,7 +160,7 @@ private fun HistorySettings(
                 }
             }
             Text(
-                "Up to 500 entries per observation. Saved bookmarks have their own retention.",
+                "Up to 500 events and 50 preset runs per observation. Saved bookmarks have their own retention.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -187,7 +187,7 @@ private fun HistorySessionCard(
             Text(bookmarkDate(session.startedAtMs), style = MaterialTheme.typography.bodyMedium)
             Text(session.endText(state.capture), style = MaterialTheme.typography.bodySmall)
             Text(
-                "${session.lastOrdinal - session.missingEvents - session.omittedEvents} retained entries",
+                "${session.lastOrdinal - session.missingEvents - session.omittedEvents} retained events",
                 style = MaterialTheme.typography.bodySmall,
             )
             HistoryOmissions(session)

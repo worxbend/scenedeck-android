@@ -45,7 +45,8 @@ internal class HistoryReader(private val database: SceneDeckDatabase, retries: F
                     combine(
                         sessions.detail(id),
                         database.historyBookmarkDao().observe(id, MAX_BOOKMARKS + 1),
-                    ) { _, _ ->
+                        database.historyPresetDao().observe(id, MAX_HISTORY_PRESET_RUNS + 1),
+                    ) { _, _, _ ->
                         database.withTransaction {
                             val row = sessions.get(id)
                             if (row == null) HistoryDetailState.Missing
@@ -80,6 +81,9 @@ internal class HistoryReader(private val database: SceneDeckDatabase, retries: F
             )
             .decodeHistory()
             .withBookmarks(database.historyBookmarkDao().list(row.sessionId, MAX_BOOKMARKS + 1))
+            .withPresetRuns(
+                database.historyPresetDao().list(row.sessionId, MAX_HISTORY_PRESET_RUNS + 1)
+            )
 }
 
 private fun HistoryDetailEntity.decodeHistory(): HistoryDetail {

@@ -917,6 +917,76 @@
   execution/result UI and verify required theme/compact renders. See `presets-design.md`
   for detailed invariants. W8–W11 remain required and Show rundown remains excluded.
 
+## W7 guarded execution and durable run results — 2026-11-05
+
+- The prior goal turn made **progress**, committed as `5994844`; the worktree was clean
+  at resumption. This turn also makes **progress**. The goal remains active and unchanged:
+  W7b/c/d, the user-triggered W6a preset-result flow, and W8–W11 remain required. Show
+  rundown, cue lists and timed advancement stay excluded. No publication was requested.
+- Added PresetRunner's singleton invocation gate and immutable progress, with concrete
+  output-step acknowledgement checks and a 60-second preparation expiry. Every step
+  rechecks saved definition, policy and context, reads its current target and validates
+  again. Previously matching preparation readings never pre-skip later steps. Writes use
+  explicit typed ObsClient operations in the original session; confirmation reads begin
+  after acknowledgement, with four seconds to reconcile and 90 seconds for the whole run.
+- Stamped event subscription precedes reads. Referenced target rename/removal, definition,
+  policy or workspace changes and conflicting media-seek/recording work stop remaining
+  steps. Completed/already-matching steps stay intact; interrupted writes are unknown,
+  definite rejection is distinct, and remaining steps are not run. There is no retry,
+  rollback, toggle, timing/scripting step or resumed execution. Caller cancellation
+  propagates after at most two seconds of final History persistence; Cancel carries run ID.
+  Manual controls/other clients may interleave, so this is not an OBS transaction.
+- Added Room schema 11 and migration for 50 bounded child run records per observation,
+  separate from the 500-event limit. Each stores a strict versioned snapshot of up to
+  12 typed steps/results in at most 40 KiB characters, plus original observation position,
+  revision and local process ownership. Progress saves before dispatch; updates preserve
+  the original observation even after disconnect/disable and never recreate cleared or
+  pruned rows. History unavailable/full/removed/failed states are explicit; storage failure
+  stops remaining actions. The actual editor/invocation UI is still absent.
+- LocalProcessIdentity remains stable through History Retry. Recovery of older processes
+  retains confirmed steps, marks WRITING unknown and remaining steps not run, records an
+  unknown finish time and never resumes controls. Late invocation points can extend the
+  last known observation after abrupt interruption, never a known end. Malformed rows
+  fail detail/export/recovery explicitly and recovery is transactional.
+- History detail observes the new records and positions results at invocation, including
+  completion after disconnect. Export version 2 includes typed run snapshots and limits,
+  excluding process ownership, raw errors, credentials, endpoints and output paths. The
+  timeline names confirmed/unknown/unrun steps and explains that unknown writes may have
+  taken effect. Retention copy distinguishes events from run records. Updated spec,
+  architecture, privacy, roadmap, AGENTS and both design/resumption files.
+- Added execution/race/consent tests, real repository + typed ObsClient adapter tests,
+  Room migration/reopen/recovery/retention/export tests and runner-to-Room integration.
+  The integration proves a write-intent checkpoint exists before dispatch, a late result
+  lands only in the original closed observation, and clear/disabled capture never creates
+  a replacement association. Tests distinguish cancellation of reads from uncertain writes
+  and preserve earlier confirmations without retrying.
+- During verification, refactored complexity/return/throw checks without new behavioral
+  suppressions. The typed adapter fixture needed explicit Unit output returns; Room-backed
+  adapter tests now use real coroutine time instead of virtually expiring preparation
+  while real database I/O is pending. Deterministic deadline/race tests retain virtual time.
+- Final focused data tests, static analysis and History record renders passed **exit 0,
+  27s, 156 tasks** (`/tmp/scenedeck-preset-run-verified.log`). Added five preset-result
+  goldens (SceneDeck/OBS light/dark and compact height), refreshed affected retention and
+  bookmark views, and inspected dark, light and compact results. The preceding adapter/
+  render pass also succeeded (`/tmp/scenedeck-preset-run-renders.log`, 29s, 136 tasks).
+- Full JDK21/uv `scripts/check-quality.sh` passed **exit 0, 2m 28s, 1,112 tasks**
+  (`/tmp/scenedeck-preset-run-quality.log`). Android lint, complexity, formatting, debug
+  build, all unit tests and screenshot verification passed. Semgrep ran seven rules across
+  355 files with zero findings. Gitleaks scanned 73 commits and the working tree cleanly.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 1s,
+  876 tasks** (`/tmp/scenedeck-preset-run-explicit.log`). Final XML totals: **958 tests
+  across 169 suites, zero failures/errors/skips** (30 additional tests). `git diff --check`
+  is clean. No real-OBS/device, physical-provider or measured-performance claim is made;
+  bounded storage/export memory still scales with retained observations and targets.
+- **Next:** implement the scoped Presets list and named CRUD/reorderable step editor under
+  More, then the concrete prepared summary/Output Safety consent and visible run/cancel/
+  result flow. Retain failed drafts, literal OBS identity and unavailable references;
+  dismiss stale consent on setup/Preflight/navigation/context/definition change and consume
+  each plan once. Deliberately resolve ViewModel/screen lifetime and recreation, verify
+  busy media/recording/admission races through the user flow, History failure/clear/export,
+  and theme/compact/accessibility renders. Only then check W7b/c/d and W6a. W8–W11 remain
+  authorized and required; no scope was dropped.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

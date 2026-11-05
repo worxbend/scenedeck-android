@@ -20,7 +20,12 @@ data class HistoryPosition(
 /** Local persistence only. The shared-state recorder and user-facing History flow are separate. */
 @Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
-class HistoryRepository @Inject constructor(private val database: SceneDeckDatabase) {
+class HistoryRepository
+@Inject
+constructor(
+    private val database: SceneDeckDatabase,
+    private val process: LocalProcessIdentity = LocalProcessIdentity(),
+) {
     private val retries = MutableStateFlow(0)
     private val reader = HistoryReader(database, retries)
     private val writer = HistoryWriter(database)
@@ -48,6 +53,7 @@ class HistoryRepository @Inject constructor(private val database: SceneDeckDatab
         reason: HistoryEndReason = HistoryEndReason.PROCESS_ENDED,
     ) = database.withTransaction {
         sessions.closeOpen(reason.name, ownerId.checkedHistoryId())
+        database.recoverPresetRuns(process.id)
     }
 
     suspend fun configure(enabled: Boolean, sessionLimit: Int) = database.withTransaction {

@@ -30,7 +30,7 @@ class HistoryExportTest : HistoryTestFixture() {
         val exported = repository.exportSnapshot().exportJson(20_000)
         val document = Json.parseToJsonElement(exported).jsonObject
         assertEquals("scenedeck-history", document.getValue("format").jsonPrimitive.content)
-        assertEquals("1", document.getValue("version").jsonPrimitive.content)
+        assertEquals("2", document.getValue("version").jsonPrimitive.content)
         val observation = document.getValue("observations").jsonArray.single().jsonObject
         assertEquals(name, observation.getValue("collectionName").jsonPrimitive.content)
         assertEquals("null", observation.getValue("endedAtMs").toString())
@@ -57,6 +57,7 @@ class HistoryExportTest : HistoryTestFixture() {
                 "missingEvents",
                 "events",
                 "bookmarks",
+                "presetRuns",
             ),
             keys,
         )

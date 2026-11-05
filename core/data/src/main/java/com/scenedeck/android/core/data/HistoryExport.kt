@@ -12,7 +12,7 @@ private val historyExportJson = Json {
 @Serializable
 private data class HistoryExport(
     val format: String = "scenedeck-history",
-    val version: Int = 1,
+    val version: Int = 2,
     val exportedAtMs: Long,
     val retention: HistoryExportRetention,
     val observations: List<HistoryExportObservation>,
@@ -23,6 +23,7 @@ private data class HistoryExport(
 private data class HistoryExportRetention(
     val sessionLimit: Int,
     val eventsPerObservation: Int = MAX_HISTORY_EVENTS,
+    val presetRunsPerObservation: Int = MAX_HISTORY_PRESET_RUNS,
 )
 
 /**
@@ -43,6 +44,7 @@ private data class HistoryExportObservation(
     val missingEvents: Long,
     val events: List<HistoryEvent>,
     val bookmarks: List<HistoryExportBookmark>,
+    val presetRuns: List<HistoryPresetRun>,
 )
 
 @Serializable
@@ -75,6 +77,7 @@ fun HistorySnapshot.exportJson(exportedAtMs: Long): String {
     checkHistory(observations.sumOf { it.bookmarks.size } + unlinkedBookmarks.size <= MAX_BOOKMARKS)
     val exported = observations.map { detail ->
         checkHistory(detail.events.size <= MAX_HISTORY_EVENTS)
+        checkHistory(detail.presetRuns.size <= MAX_HISTORY_PRESET_RUNS)
         val session = detail.session
         HistoryExportObservation(
             session.id,
@@ -90,6 +93,7 @@ fun HistorySnapshot.exportJson(exportedAtMs: Long): String {
             session.missingEvents,
             detail.events,
             detail.bookmarks.map { it.bookmark.exportBookmark(it.elapsedMs) },
+            detail.presetRuns,
         )
     }
     return historyExportJson.encodeToString(

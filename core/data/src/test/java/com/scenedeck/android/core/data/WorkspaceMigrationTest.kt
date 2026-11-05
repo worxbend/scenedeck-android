@@ -220,6 +220,37 @@ class WorkspaceMigrationTest {
             assertTrue(upgraded.actionPresetDao().list(7, "Studio", 33).isEmpty())
         }
 
+    @Test
+    fun upgradeFromVersionTenPreservesPresetDefinitionsAndAddsEmptyRunHistory(): Unit =
+        runBlocking {
+            createHistoricalDatabase(10)
+            context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+                sqlite.execSQL(
+                    "INSERT INTO action_presets VALUES (7, 'Studio', 'preset', 'Interview', 'interview', 2, ?)",
+                    arrayOf(
+                        "{\"version\":1,\"steps\":[{\"type\":\"mute\",\"inputName\":\"Mic\",\"muted\":true}]}"
+                    ),
+                )
+                sqlite.execSQL(
+                    "INSERT INTO history_sessions VALUES " +
+                        "(1, 'observation', 'owner', 0, 7, 'Studio', 1000, 1000, 0, NULL, NULL, 0, 0, 0)"
+                )
+            }
+            val upgraded = openMigratedDatabase()
+            assertEquals(
+                "Interview",
+                upgraded.actionPresetDao().list(7, "Studio", 33).single().decodePreset().name,
+            )
+            assertTrue(
+                HistoryRepository(upgraded)
+                    .exportSnapshot()
+                    .observations
+                    .single()
+                    .presetRuns
+                    .isEmpty()
+            )
+        }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -232,6 +263,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_7_8,
                 SceneDeckMigrations.MIGRATION_8_9,
                 SceneDeckMigrations.MIGRATION_9_10,
+                SceneDeckMigrations.MIGRATION_10_11,
             )
             .build()
             .also { database = it }

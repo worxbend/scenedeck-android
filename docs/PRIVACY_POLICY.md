@@ -14,7 +14,8 @@ This information is used to display and control your OBS session. SceneDeck does
 not operate a developer-hosted server that receives your OBS session data.
 
 Connection profiles, appearance settings, scene curation (including local scene labels),
-named decks (names, membership, order and selection), and preflight setup/manual checklist
+named decks (names, membership, order and selection), local action preset definitions
+(names and ordered control targets), and preflight setup/manual checklist
 confirmations are stored on your device. Local timestamp bookmarks store their label,
 connection-profile identity, collection name, device timestamp, and observed output
 elapsed times/states/sample ages. They contain no credentials or recording file paths.
@@ -30,7 +31,9 @@ Local History is enabled by default while SceneDeck observes a connected workspa
 It stores local connection-profile identity, collection and program scene names,
 device timestamps, elapsed times, output states/counters, warning categories and known
 observation gaps. It also associates bookmarks captured during an observation, using
-their current saved labels/times. History contains no passwords, connection addresses,
+their current saved labels/times. Preset run records can include the preset name and revision,
+ordered scene/input/output targets, step results, typed stop reasons and timestamps. These
+are local control records, not recordings. History contains no passwords, connection addresses,
 raw protocol/server comments, output file paths, or audio/video content. It does not
 record your device microphone. You can disable capture in More → History; saved history
 remains available offline, and no developer-hosted history service receives this data.
@@ -66,7 +69,8 @@ active in the background. Home-screen widgets display selected session informati
 on your device. When you export local curation, named decks, history/bookmarks, or share information,
 the destination you choose receives that exported/shared information. Review it
 before sharing; do not publish your OBS credentials.
-History exports can include OBS names and bookmark labels that you consider private.
+History exports can include OBS names, bookmark labels and preset names/targets that you
+consider private.
 The document provider you choose may sync exported files according to its own settings.
 
 ## Retention and deletion
@@ -78,7 +82,9 @@ local definition and membership. Bookmarks remain when a profile is removed; you
 delete individual marks in Bookmarks. The newest 500 are retained, with older marks
 removed automatically. Deleting a bookmark removes its history association, and label
 edits appear in subsequent history reads/exports. History retains the newest 30
-observations by default (configurable to 10 or 100), each with up to 500 history entries.
+observations by default (configurable to 10 or 100), each with up to 500 history entries
+and 50 preset run records. Preset definitions survive connection-profile deletion; clearing app storage removes them. The Presets editor and
+invocation UI are still in development.
 You can delete individual observations or clear history under More → History. This
 preserves independent bookmarks and does not disable future capture; use the capture
 switch to stop recording new history. History remains after connection-profile deletion.

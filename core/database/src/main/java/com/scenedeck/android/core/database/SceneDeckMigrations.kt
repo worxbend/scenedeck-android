@@ -124,6 +124,24 @@ object SceneDeckMigrations {
             }
         }
 
+    val MIGRATION_10_11 =
+        object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `history_preset_runs` (" +
+                        "`runId` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `processId` TEXT NOT NULL, " +
+                        "`elapsedMs` INTEGER NOT NULL, `revision` INTEGER NOT NULL, " +
+                        "`running` INTEGER NOT NULL, `payload` TEXT NOT NULL, PRIMARY KEY(`runId`), " +
+                        "FOREIGN KEY(`sessionId`) REFERENCES `history_sessions`(`sessionId`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_history_preset_runs_sessionId` " +
+                        "ON `history_preset_runs` (`sessionId`)"
+                )
+            }
+        }
+
     val MIGRATION_9_10 =
         object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {

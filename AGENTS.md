@@ -214,19 +214,35 @@ must pass, and Compose preview(s) for changed screens must render.
   Selected exports keep that observation's identity; all-history exports also include
   unlinked saved bookmarks. Export only the typed allow-list, excluding credentials,
   endpoints, raw protocol/comments and private output paths. Failed reads/exports are
-  explicit and sanitized. W6 preset-result integration remains pending W7.
+  explicit and sanitized. Export v2 includes bounded typed preset run snapshots. W6a
+  remains open until the W7 user flow is wired and verified.
 
-- W7 currently has scoped preset storage/read-only preparation only; there is no
-  Presets editor or executing user flow. Room schema 10 retains 32 definitions per
-  workspace, 1–12 typed target-value steps each. Preserve raw OBS names/order, stable
+- W7 has scoped storage, read-only preparation and a guarded runner/History foundation;
+  the Presets editor, consent and executing user flow are not exposed yet. Room schema 10
+  retains 32 definitions per workspace, 1–12 typed target-value steps each. Preserve raw OBS names/order, stable
   draft IDs, optimistic revisions, transactional name/bound checks and cancellation.
   Unknown/corrupt action payloads fail closed. Do not count foundation as full W7.
 - Preset preparation requires advertised paired read/write capabilities, applies input
   locks/allow-list and OutputSafetyGate, probes at most three steps concurrently, and
   rechecks the saved revision, policy and origin. A current match is not permission to
   skip a later executing step. No OBS writes are made during preparation. Resume from
-  `tasks/operator-workflow/presets-design.md`; runner, consent/UI and actual History
-  results remain required, including results after the original observation closes.
+  `tasks/operator-workflow/presets-design.md`; consent/UI and end-to-end verification
+  remain required. Foundation checks do not complete W7 or W6a.
+- PresetRunner admits one invocation, rejects preparation older than 60 seconds and
+  requires output-step acknowledgements. Recheck targets just in time; after each write,
+  reconcile a read begun after acknowledgement within four seconds. Whole execution
+  is bounded to 90 seconds; cancellation's final History save to two. Never retry writes,
+  toggle, roll back completed steps or resume after process interruption. Context,
+  target rename/removal, saved-definition/policy changes and conflicting media/recording
+  work stop remaining steps. Manual/external actions may interleave.
+- Room schema 11 keeps at most 50 preset run records per History observation, separate
+  from its 500 events. Capture the original association before suspension; monotonic
+  updates may finish closed observations but never recreate deleted/pruned records.
+  Strict run JSON is bounded to 40 KiB characters and 12 steps. History Retry uses the
+  same LocalProcessIdentity; recovery of older processes keeps completed steps, marks
+  WRITING unknown and remaining steps not run, with unknown finish time. The timeline
+  anchors results at invocation even when completion follows disconnect. Disabled or
+  unavailable capture is explicit; storage failure stops remaining preset actions.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 

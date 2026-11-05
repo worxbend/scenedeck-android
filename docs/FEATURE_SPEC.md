@@ -368,8 +368,8 @@ capture gaps and retention omissions are displayed separately. This is a bounded
 observation log, not a complete audit of every OBS action.
 
 Capture settings retain the newest **10, 30 (default), or 100 observations**, each with
-up to **500 history entries**. Disabling capture stops new observations and retains saved
-data. Clearing history or deleting an observation confirms the action, preserves saved
+up to **500 history entries** plus **50 preset run records**. Disabling capture stops new
+observations and retains saved data. Clearing history or deleting an observation confirms the action, preserves saved
 bookmarks, and allows capture to continue while enabled. Storage/feed failures pause
 capture with a sanitized Retry action; retry starts a new observation and marks the gap.
 
@@ -387,21 +387,39 @@ profile identity, OBS collection/scene names, bookmark labels, timestamps and ty
 data; they exclude connection endpoints, credentials, raw protocol/comments and output
 file paths. Previously exported files are not changed by later edits/deletion in the app.
 
-Actual multi-action preset results will join history with W7; that producer is not yet
-implemented. Show rundown, cue lists and timed advancement remain excluded.
+History can display and export preset run records, including partial and unknown results,
+at their original invocation point. The W7 runner produces these records, but the Presets
+editor and invocation UI are not exposed yet. Show rundown, cue lists and timed advancement
+remain excluded.
 
 ### Controlled multi-action presets — implementation in progress
 
-W7 has a scoped storage and read-only preparation foundation. It is **not yet exposed
-as a Presets editor or executing user flow**. The stored allow-list supports explicit
+W7 has scoped storage, read-only preparation and a guarded execution foundation. It is
+**not yet exposed as a Presets editor or executing user flow**. The stored allow-list supports explicit
 program/preview scene targets, mute, volume, media playing/paused/stopped, and stream/
 recording active targets. Definitions are bounded to 32 per workspace and 12 ordered
 steps each, with revision checks and failed-data states. Preparation checks advertised
 read/write support, target availability, input locks/allow-list and Output Safety without
 changing OBS. A currently matching value is only a reading; execution must recheck it.
 
-The editor, concrete invocation summary, bounded executor and actual History outcomes
-remain required by `tasks/operator-workflow/plan.md`. Presets will be individually invoked;
+The singleton runner accepts one invocation at a time, requires the concrete output-step
+acknowledgements and rejects preparations older than 60 seconds. It checks each target
+again, including currently matching values, and waits up to four seconds for a read begun
+after write acknowledgement to confirm the result. The whole run is bounded to 90 seconds.
+Failures, cancellation, target rename/removal, relevant policy changes or workspace
+replacement stop remaining steps; completed actions stay applied and writes are never
+retried automatically. An interrupted write may have taken effect and remains unknown.
+Manual controls and other OBS clients may interleave; presets are not OBS transactions.
+
+When a History observation was captured at invocation, progress is saved before dispatch
+and final results can update it after disconnect. Clearing/pruning History removes these
+records permanently. At most 50 runs are captured per observation; further runs can proceed
+with an explicit unrecorded result. A storage failure stops remaining steps. Process restart
+marks unfinished runs interrupted, preserves completed steps and never resumes execution.
+JSON History export version 2 includes these bounded typed records and their limits.
+
+The editor, concrete consent summary, run/result UI and end-to-end user-flow verification
+remain required by `tasks/operator-workflow/plan.md`. Presets are individually invoked;
 they do not add cue scheduling, delays, loops, scripting or collection editing.
 
 ## 9. Settings

@@ -1,8 +1,8 @@
 # Controlled multi-action presets — W7
 
-Status: scoped storage and read-only preparation implemented; verification is recorded
-in progress.md. **There is no Presets editor, invocation or executing runner in the app
-yet.** W7b/c/d and actual History integration remain open. Foundations are not a completed
+Status: scoped storage, read-only preparation, guarded execution and History run records
+are implemented; verification is recorded in progress.md. **There is no Presets editor or
+invocation UI yet.** W7b/c/d and W6a remain open until that user flow is verified. Foundations are not a completed
 operator feature. Show rundown, cue lists and timed advancement remain excluded.
 
 ## Stored definition
@@ -58,34 +58,66 @@ Reconnecting streaming is not a stopped output. Contradictory recording readings
 including currently matching outputs. This is preparation metadata, not authorization to
 write. The executing flow must retain explicit consent to the concrete ordered targets.
 
-## Remaining execution and UI work
+## Executing foundation
 
-1. Add Presets under More with a scoped list, named CRUD, reorderable step editor and
-   literal target selection. Use the shared Studio headers/components, retain failed-save
-   drafts, show unavailable references, and respect local aliases without changing targets.
-   References renamed/removed in OBS must be resolved explicitly or reported unavailable;
-   do not silently retarget an executing sequence.
-2. Show a concrete prepared step summary with per-step availability and output safety.
-   Opening unrelated setup/Preflight must dismiss pending consent. A stale selection,
-   changed definition/workspace or expired preparation cannot execute from an old dialog.
-3. Build one bounded invocation at a time with immutable progress/results. Re-read each
-   target immediately before writing, including locks/capability/target guards, and
-   reconcile a read begun after acknowledgement before advancing. Use explicit values,
-   preserve completed steps, and stop on failure, unknown, cancellation or replacement.
-   No automatic retry and no rollback of completed actions. Manual OBS/other-client
-   actions may interleave; this is not an atomic transaction on OBS.
-4. Keep the invocation bound to its original context across suspension, including queued
-   request admission. Cancel obsolete targets on observed rename/removal or context loss.
-   A write already dispatched when canceled may have taken effect; mark it unknown and
-   never label all steps rolled back or unsent. Handle media/recording tools already busy.
-5. Persist actual partial/unknown results in the original History observation when capture
-   is enabled. Capture that association at invocation, not completion. A disconnect can
-   close the observation before a result arrives; the integration must preserve that
-   result without retargeting or resurrecting deleted history. The current generic history
-   append rejects closed observations, so do not ignore that failure or assume it suffices.
-6. Verify executor races/failures, consent, process interruption, History/export outcomes,
-   and editor/run interaction and theme/compact renders. Update privacy documentation
-   when the user flow starts saving preset definitions/results. Only then check W7b/c/d
-   and W6a.
+PresetRunner owns a singleton invocation gate and publishes immutable PresetRunState.
+Callers pass the concrete prepared plan and acknowledged output-step indices. Preparations
+older than 60 seconds, invalid steps or missing required output acknowledgements send no
+OBS requests. The UI must still own fresh, single-use consent and dismiss it on navigation,
+selection/definition/context change. The backend API is not a substitute for this UI.
+
+Execution subscribes directly to stamped events before reads, then observes context,
+definition, relevant policy and busy media/recording state. Rename/removal of a referenced
+target stops the run without retargeting. Every step validates the saved definition and
+policy, reads the target, validates again, and only then decides to skip or write. Writes
+use explicit values through ObsClient.withSession and the protocol admission guard.
+A read started after write acknowledgement must confirm the target within four seconds
+before advancing. The whole run is bounded to 90 seconds. No retries or rollback occur.
+Manual actions and other clients can interleave; this is not an OBS transaction.
+
+Progress distinguishes pending/checking/writing, confirmed, already matched, rejected,
+unknown and not run. Cancellation of a checking step leaves it not run; a possibly
+dispatched write becomes unknown. Caller cancellation propagates after a bounded two-second
+History finalization. Internal invalidation cancels the run without cancelling its caller.
+A run ID scopes Cancel so obsolete actions cannot cancel a replacement invocation.
+
+## History integration
+
+Schema 11 stores at most 50 run records per observation, independently of its 500 events.
+Each record holds a snapshot of preset identity/name/revision, ordered typed targets,
+step results, typed outcome/reason and timestamps, within a strict 40 KiB character JSON
+bound. The original observation/elapsed position is captured synchronously before the
+invocation suspends. No association is invented later if History is disabled/unavailable.
+A full run-record allowance is explicit and does not prevent the controls from running.
+
+When captured, start and each progress transition save before the next write. Final
+updates remain allowed after normal observation closure or capture disable; clear/delete
+and pruning cascade and no update recreates a row. Scope, process ownership, immutable
+definition and increasing revision are checked transactionally. Storage failure stops
+remaining steps, with a bounded final save attempt. A row left unfinished by failed
+persistence describes its last saved state, not proof that execution is still active.
+
+LocalProcessIdentity is stable across History capture retries. Startup recovery of older
+processes retains completed steps, changes WRITING to UNKNOWN, remaining steps to NOT_RUN,
+and marks the outcome interrupted with unknown finish time. It never resumes controls.
+Timeline results remain at the original invocation point even if finished after disconnect.
+History export version 2 includes the typed records and their retention limit, excluding
+process identity, credentials, endpoints, raw errors and recording file paths.
+
+## Remaining UI and verification
+
+1. Add Presets under More with scoped list, named CRUD, reorderable step editor and literal
+   target selection. Retain failed-save drafts, show unavailable references, use shared
+   Studio components and respect aliases without rewriting OBS target identities.
+2. Show a concrete prepared summary and required output confirmations. Opening unrelated
+   setup/Preflight dismisses pending consent. A stale/expired/changed selection cannot
+   execute. Clear a consumed plan so one dialog action cannot invoke twice.
+3. Wire the singleton runner to a deliberate user action, scoped cancellation and persistent
+   visible partial/unknown results. Keep the run tied to its original workspace while
+   navigating; resolve screen lifecycle deliberately, without duplicate runs on recreation.
+4. Exercise editor/run interaction, missing/renamed references, busy media/recording tools,
+   policy/context changes during consent/admission, History disabled/full/failure/clear,
+   caller cancellation, process interruption, export and required theme/compact renders.
+   Backend tests and History result renders alone do not complete W7b/c/d or W6a.
 
 No real OBS/device or performance measurement is established by JVM/fake-server checks.

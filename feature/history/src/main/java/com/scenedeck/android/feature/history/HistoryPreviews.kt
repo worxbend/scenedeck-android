@@ -18,9 +18,18 @@ import com.scenedeck.android.core.data.HistoryOutput
 import com.scenedeck.android.core.data.HistoryOutputState
 import com.scenedeck.android.core.data.HistoryPayload
 import com.scenedeck.android.core.data.HistoryPreferences
+import com.scenedeck.android.core.data.HistoryPresetRun
 import com.scenedeck.android.core.data.HistorySession
 import com.scenedeck.android.core.data.HistoryState
 import com.scenedeck.android.core.data.LocalBookmark
+import com.scenedeck.android.core.data.PresetOutput
+import com.scenedeck.android.core.data.PresetRun
+import com.scenedeck.android.core.data.PresetRunOutcome
+import com.scenedeck.android.core.data.PresetRunStep
+import com.scenedeck.android.core.data.PresetSceneDestination
+import com.scenedeck.android.core.data.PresetStep
+import com.scenedeck.android.core.data.PresetStepResult
+import com.scenedeck.android.core.data.PresetStopReason
 import com.scenedeck.android.core.data.WorkspaceKey
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
@@ -67,6 +76,7 @@ internal fun historyPreviewState(detail: Boolean = false): HistoryUiState {
                 ),
             ),
             listOf(historyPreviewBookmark(workspace, at)),
+            listOf(historyPreviewPreset(at)),
         )
     return HistoryUiState(
         HistoryState.Ready(HistoryPreferences(), listOf(session)),
@@ -76,6 +86,33 @@ internal fun historyPreviewState(detail: Boolean = false): HistoryUiState {
         else HistorySelection(),
     )
 }
+
+internal fun historyPreviewPreset(at: Long) =
+    HistoryPresetRun(
+        55_000,
+        PresetRun(
+            "run",
+            "preset",
+            "Interview start",
+            2,
+            at + 55_000,
+            listOf(
+                PresetRunStep(PresetStep.Mute("Guest mic", false), PresetStepResult.CONFIRMED),
+                PresetRunStep(
+                    PresetStep.Output(PresetOutput.RECORDING, true),
+                    PresetStepResult.UNKNOWN,
+                ),
+                PresetRunStep(
+                    PresetStep.Scene("Guest camera", PresetSceneDestination.PROGRAM),
+                    PresetStepResult.NOT_RUN,
+                ),
+            ),
+            7,
+            PresetRunOutcome.STOPPED,
+            PresetStopReason.WORKSPACE_CHANGED,
+            at + 66_000,
+        ),
+    )
 
 private fun historyPreviewBookmark(workspace: WorkspaceKey, at: Long) =
     HistoryLinkedBookmark(

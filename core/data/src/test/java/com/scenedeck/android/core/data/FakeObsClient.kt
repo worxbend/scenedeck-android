@@ -141,13 +141,13 @@ internal open class FakeObsClient(
 
     open override suspend fun setInputVolume(inputName: String, volumeMul: Double): Unit = unused()
 
-    override suspend fun startStream() = unused()
+    override suspend fun startStream(): Unit = unused()
 
-    override suspend fun stopStream() = unused()
+    override suspend fun stopStream(): Unit = unused()
 
-    override suspend fun startRecord() = unused()
+    override suspend fun startRecord(): Unit = unused()
 
-    override suspend fun stopRecord() = unused()
+    override suspend fun stopRecord(): Unit = unused()
 
     override suspend fun getProfileList() = unused()
 

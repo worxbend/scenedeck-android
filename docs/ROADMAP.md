@@ -254,9 +254,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   links, offline History list/detail, retention/capture controls, clear/delete and
   explicit JSON document export. Known gaps, unknown ends and storage failures remain
   visible. Actual preset outcomes still depend on W7, so W6a remains open.
-- In progress: controlled presets have verified scoped typed storage and bounded read-only
-  preparation. The editor, concrete invocation, executing runner and History outcomes are
-  still open; no Presets user flow is exposed yet.
+- In progress: controlled presets have scoped typed storage, bounded preparation, a guarded
+  singleton runner and original-observation History records/export. The editor, concrete
+  invocation/consent and end-to-end user flow remain open; no Presets screen is exposed yet.
 - Next: complete controlled multi-action presets and their History integration, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.

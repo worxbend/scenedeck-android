@@ -360,7 +360,7 @@ another history event or OBS request. The log does not claim exhaustive upstream
 `HistoryViewModel` exposes immutable list/detail/capture/operation state. `HistoryFileExport`
 takes and serializes a bounded offline snapshot before launching SAF; picker cancellation,
 expired prepared data and failed writes are explicit. Duplicate writes are gated and no
-raw storage/document errors are shown. W6's actual preset-outcome producer remains W7 work;
+raw storage/document errors are shown. W6's end-to-end preset-outcome user flow remains W7 work;
 see `tasks/operator-workflow/history-design.md`.
 
 Room schema 10 adds `action_presets`, with composite profile/collection/UUID identity and
@@ -379,9 +379,30 @@ bounded reads. `PresetStepProbe` uses the original session at every request and 
 obsolete results. At most three probes run concurrently, each within eight seconds,
 with a 30-second preparation deadline. It exposes distinct unsupported/missing/locked/
 excluded/Studio-off/unready/unknown findings and current matches, plus the shared Output
-Safety requirements. No preparation path writes to OBS. This foundation is not wired to
-a Presets editor or executing runner; see `tasks/operator-workflow/presets-design.md` for
-remaining consent, execution, lifecycle and original-observation History integration.
+Safety requirements. No preparation path writes to OBS. `PresetRunner` owns a singleton
+invocation gate and immutable progress. It rejects stale/unconfirmed plans, subscribes to
+context events before reading, revalidates saved definitions/policy and checks each target
+just before dispatch. `SharedPresetExecutionSource` uses typed ObsClient calls bound with
+`withSession`; protocol admission still checks the original token. Recording-tool busy
+and media-seek state stop conflicting runs. Every write needs a fresh post-acknowledgement
+read before advancing; confirmation is bounded to four seconds, whole execution to 90.
+Cancellation propagates to the caller after at most two seconds of final History saving.
+No automatic retries, toggle operations, rollback or resumed execution are introduced.
+
+Schema 11 adds `history_preset_runs`: at most 50 records per observation, each with up to
+12 typed steps and strict versioned JSON bounded to 40 KiB characters. These records are
+separate from the 500-event limit. Start captures the original observation and elapsed
+position; later monotonic-revision updates require that exact existing row and process
+owner, including after normal closure or capture disable. Delete/pruning cascades and
+updates never insert. `LocalProcessIdentity` stays stable across capture Retry; recovery
+of older processes retains completed results, changes WRITING to UNKNOWN, leaves remaining
+steps NOT_RUN and marks an unknown finish time. It never reruns anything. A late captured
+start can extend the last observed point after abrupt interruption, not a known end.
+History detail observes these rows, timeline positions them at invocation, and export v2
+includes typed run snapshots without internal process ownership or diagnostics.
+
+The editor and invocation/consent UI are still unwired. W7 and W6a stay open until their
+end-to-end flow and renders pass; see `tasks/operator-workflow/presets-design.md`.
 
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused

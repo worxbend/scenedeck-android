@@ -1,8 +1,9 @@
 # Local session history — W6 design
 
 Status: shared-state capture, bookmark links, offline History and SAF JSON export are
-implemented; verification evidence is in progress.md. **Actual preset outcomes remain
-dependent on W7.** W6a stays open until that execution producer is integrated.
+implemented; verification evidence is in progress.md. The W7 runner now produces durable
+preset records and History can display/export them. **The Presets invocation UI remains
+unwired.** W6a stays open until that execution user flow is integrated and verified.
 
 ## Meaning of an observation
 
@@ -128,8 +129,17 @@ compact height; privacy documentation describes capture, retention and export.
 
 ## Remaining integration
 
-Connect actual W7 preset execution outcomes, including partial and unknown results.
-W6a is incomplete until this producer exists; a placeholder event type is insufficient.
+Schema 11 adds bounded child run records (50 per observation, separate from 500 events).
+They capture the original observation/elapsed position at invocation, save progress before
+writes, and allow final updates after disconnect or capture disable. Updates never insert;
+clear/delete/retention cascades remove the records permanently. A stable process identity
+prevents capture Retry from interrupting an active preset. A later process preserves
+completed steps, marks interrupted writes unknown, leaves remaining steps not run and never
+resumes. Timeline entries stay at invocation and export v2 includes typed results/limits.
+Run JSON is strict and bounded to 40 KiB characters, without raw errors or output paths.
+
+Connect the W7 editor/consent/invocation UI to this runner. W6a remains incomplete until
+actual user-triggered results, lifecycle behavior and failure paths are verified end to end.
 Keep full workflow verification and real-device/OBS limitations explicit in W11.
 
 Show rundown, cue lists and timed advancement remain excluded. Presets are individually

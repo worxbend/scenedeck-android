@@ -66,7 +66,9 @@ internal fun HistoryDetail.timeline(): List<HistoryTimelineItem> {
             Long.MAX_VALUE,
         )
     }
-    return (changes + moments).sortedWith(compareBy({ it.elapsedMs }, { it.order }))
+    return (changes + moments + presetRuns.map { it.timelineItem() }).sortedWith(
+        compareBy({ it.elapsedMs }, { it.order })
+    )
 }
 
 private fun HistoryPayload.title(): String =

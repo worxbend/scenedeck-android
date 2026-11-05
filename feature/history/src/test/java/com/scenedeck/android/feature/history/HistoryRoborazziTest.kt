@@ -81,6 +81,41 @@ class HistoryRoborazziTest {
 
     @Test fun obsDetailLight() = capture(true, ThemeFamily.OBS, false)
 
+    private fun capturePreset(family: ThemeFamily, dark: Boolean, name: String) {
+        show(historyPreviewState(true), family, dark)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Preset · Interview start"))
+        compose.onNodeWithText("Preset · Interview start").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("2. Start recording · unknown").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("history_preset_$name.png")
+    }
+
+    @Test fun presetStudioDark() = capturePreset(ThemeFamily.SCENEDECK, true, "studio_dark")
+
+    @Test fun presetStudioLight() = capturePreset(ThemeFamily.SCENEDECK, false, "studio_light")
+
+    @Test fun presetObsDark() = capturePreset(ThemeFamily.OBS, true, "obs_dark")
+
+    @Test fun presetObsLight() = capturePreset(ThemeFamily.OBS, false, "obs_light")
+
+    @Test
+    @Config(qualifiers = "w640dp-h360dp-land")
+    fun compactPresetKeepsUnknownResultAndRemainingStepsReadable() {
+        show(historyPreviewState(true), ThemeFamily.SCENEDECK, false)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Preset · Interview start"))
+        compose.onNodeWithText("2. Start recording · unknown").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("3. Program: Guest camera · not run")
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose
+            .onNodeWithText(
+                "An unknown write may have taken effect. Check OBS before running again."
+            )
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onRoot().captureRoboImage("history_preset_compact.png")
+    }
+
     @Test
     @Config(qualifiers = "w640dp-h360dp-land")
     fun compactListKeepsObservationControlsReachable() {
