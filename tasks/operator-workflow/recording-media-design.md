@@ -1,6 +1,6 @@
 # W5 recording and media tools
 
-Status: W5 is implemented and verified. The workflow continues at W6. No rundown,
+Status: W5 is implemented and verified. The complete workflow is verified; see progress.md. No rundown,
 cue sequence, timed advancement or Replay Buffer behavior is added.
 
 ## Recording controls

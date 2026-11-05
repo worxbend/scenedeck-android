@@ -74,3 +74,10 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
   fully expanded, group identity/server/security and keep password drafts out of saved state.
 - Persistent status distinguishes connection from OFF AIR / LIVE / REC; output state
   is unknown when disconnected, and performance metrics appear only while streaming.
+
+## Operator layouts
+
+Use StudioWorkspace for Scenes/Mixer adaptive controls/content, based on available bounds
+rather than device type. Keep insets outside scrollers and command/search owners above
+placement. SceneMonitor uses shared tally colors and cached-image freshness; do not create
+another screenshot poller. Render tablet/compact/large-text variants in four core themes.

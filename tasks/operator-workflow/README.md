@@ -1,21 +1,22 @@
 # SceneDeck operator workflow
 
-Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
-excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W9 are implemented and verified, including Presets, foreground keyboard/compatible
-foot-pedal routing and the isolated offline demo. Resume at **W10 — tablet operator layout**.
-W10–W11 remain required; the durable goal is active. Use [shortcuts-design.md](shortcuts-design.md)
-and [demo-design.md](demo-design.md) for the delivered contracts and verification evidence.
-Keep the originating-workspace, consent and unknown-result contracts in
-[presets-design.md](presets-design.md) and [history-design.md](history-design.md) when
-adding shortcut entry points. Show rundown, cue lists and timed advancement remain excluded.
+Status: **complete — implemented and verified locally**. Authorized 2026-11-05:
+all agreed operator improvements except **Show rundown**. W1–W11 are complete.
+The durable goal is fulfilled; no release, push, tag or store upload was performed.
 
-## Resume
+Use [plan.md](plan.md) for acceptance checks, [progress.md](progress.md) for commands and
+outcomes, and the feature design files for contracts. Final verification: 1,136 tests /
+198 suites, full JDK21/uv quality gate, normal debug build/tests, F-Droid debug build and
+required renders. Demo/device evidence is emulator-only; real OBS, physical pedals and
+measured device performance are not claimed. Show rundown, cue lists and timed advancement
+remain excluded.
+
+## Future maintenance
 
 1. Read `AGENTS.md`, the five product/architecture/stack/design/roadmap documents,
    and the applicable `.kimi/skills/` instructions.
 2. Read [plan.md](plan.md), [progress.md](progress.md), and the current Git diff.
-3. Continue the first incomplete checkpoint. Preserve unrelated changes and the
+3. Start a new explicitly scoped follow-up; this plan has no incomplete checkpoints. Preserve the
    completed historical review in `tasks/plan.md` and `tasks/todo.md`.
 4. Implement and verify one bounded slice at a time. Update progress with exact
    files, commands, outcomes, limitations, and the next action before a handoff.

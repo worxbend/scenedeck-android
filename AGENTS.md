@@ -15,8 +15,8 @@ desktop Linux app at `../scenedeck` (Rust/GTK4). Read these before making change
 
 ## Project-level skills
 
-Active feature work resumes from `tasks/operator-workflow/README.md` and its plan/progress
-files. The authorized scope excludes Show rundown (including cue lists and timed
+The completed operator workflow is recorded in `tasks/operator-workflow/README.md` and its
+plan/progress files. The authorized scope excludes Show rundown (including cue lists and timed
 advancement); multi-action presets are independently invoked. Planned checkpoints
 are not shipped behavior. Preserve the older completed review in `tasks/plan.md`.
 
@@ -247,6 +247,14 @@ must pass, and Compose preview(s) for changed screens must render.
   WRITING unknown and remaining steps not run, with unknown finish time. The timeline
   anchors results at invocation even when completion follows disconnect. Disabled or
   unavailable capture is explicit; storage failure stops remaining preset actions.
+
+- Operator Scenes/Mixer use StudioWorkspace content bounds after shell/feature insets:
+  expanded at 840×480dp, compact beside layout at width 600dp below height 480dp, stacked
+  otherwise. Stable layout slots preserve feature/search/focus owners; controls scroll
+  within a bounded area. SceneMonitor is read-only, reuses cached thumbnail freshness and
+  shows raw OBS identity beside aliases; no extra captures or live-video claim. Expanded
+  Mixer wraps strips into a grid; direct mute/locks/media keep existing target callbacks.
+  Large-text modes wrap and Scenes status moves below its title. No rundown/cue panel.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 

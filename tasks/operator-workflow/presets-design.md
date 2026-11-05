@@ -143,4 +143,4 @@ process interruption and export encoding. Roborazzi verifies SceneDeck/OBS light
 list/editor/step/review/result/chooser views, compact interaction and larger text.
 
 No real OBS/device or performance measurement is established by JVM/fake-server checks.
-W8–W11 remain required; shortcuts must preserve this consent and originating-context contract.
+W8–W11 are now verified; shortcuts preserve this consent and originating-context contract.

@@ -374,3 +374,18 @@ use the shared SimulationNotice so separate windows cannot imply a real broadcas
 Synthetic preview slates use a restrained geometric test signal and small DEMO watermark,
 leaving scene text legible. Entry explains that a real OBS session can continue separately;
 restricted connection/setup/background routes offer Exit instead of live configuration.
+
+### Operator windows
+
+StudioWorkspace uses density gutters/gaps and content bounds: expanded at 840×480dp,
+compact beside layout at 600dp width below 480dp height, stacked elsewhere. Controls occupy
+42% width (320–400dp) beside the deck/channels and scroll independently. Stacked controls
+use at most 55% of available height. Safe insets stay outside scrolling surfaces. Feature
+state and text focus keep their owners as placement changes.
+
+SceneMonitor is a read-only tonal panel with program-red or preview-green outline/title,
+large local label, raw OBS identity and existing cached-image age. It never adds a live
+video treatment or a click command. Studio controls remain above these panels. Large-text
+Scenes headers put output status below the title; Mixer mode chips wrap when scaled labels
+need room. Mixer channel grids use at least 160dp cells and existing 48dp mute/options/fader
+controls. Phone/compact windows retain horizontal strips. There is no rundown panel.

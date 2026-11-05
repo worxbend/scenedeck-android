@@ -78,6 +78,19 @@ colors, icons, ordering) lives in a local registry on the device.
 - **Studio mode (extension)**: when enabled, deck switches the *preview* scene;
   a prominent TRANSITION button commits preview → program.
 
+### Adaptive operator layout
+
+Scenes uses available content space after navigation, status and safe insets. At least
+840dp × 480dp enables a two-pane operator view: scrollable transport/Studio controls and
+larger PROGRAM/PREVIEW context beside the searchable deck. These read-only panels reuse
+cached snapshots with their age/failure labels; they are not live video and add no capture
+requests. They keep local labels and raw OBS identity. Hidden previews hide images/captions.
+
+Compact wide windows (at least 600dp wide, below 480dp high) keep controls beside the deck
+without the large context panels. Narrow windows stack the controls and deck; controls can
+scroll within their allocated space so they cannot consume the entire deck area. Resizing
+keeps feature state, search/focus and command ownership. Mixer stays on its dedicated tab.
+
 ## 3. Audio — mixer strips + dedicated Mixer page
 
 - Audio discovery: global "special" inputs first, then audio-capable inputs of the
@@ -97,6 +110,12 @@ colors, icons, ordering) lives in a local registry on the device.
   workspace. Locks, audio allow-list, mode and grouping remain app-wide preferences.
 - **Extensions**: audio balance/pan, sync offset, monitor type (desktop explicitly
   doesn't do these — mobile differentiator, phase M7+).
+
+On expanded operator windows, Mixer places its mode/search/group/scene controls beside a
+wrapping channel grid. Narrow and compact-height windows keep horizontal channel strips;
+controls and channels can scroll independently. Large text wraps the mode choices instead
+of clipping their labels. Channel locks, direct mute, media tools and shared meter sampling
+use the same actions and state in every size.
 
 ## 4. Stream & record control
 

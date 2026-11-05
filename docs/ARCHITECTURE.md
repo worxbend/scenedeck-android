@@ -116,6 +116,17 @@ one module owns the wire protocol.**
 | Stats/read receipt times and ring buffer (2 min) | `StatsRepository` | connection + collection generation |
 | Screen UI state | feature ViewModels | config-change scoped |
 
+## Adaptive presentation
+
+`StudioWorkspace` in core/designsystem measures two stable Compose slots from available
+content bounds, after feature top and shell horizontal/status insets. Expanded windows use
+side-by-side controls/content; compact wide windows use the same placement without large
+context panels; narrow windows stack them with bounded scrollable controls. Custom placement
+keeps the composition owners stable across resizing. No orientation/device checks, new
+repository or session owner is introduced. Feature search/grid state stays above layout.
+Scenes context panels use the existing `ScenePreviews` cache/freshness projection. Mixer
+uses existing meter holders and workspace-bound callbacks for both channel row and grid.
+
 ## Process model
 
 `DemoActivity` is non-exported, uses a dedicated task affinity and private `:demo` process,

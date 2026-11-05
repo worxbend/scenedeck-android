@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -63,10 +62,11 @@ import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholde
 import com.scenedeck.android.core.designsystem.components.SceneCard
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
-import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
+import com.scenedeck.android.core.designsystem.components.StudioWorkspace
 import com.scenedeck.android.core.designsystem.components.studioFilterChipColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
+import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.model.ConnectionState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -272,100 +272,110 @@ internal fun LiveDeckContent(
     val showReorderGrips = reorderMode && reorderAllowed
     val knownEmpty = deckState.workspace != null && deckOptions != null && orderedScenes.isEmpty()
 
-    Column(
+    StudioWorkspace(
         modifier =
-            modifier.fillMaxSize().imePadding().statusBarsPadding().padding(horizontal = 20.dp)
-    ) {
-        Spacer(Modifier.height(8.dp))
-        DeckHeader(
-            deckState,
-            reorderMode,
-            { reorderMode = !reorderMode },
-            reorderAllowed,
-            previewsEnabled,
-            onPreviewsToggle,
-            onStudioToggle,
-            telemetry,
-            motionLevel,
-            tBarOpen,
-            { tBarOpen = !tBarOpen },
-            onRecordingTools,
-        )
-        Spacer(Modifier.height(8.dp))
-        TransportBar(
-            streaming = streaming,
-            recording = recording,
-            enabled = true,
-            pulseTally = motionLevel == MotionLevel.FULL,
-            onToggleStream = onStreamClick,
-            onToggleRecord = onRecordClick,
-            virtualCamActive = telemetry.virtualCamActive,
-            onToggleVirtualCam = onToggleVirtualCam,
-            virtualCamPending = virtualCamPending,
-        )
-        StudioModeSection(
-            deckState,
-            onTransitionClick,
-            onCutClick,
-            onTransitionSelect,
-            onTransitionDurationChange,
-            motionLevel,
-            tBarOpen,
-        )
-        DeckFilterSection(
-            deckOptions = deckOptions,
-            onDeckSelection = {
-                onDeckSelection(it)
-                reorderMode = false
-            },
-            onManageDecks = onManageDecks,
-            sceneCount = deckState.allScenes.size,
-            searchOpen = searchOpen,
-            onSearchToggle = {
-                searchOpen = !searchOpen
-                if (!searchOpen) searchQuery = ""
-            },
-            searchQuery = searchQuery,
-            onSearchChange = { searchQuery = it },
-            reorderMode = reorderMode,
-            onFinishReordering = { reorderMode = false },
-            listEmpty = knownEmpty,
-        )
+            modifier
+                .fillMaxSize()
+                .imePadding()
+                .statusBarsPadding()
+                .padding(horizontal = SceneDeckTheme.spacing.pageGutter),
+        controls = { expanded ->
+            Spacer(Modifier.height(8.dp))
+            DeckHeader(
+                deckState,
+                reorderMode,
+                { reorderMode = !reorderMode },
+                reorderAllowed,
+                previewsEnabled,
+                onPreviewsToggle,
+                onStudioToggle,
+                telemetry,
+                motionLevel,
+                tBarOpen,
+                { tBarOpen = !tBarOpen },
+                onRecordingTools,
+            )
+            Spacer(Modifier.height(8.dp))
+            TransportBar(
+                streaming = streaming,
+                recording = recording,
+                enabled = true,
+                pulseTally = motionLevel == MotionLevel.FULL,
+                onToggleStream = onStreamClick,
+                onToggleRecord = onRecordClick,
+                virtualCamActive = telemetry.virtualCamActive,
+                onToggleVirtualCam = onToggleVirtualCam,
+                virtualCamPending = virtualCamPending,
+            )
+            StudioModeSection(
+                deckState,
+                onTransitionClick,
+                onCutClick,
+                onTransitionSelect,
+                onTransitionDurationChange,
+                motionLevel,
+                tBarOpen,
+            )
+            DeckMonitors(expanded, deckState, previews)
+        },
+    ) { _ ->
+        Column(Modifier.fillMaxSize()) {
+            DeckFilterSection(
+                deckOptions = deckOptions,
+                onDeckSelection = {
+                    onDeckSelection(it)
+                    reorderMode = false
+                },
+                onManageDecks = onManageDecks,
+                sceneCount = deckState.allScenes.size,
+                searchOpen = searchOpen,
+                onSearchToggle = {
+                    searchOpen = !searchOpen
+                    if (!searchOpen) searchQuery = ""
+                },
+                searchQuery = searchQuery,
+                onSearchChange = { searchQuery = it },
+                reorderMode = reorderMode,
+                onFinishReordering = { reorderMode = false },
+                listEmpty = knownEmpty,
+            )
 
-        DeckWorkspaceStatus(deckState, onRetryWorkspace)
-        if (deckState.workspace != null && deckOptions == null)
-            WorkspaceStatus(failed = deckOptionsFailed, onRetry = onRetryWorkspace)
-        if (projection.missing.isNotEmpty())
-            TextButton(onClick = onManageDecks) {
-                Text("${projection.missing.size} scenes unavailable · Manage deck")
-            }
+            DeckAvailability(
+                deckState,
+                deckOptions,
+                deckOptionsFailed,
+                projection.missing.size,
+                onRetryWorkspace,
+                onManageDecks,
+            )
 
-        LazyVerticalGrid(
-            modifier = Modifier.weight(1f),
-            columns = GridCells.Adaptive(minSize = 160.dp),
-            state = gridState,
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(orderedScenes, key = { it.name }) { scene ->
-                ReorderableItem(reorderableState, key = scene.name) { isDragging ->
-                    DeckSceneTile(
-                        scene,
-                        positions[scene.name] ?: (orderedScenes.indexOf(scene) + 1),
-                        isDragging,
-                        showReorderGrips,
-                        searchQuery.isBlank(),
-                        motionLevel,
-                        deckState.studioMode,
-                        previews.image(scene.name),
-                        previews.label(scene.name),
-                        pendingScene,
-                        onSceneTap,
-                        { quickEdit = it },
-                        hapticsEnabled,
-                        Modifier.draggableHandle(),
-                    )
+            LazyVerticalGrid(
+                modifier = Modifier.weight(1f),
+                columns = GridCells.Adaptive(minSize = 160.dp),
+                state = gridState,
+                contentPadding = PaddingValues(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(orderedScenes, key = { it.name }) { scene ->
+                    ReorderableItem(reorderableState, key = scene.name) { isDragging ->
+                        DeckSceneTile(
+                            scene,
+                            positions[scene.name] ?: (orderedScenes.indexOf(scene) + 1),
+                            isDragging,
+                            showReorderGrips,
+                            searchQuery.isBlank(),
+                            motionLevel,
+                            deckState.studioMode,
+                            previews.image(scene.name),
+                            previews.label(scene.name),
+                            pendingScene,
+                            onSceneTap,
+                            { quickEdit = it },
+                            hapticsEnabled,
+                            Modifier.draggableHandle(),
+                        )
+                    }
                 }
             }
         }
@@ -427,64 +437,38 @@ private fun DeckHeader(
     onRecordingTools: () -> Unit,
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
-    val reorderLabel = if (reorderMode) R.string.finish_reordering else R.string.reorder_scenes
-    val previewsLabel = if (previewsEnabled) R.string.hide_previews else R.string.show_previews
-    val studioLabel = if (deckState.studioMode) R.string.disable_studio else R.string.enable_studio
-    val tBarLabel = if (tBarOpen) R.string.hide_tbar else R.string.show_tbar
-    StudioPageHeader(
-        title = stringResource(R.string.live_title),
-        subtitle =
-            deckState.currentProgramScene?.let {
-                stringResource(R.string.program_scene, it)
-            } ?: stringResource(R.string.scene_switch_hint),
-        icon = SceneDeckIcons.Scenes,
-    ) {
-        HeaderBroadcastStatus(telemetry, motionLevel)
-        Box {
-            IconButton(onClick = { optionsOpen = true }) {
-                Icon(SceneDeckIcons.More, stringResource(R.string.scene_options))
-            }
-            DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text("Recording tools") },
-                    onClick = {
-                        optionsOpen = false
-                        onRecordingTools()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(reorderLabel)) },
-                    onClick = {
-                        onReorderToggle()
-                        optionsOpen = false
-                    },
-                    enabled = reorderAllowed,
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(previewsLabel)) },
-                    onClick = {
-                        onPreviewsToggle(!previewsEnabled)
-                        optionsOpen = false
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(studioLabel)) },
-                    onClick = {
-                        onStudioToggle(!deckState.studioMode)
-                        optionsOpen = false
-                    },
-                )
-                if (deckState.studioMode) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(tBarLabel)) },
-                        onClick = {
-                            onTBarToggle()
-                            optionsOpen = false
-                        },
-                    )
+    val stackStatus = LocalDensity.current.fontScale > 1.2f
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        StudioPageHeader(
+            title = stringResource(R.string.live_title),
+            subtitle =
+                deckState.currentProgramScene?.let {
+                    stringResource(R.string.program_scene, it)
+                } ?: stringResource(R.string.scene_switch_hint),
+            icon = SceneDeckIcons.Scenes,
+        ) {
+            if (!stackStatus) HeaderBroadcastStatus(telemetry, motionLevel)
+            Box {
+                IconButton(onClick = { optionsOpen = true }) {
+                    Icon(SceneDeckIcons.More, stringResource(R.string.scene_options))
                 }
+                DeckOptionsMenu(
+                    optionsOpen,
+                    { optionsOpen = false },
+                    deckState,
+                    reorderMode,
+                    reorderAllowed,
+                    previewsEnabled,
+                    tBarOpen,
+                    onReorderToggle,
+                    onPreviewsToggle,
+                    onStudioToggle,
+                    onTBarToggle,
+                    onRecordingTools,
+                )
             }
         }
+        if (stackStatus) HeaderBroadcastStatus(telemetry, motionLevel)
     }
 }
 

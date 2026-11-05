@@ -1,14 +1,14 @@
 # Roadmap — SceneDeck Android
 
-## Active follow-up — operator workflow (2026-11-05)
+## Completed follow-up — operator workflow (2026-11-05)
 
 Implementation is tracked in [the durable workflow](../tasks/operator-workflow/README.md).
 The authorized scope includes scoped workspaces/named decks, preflight, live alerts,
 recording/media tools, independently invoked action presets, session history/export,
 local aliases, preview freshness, keyboard/pedal bindings, demo mode, and tablet layouts.
 **Show rundown is excluded**, including cue lists, scheduled advancement, and a tablet
-rundown panel. See the workflow plan for acceptance criteria and progress; these items
-are planned until their individual implementation/verification checkpoints are complete.
+rundown panel. All W1–W11 implementation and local verification checkpoints are complete;
+see the workflow plan/progress for exact evidence and hardware/real-OBS limitations.
 
 Phased delivery from empty repo to Play Store. Each milestone is independently
 shippable (internal track) and has explicit acceptance criteria. Estimates assume
@@ -269,7 +269,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   simulation label/Exit, local previews and guarded output consent. Rotation/re-entry/process
   checks and both normal/F-Droid emulator paths pass; live profiles/settings/secrets remain
   unchanged. No real-OBS or physical-device claim is implied.
-- Next: tablet operator layout and final integration checks in `tasks/operator-workflow/plan.md`.
-  All remaining authorized improvements are required.
+- Verified: tablet operator Scenes context/deck panes, adaptive Mixer channel grid, compact
+  scrolling and large-text controls. Search/focus and session state survive resizing.
+- Final integration passed: full quality gate, 1,136 tests / 198 suites, required renders,
+  normal debug build/tests and F-Droid debug build. See `tasks/operator-workflow/progress.md`.
 - Show rundown, cue lists and timed advancement are excluded. Presets are invoked
   independently. No release or store publication is part of this workflow.

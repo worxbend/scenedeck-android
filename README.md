@@ -23,7 +23,8 @@ rebuilt with Kotlin and Jetpack Compose.
 
 ## 🪄 The studio glow-up
 
-- **Scenes:** a clean card grid, numbered tiles, scene search and a curated Deck filter.
+- **Scenes:** numbered tiles, local labels, searchable named decks per OBS workspace and
+  preview freshness. Tablet windows place program/preview context beside the deck.
 - **Stream control:** blue **Stream** → breathing red **Stop** when live. Green stream
   timers and yellow recording timers in the header keep output state easy to read.
 - **VCam:** a direct virtual-camera action alongside Stream and Record.
@@ -31,7 +32,12 @@ rebuilt with Kotlin and Jetpack Compose.
 - **Always visible:** OFF AIR or LIVE with an elapsed timer on every main tab.
   The bottom performance readings appear only while streaming.
 - **Stats:** FPS, bitrate, frame drops, CPU and render time, with gauges and rolling trends.
-- **Studio mode:** preview scenes and transition controls, ready for your next cue.
+- **Studio mode:** preview scenes and deliberate transition controls.
+- **Operator tools:** optional Preflight checks, sustained live alerts, recording tools,
+  media seeking, local bookmarks and offline History/export.
+- **Your actions:** scoped multi-action presets and configurable foreground keyboard/
+  compatible foot-pedal bindings with output confirmations.
+- **Practice offline:** a clearly labeled local demo, isolated from your real OBS profiles.
 - **Your vibe:** dark/light themes, multiple palettes, dynamic color and reduced-motion options.
 - **Extras:** scene curation, dependency graph, Doctor checks, saved connections, QR pairing,
   an Android widget and optional background connection.

@@ -4,7 +4,7 @@ Status: **implemented and verified — W8a/b/c complete**. The storage and guard
 are connected to More → Shortcuts and the foreground app shell. Room, action/backend,
 input/editor/lifecycle and required preview tests pass, along with the full JDK21/uv gate
 and explicit debug build/unit tests. Exact evidence lives in `progress.md`. No physical
-keyboard/pedal, device performance or real-OBS validation is claimed. W9–W11 remain required.
+keyboard/pedal, device performance or real-OBS validation is claimed. W9–W11 are now complete; see progress.md.
 
 ## User flow and scope
 
@@ -141,4 +141,4 @@ Verified coverage:
 - Required theme/compact/accessibility renders, full quality/build/tests, and separate
   reporting of any physical keyboard/pedal or real-OBS verification.
 
-W9 demo isolation, W10 tablet layout and W11 final integration remain required afterward.
+W9 demo isolation, W10 tablet layout and W11 final integration are now verified.

@@ -1,7 +1,7 @@
 # Offline demo mode — W9
 
-Status: **implemented and verified**. W9a/b/c are complete. W1–W9 are verified;
-W10 tablet layout and W11 integration remain required.
+Status: **implemented and verified**. W9a/b/c are complete. W1–W11 are verified;
+final integration evidence is in progress.md.
 Show rundown, cue lists and timed advancement remain excluded.
 
 ## Isolation decision

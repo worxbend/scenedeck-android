@@ -3,11 +3,12 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W10 — tablet operator layout**.
-- W1–W9 are implemented and verified. W10–W11 remain required.
-- Demo entry/exit, process isolation, local previews, foreground shortcuts and lifecycle
-  checks are complete; see `demo-design.md` and `demo-device-check.md`.
-- Full feature delivery: **in progress**. No release or remote publication was performed.
+- Status: **complete — W1–W11 implemented and verified locally**.
+- Final gate: 1,136 tests / 198 suites, no failures/errors/skips; quality/static/security,
+  normal build/unit tests, F-Droid build and required renders pass.
+- Demo and resizing have emulator evidence; physical pedals/tablets, real OBS and measured
+  device performance are not claimed. See `demo-device-check.md` and `tablet-design.md`.
+- No release, push, tag or store publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
 ## 2026-11-05 — Workflow started
@@ -1306,3 +1307,54 @@
   `/tmp/scenedeck-demo-normal-final.log`; normal output is restored in the workspace.
 - W9a/b/c complete. Continue W10 adaptive Scenes/Mixer, then W11 integration. The durable
   goal remains active and Show rundown remains excluded. No remote publication performed.
+
+## W10 — Adaptive operator layout delivered
+
+- W9 UI/lifecycle committed as `7da0437`. Added shared StudioWorkspace with stable measured
+  controls/content slots, available-bound breakpoints, independent scrolling, density
+  gutters and retained insets. Expanded Scenes adds read-only PROGRAM/PREVIEW panels using
+  existing cached frames/age/aliases; deck search/order/actions are unchanged. Studio and
+  transport stay above the panels. No extra OBS requests or new session owner.
+- Expanded Mixer wraps channels into a lazy grid alongside mode/search/group controls.
+  Compact/narrow modes keep horizontal strips; direct mute/locks/media use existing
+  workspace callbacks and meter holders. Large-font cells widen and mode chips wrap.
+- Added 16 render/behavior tests and goldens across SceneDeck/OBS light/dark, tablet portrait,
+  compact and large text; existing phone renders pass, tablet deck golden updated. Width
+  changes retain search and text focus; keyboard Enter sends a literal scene target once;
+  Mixer mute/media targets remain exact. Keyboard fixture selects keyboard input mode
+  before requesting focus (touch mode correctly rejects button focus).
+- Extracted scene options/context and Mixer channels to keep complexity gates passing;
+  no blanket suppression/baseline. Reviewed images and fixed cramped large-text labels.
+  Final focused record/build/static run: `/tmp/scenedeck-tablet-record6.log`, exit 0,
+  29s / 516 tasks. Earlier compile/fixture and complexity failures are superseded by it.
+- API36 owned demo emulator exercised phone → tablet → compact → phone resizing with a
+  continuously running stream and selected program retained, Studio preview/Transition,
+  Mixer mute/options and visible rail/banner/status. Source used for those actions predates
+  only the final large-font Mixer-cell width adjustment, covered by final render tests.
+  Dimensions restored, demo exited, owned emulator stopped cleanly; no real OBS/hardware claim.
+- Full gate first failed one existing API28 deck-import wall-clock timeout (5 seconds):
+  `/tmp/scenedeck-tablet-quality.log`. No import code or timeout was changed. Full rerun
+  passed, including that suite: `/tmp/scenedeck-tablet-quality-retry.log`, exit 0,
+  50s / 1,242 tasks; seven Semgrep rules / 435 targets / zero findings; Gitleaks history
+  and worktree clean. The one transient timeout is retained as a verification limitation.
+
+## W11 — Integration and final verification complete
+
+- Reconciled FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, README, privacy contract,
+  AGENTS, relevant project skills and durable feature/status documents with delivered
+  behavior. Preserved historical `tasks/plan.md` and `tasks/todo.md`. Dependency pins and
+  delivery/signing configuration were not changed by W9/W10.
+- Final normal `./gradlew assembleDebug testDebugUnitTest` passed, exit 0:
+  `/tmp/scenedeck-operator-final-normal.log` (22s, 981 tasks; 16 executed, 21 from cache).
+  Final XML aggregate **1,136 tests / 198 suites**, zero failures/errors/skips, including
+  up-to-date outputs. Full quality and required theme/render evidence are recorded above.
+- Final `./gradlew -PfdroidBuild=true :app:assembleDebug` passed, exit 0:
+  `/tmp/scenedeck-operator-final-fdroid.log` (12s, 468 tasks). W9 emulator checks established
+  normal QR visibility and F-Droid manual-entry/demo parity. New tablet presentation shares
+  the same source in both variants; no new proprietary dependency or permission added.
+  Normal build output restored; F-Droid APK copied to `/tmp/scenedeck-operator-final-fdroid.apk`.
+- Reviewed final changes for identity, consent, state ownership, cached preview reuse,
+  static/lifecycle safety and accidental rundown scope. No rundown/cue scheduling, Replay
+  Buffer, collection editing, extra poller or automatic retry/resumption was introduced.
+- All authorized checkpoints are delivered. Durable workflow complete locally on
+  `feat/operator-workflow`; publication/release remains outside the authorized task.

@@ -52,4 +52,4 @@ meters after two. Dismissal lasts 60 seconds, with monotonic occurrence identity
 The More page and compact shell bar link to affected tools; warning cards include their
 current reading. Disk alerts link to Preflight, which owns the threshold and disk check.
 Eight page/bar theme captures and consent/haptic/navigation tests passed. Full quality and explicit build/tests passed (742 tests / 136 suites). No device or
-real-OBS claim is made. Next: W5 recording and media tools.
+real-OBS claim is made. W5–W11 are now verified; see progress.md.

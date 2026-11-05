@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next implementation checkpoint is W10; W6/W7 user flows are verified.
+and progress evidence. The remaining workflow checkpoints are complete; W6/W7 user flows are verified.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -146,22 +146,22 @@ is implied by the JVM and render results.
 
 ### W10 — Tablet operator layout
 
-- [ ] W10a: Add an adaptive Scenes arrangement with larger program/preview context
+- [x] W10a: Add an adaptive Scenes arrangement with larger program/preview context
   and deck controls; no rundown/cue panel. Keep Mixer a dedicated surface.
-- [ ] W10b: Adapt Mixer space and menus for large/resizable windows, retaining phone
+- [x] W10b: Adapt Mixer space and menus for large/resizable windows, retaining phone
   landscape behavior, cutout insets, 48dp targets, and persistent output status.
-- [ ] W10c: Render phone/tablet/compact-height/font-scale/theme variants and verify
+- [x] W10c: Render phone/tablet/compact-height/font-scale/theme variants and verify
   keyboard/focus navigation and window resizing without resetting session state.
 
 ### W11 — Integration and delivery verification
 
-- [ ] Reconcile FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, privacy docs,
+- [x] Reconcile FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, privacy docs,
   project skills when relevant, and AGENTS with implemented behavior.
-- [ ] Run full JDK 21/uv quality gate, explicit debug build/unit tests, and required
+- [x] Run full JDK 21/uv quality gate, explicit debug build/unit tests, and required
   preview renders; record commands and results with no fabricated device claims.
-- [ ] Verify F-Droid compilation/feature parity and normal QR onboarding remains intact.
-- [ ] Review final diff for regressions, accidental scope expansion, and secrets.
-- [ ] Mark the durable goal complete only after every included feature is delivered.
+- [x] Verify F-Droid compilation/feature parity and normal QR onboarding remains intact.
+- [x] Review final diff for regressions, accidental scope expansion, and secrets.
+- [x] Mark the durable goal complete only after every included feature is delivered.
 
 ## Validation approach
 

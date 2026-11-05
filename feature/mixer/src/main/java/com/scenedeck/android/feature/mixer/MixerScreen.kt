@@ -2,8 +2,9 @@ package com.scenedeck.android.feature.mixer
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,13 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -51,12 +48,12 @@ import com.scenedeck.android.core.data.MixerInputState
 import com.scenedeck.android.core.data.MixerMediaStatus
 import com.scenedeck.android.core.data.WorkspaceSession
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
-import com.scenedeck.android.core.designsystem.components.MediaControls
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
-import com.scenedeck.android.core.designsystem.components.MixerStrip
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
+import com.scenedeck.android.core.designsystem.components.StudioWorkspace
 import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
+import com.scenedeck.android.core.designsystem.components.studioFilterChipColors
 import com.scenedeck.android.core.designsystem.components.studioSegmentedButtonColors
 import com.scenedeck.android.core.designsystem.components.studioTextFieldColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -68,8 +65,6 @@ import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.ObsVersionInfo
-
-private val MEDIA_KINDS = setOf("ffmpeg_source", "vlc_source")
 
 /** Full mixer page (FEATURE_SPEC §3, milestone M4). */
 @Composable
@@ -187,99 +182,102 @@ internal fun MixerContent(
     onMediaClick: (String) -> Unit = {},
     seeking: Set<String> = emptySet(),
 ) {
-    Column(
+    StudioWorkspace(
         modifier =
             modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-    ) {
-        Spacer(Modifier.height(16.dp))
-        StudioPageHeader(
-            title = "Audio mixer",
-            subtitle = uiState.displayedScene ?: "Pinned channels",
-            icon = SceneDeckIcons.Mixer,
-        ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                .padding(horizontal = SceneDeckTheme.spacing.pageGutter),
+        controls = { _ ->
+            Spacer(Modifier.height(16.dp))
+            StudioPageHeader(
+                title = "Audio mixer",
+                subtitle = uiState.displayedScene ?: "Pinned channels",
+                icon = SceneDeckIcons.Mixer,
             ) {
-                Text(
-                    "${uiState.inputs.size} channels",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        "${uiState.inputs.size} channels",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            MixerModeSelector(uiState.mode, callbacks.onModeChange)
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    colors = studioTextFieldColors(),
+                    value = uiState.search,
+                    onValueChange = callbacks.onSearchChange,
+                    placeholder = { Text("Find a channel") },
+                    shape = MaterialTheme.shapes.large,
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                GroupingToggle(
+                    grouping = uiState.grouping,
+                    onGroupingChange = callbacks.onGroupingChange,
                 )
             }
-        }
-        Spacer(Modifier.height(16.dp))
 
-        MixerModeSelector(uiState.mode, callbacks.onModeChange)
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedTextField(
-                colors = studioTextFieldColors(),
-                value = uiState.search,
-                onValueChange = callbacks.onSearchChange,
-                placeholder = { Text("Find a channel") },
-                shape = MaterialTheme.shapes.large,
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            GroupingToggle(
-                grouping = uiState.grouping,
-                onGroupingChange = callbacks.onGroupingChange,
-            )
-        }
-
-        if (uiState.mode == MixerMode.SELECTED) {
-            Spacer(Modifier.height(8.dp))
-            ScenePicker(uiState.sceneNames, uiState.displayedScene, callbacks.onSelectScene)
-        }
-        if (uiState.notInProgram) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "“${uiState.displayedScene}” is not on program — meters may be silent.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-
-        if (uiState.inputs.isEmpty()) {
-            EmptyMixerState(uiState = uiState)
-        } else {
-            // Globals always exist; a scene with no audio of its own gets a hint.
-            if (
-                uiState.mode != MixerMode.PINNED &&
-                    uiState.inputs.none { it.scope != MixerScope.GLOBAL } &&
-                    uiState.search.isBlank()
-            ) {
+            if (uiState.mode == MixerMode.SELECTED) {
+                Spacer(Modifier.height(8.dp))
+                ScenePicker(uiState.sceneNames, uiState.displayedScene, callbacks.onSelectScene)
+            }
+            if (uiState.notInProgram) {
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    text =
-                        "No audio sources in “${uiState.displayedScene ?: "this scene"}” — " +
-                            "only global channels are shown.",
+                    text = "“${uiState.displayedScene}” is not on program — meters may be silent.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(8.dp))
             }
-            MixerStripRow(
-                uiState = uiState,
-                levelsStore = levelsStore,
-                motionLevel = motionLevel,
-                hapticsEnabled = hapticsEnabled,
-                callbacks = callbacks,
-                mediaStatus = mediaStatus,
-                onExtrasClick = onExtrasClick,
-                onMediaClick = onMediaClick,
-                seeking = seeking,
-            )
+            Spacer(Modifier.height(16.dp))
+        },
+    ) { expanded ->
+        Column(Modifier.fillMaxSize()) {
+            if (uiState.inputs.isEmpty()) {
+                EmptyMixerState(uiState = uiState)
+            } else {
+                // Globals always exist; a scene with no audio of its own gets a hint.
+                if (
+                    uiState.mode != MixerMode.PINNED &&
+                        uiState.inputs.none { it.scope != MixerScope.GLOBAL } &&
+                        uiState.search.isBlank()
+                ) {
+                    Text(
+                        text =
+                            "No audio sources in “${uiState.displayedScene ?: "this scene"}” — " +
+                                "only global channels are shown.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                MixerStripRow(
+                    uiState = uiState,
+                    levelsStore = levelsStore,
+                    motionLevel = motionLevel,
+                    hapticsEnabled = hapticsEnabled,
+                    callbacks = callbacks,
+                    mediaStatus = mediaStatus,
+                    onExtrasClick = onExtrasClick,
+                    onMediaClick = onMediaClick,
+                    seeking = seeking,
+                    expanded = expanded,
+                )
+            }
         }
     }
 }
@@ -342,70 +340,6 @@ private fun GroupingToggle(grouping: MixerGrouping, onGroupingChange: (MixerGrou
 }
 
 @Composable
-private fun MixerStripRow(
-    uiState: MixerUiState,
-    levelsStore: MeterLevelsStore,
-    motionLevel: MotionLevel,
-    hapticsEnabled: Boolean,
-    callbacks: MixerCallbacks,
-    mediaStatus: Map<String, MediaStatus>,
-    onExtrasClick: (String) -> Unit,
-    onMediaClick: (String) -> Unit,
-    seeking: Set<String>,
-) {
-    LazyRow(
-        contentPadding = PaddingValues(bottom = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items(uiState.inputs, key = { it.name }) { input ->
-            Column {
-                if (uiState.grouping == MixerGrouping.SCENE_PATH) {
-                    Text(
-                        text = input.scopePath ?: scopeGroupLabel(input.scope),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(120.dp).padding(start = 4.dp, bottom = 8.dp),
-                        overflow = TextOverflow.Ellipsis,
-                        maxLines = 1,
-                    )
-                }
-                MixerStrip(
-                    name = input.name,
-                    scope = input.scope,
-                    // SCOPE keeps the path on the strip badge; NONE is fully flat (no
-                    // headers, badge shows the scope only) and SCENE_PATH moves it to the header.
-                    scopePath = input.scopePath.takeIf { uiState.grouping == MixerGrouping.SCOPE },
-                    volumeMul = input.volumeMul,
-                    muted = input.muted,
-                    locked = input.locked,
-                    meterHolder = levelsStore.holder(input.name),
-                    motionLevel = motionLevel,
-                    hapticsEnabled = hapticsEnabled,
-                    onVolumePreview = { callbacks.onVolumePreview(input.name, it) },
-                    onVolumeCommit = { callbacks.onVolumeCommit(input.name, it) },
-                    onToggleMute = { callbacks.onToggleMute(input.name, !input.muted) },
-                    onToggleLock = { callbacks.onToggleLock(input.name, !input.locked) },
-                    onExtrasClick = { onExtrasClick(input.name) },
-                    onMediaClick =
-                        if (input.inputKind in MEDIA_KINDS) ({ onMediaClick(input.name) })
-                        else null,
-                )
-                if (input.inputKind in MEDIA_KINDS) {
-                    MediaControls(
-                        state = mediaStatus[input.name]?.state,
-                        enabled = !input.locked && input.name !in seeking,
-                        onPlayPause = { callbacks.onMediaPlayPause(input.name) },
-                        onRestart = { callbacks.onMediaRestart(input.name) },
-                        modifier = Modifier.width(120.dp).padding(top = 8.dp),
-                        compact = true,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun EmptyMixerState(uiState: MixerUiState) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
@@ -430,14 +364,6 @@ private fun EmptyMixerState(uiState: MixerUiState) {
         )
     }
 }
-
-private fun scopeGroupLabel(scope: MixerScope): String =
-    when (scope) {
-        MixerScope.GLOBAL -> "Global"
-        MixerScope.SCENE -> "Scene"
-        MixerScope.NESTED -> "Nested"
-        MixerScope.GROUP -> "Group"
-    }
 
 @PreviewLightDark
 @Composable
@@ -481,22 +407,36 @@ private fun MixerPreview() {
 
 @Composable
 private fun MixerModeSelector(selectedMode: MixerMode, onModeChange: (MixerMode) -> Unit) {
-    // Mode selector: Active (follows program) / Selected (frozen scene) / Pinned.
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        MixerMode.entries.forEachIndexed { index, mode ->
-            SegmentedButton(
-                colors = studioSegmentedButtonColors(),
-                selected = selectedMode == mode,
-                onClick = { onModeChange(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index, MixerMode.entries.size),
-            ) {
-                Text(
-                    when (mode) {
-                        MixerMode.ACTIVE -> "Active"
-                        MixerMode.SELECTED -> "Selected"
-                        MixerMode.PINNED -> "Pinned"
+    val labels =
+        mapOf(
+            MixerMode.ACTIVE to "Active",
+            MixerMode.SELECTED to "Selected",
+            MixerMode.PINNED to "Pinned",
+        )
+    BoxWithConstraints {
+        if (maxWidth < 320.dp * LocalDensity.current.fontScale) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(SceneDeckTheme.spacing.itemGap)) {
+                MixerMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = selectedMode == mode,
+                        onClick = { onModeChange(mode) },
+                        label = { Text(labels.getValue(mode)) },
+                        colors = studioFilterChipColors(),
+                    )
+                }
+            }
+        } else {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                MixerMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        colors = studioSegmentedButtonColors(),
+                        selected = selectedMode == mode,
+                        onClick = { onModeChange(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(index, MixerMode.entries.size),
+                    ) {
+                        Text(labels.getValue(mode))
                     }
-                )
+                }
             }
         }
     }
