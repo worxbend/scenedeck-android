@@ -148,6 +148,26 @@ class WorkspaceMigrationTest {
         assertEquals("Studio", upgraded.connectionProfileDao().byId(7)?.name)
     }
 
+    @Test
+    fun upgradeFromVersionSevenPreservesBookmarksAndAddsEmptyHistory(): Unit = runBlocking {
+        createHistoricalDatabase(7)
+        context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+            sqlite.execSQL(
+                "INSERT INTO bookmarks VALUES " +
+                    "(42, 'mark', 7, 'Studio', 'old-observation', 123, 'Interview', '{preserved}')"
+            )
+        }
+        val upgraded = openMigratedDatabase()
+        val bookmark = requireNotNull(upgraded.bookmarkDao().get("mark"))
+        assertEquals(42L, bookmark.sequence)
+        assertEquals("old-observation", bookmark.observationId)
+        assertEquals("Interview", bookmark.label)
+        assertEquals("{preserved}", bookmark.times)
+        val snapshot = HistoryRepository(upgraded).exportSnapshot()
+        assertEquals(HistoryPreferences(), snapshot.preferences)
+        assertTrue(snapshot.observations.isEmpty())
+    }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
             .addMigrations(
@@ -157,6 +177,7 @@ class WorkspaceMigrationTest {
                 SceneDeckMigrations.MIGRATION_4_5,
                 SceneDeckMigrations.MIGRATION_5_6,
                 SceneDeckMigrations.MIGRATION_6_7,
+                SceneDeckMigrations.MIGRATION_7_8,
             )
             .build()
             .also { database = it }

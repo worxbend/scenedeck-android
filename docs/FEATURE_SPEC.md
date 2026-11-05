@@ -350,6 +350,11 @@ have local observation IDs that change after reconnection, collection replacemen
 recreation; they do not imply continuous history through gaps. Full session history and
 export remain tracked separately in the operator workflow.
 
+W6 currently has a local history storage and JSON serialization foundation only.
+History capture, History screens, retention controls, bookmark/preset integration and
+user-initiated file export are not active. The design and remaining work are recorded in
+`tasks/operator-workflow/history-design.md`; schema support does not complete the feature.
+
 ## 9. Settings
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.

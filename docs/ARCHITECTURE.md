@@ -318,6 +318,22 @@ to extrapolate OBS positions. No credentials, host, port, raw response, recordin
 media content is persisted. Offline access does not depend on a live workspace. The first
 `:feature:history` surface is Bookmarks; W6 history/event tracking/export is still pending.
 
+Room schema 8 prepares `history_sessions`, `history_events` and `history_preferences`.
+`HistoryRepository` is a local-only boundary; it is not yet wired to a recorder or
+History UI. `HistoryWriter` serializes mutations in transactions. Session insertion
+sequence and event ordinals provide ordering independent of device calendar changes.
+Per-session retention preserves separate omitted and missing counts; foreign-key
+cascade removes events with their parent. Preference generation invalidates starts
+queued before deletion or capture changes, and append never recreates a parent.
+
+`HistoryReader` distinguishes failed/missing/empty reads and takes consistent bounded
+offline snapshots. `HistoryExport` uses explicit serializable DTOs, excluding process
+ownership, endpoints, credentials, raw errors/protocol and output paths. Process
+recovery closes an old open observation with an unknown end rather than an output
+stop. Defaults are 30 observations (supported 10/30/100), each at most 500 events.
+The shared-state recorder, bookmark/preset producers, user export flow and privacy
+activation are still W6 work; see `tasks/operator-workflow/history-design.md`.
+
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused
 source leases), `MediaPlaybackStore` (one lock for current context, read ordering and

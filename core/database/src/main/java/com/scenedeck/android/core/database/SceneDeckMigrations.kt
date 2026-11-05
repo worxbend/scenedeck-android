@@ -102,4 +102,6 @@ object SceneDeckMigrations {
                 )
             }
         }
+
+    val MIGRATION_7_8: Migration = HistoryMigration()
 }

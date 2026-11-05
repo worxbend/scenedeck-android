@@ -2,7 +2,9 @@
 
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W5 are verified. Resume at **W6 — local session history and export**.
+W1–W5 are verified. Resume at **W6 — local session history and export**. The schema 8
+storage/JSON foundation is verified; shared-state capture and the History user flow
+are next. Read [history-design.md](history-design.md) before wiring the recorder.
 
 ## Resume
 

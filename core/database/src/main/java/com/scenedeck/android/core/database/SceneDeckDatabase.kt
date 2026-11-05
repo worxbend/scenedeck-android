@@ -13,8 +13,11 @@ import androidx.room.RoomDatabase
             WorkspaceDeckSelectionEntity::class,
             PreflightConfigEntity::class,
             BookmarkEntity::class,
+            HistorySessionEntity::class,
+            HistoryEventEntity::class,
+            HistoryPreferencesEntity::class,
         ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
@@ -29,4 +32,10 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun preflightConfigDao(): PreflightConfigDao
 
     abstract fun bookmarkDao(): BookmarkDao
+
+    abstract fun historySessionDao(): HistorySessionDao
+
+    abstract fun historyEventDao(): HistoryEventDao
+
+    abstract fun historyPreferencesDao(): HistoryPreferencesDao
 }

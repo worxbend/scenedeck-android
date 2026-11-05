@@ -92,6 +92,10 @@ and progress evidence. The next incomplete checkpoint is W6.
 
 ### W6 — Local session history and export
 
+Storage/export foundation is verified; evidence is in the progress log.
+See [history-design.md](history-design.md). No recorder or History UI is active; all W6
+checkboxes remain open, including actual W7 preset-outcome integration.
+
 - [ ] W6a: Persist bounded local sessions/events from shared state: output changes,
   program changes, reconnect gaps, warnings, bookmarks, and preset results.
 - [ ] W6b: Add history/detail, clear/delete, retention controls, and user-initiated

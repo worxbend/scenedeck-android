@@ -198,6 +198,15 @@ must pass, and Compose preview(s) for changed screens must render.
   Unknown duration disables seeking; locked channels remain readable. New behavior stays
   within the existing core OBS request boundary.
 
+- Room schema 8 adds a history storage/export foundation only; no history recorder or
+  History UI is active yet. Sessions mean local observations, not OBS output runs.
+  Keep calendar time separate from elapsed/ordinal ordering, mark process interruption
+  with an unknown end, retain explicit missing/omitted counts, and never recreate a
+  deleted parent from queued appends. Starts use the deletion/capture generation.
+  Default retention is 30 observations (10/30/100 options), 500 events each. Export
+  uses an explicit typed allow-list. Resume W6 from `tasks/operator-workflow/history-design.md`;
+  bookmark/preset integration and user export flow remain unverified and incomplete.
+
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
 - Preflight is under More with optional links from start-output confirmations; the link

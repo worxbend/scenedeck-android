@@ -740,6 +740,66 @@
   must remain explicitly tracked until real preset execution exists; a placeholder event
   type alone is not completed end-to-end history support.
 
+## W6 storage and export foundation — 2026-11-05
+
+- The prior W5 media turn made **progress** and its verified commit is `92824e7`.
+  This turn also makes **progress**. W1–W5 stay verified; W6–W11 remain open and
+  the whole durable goal stays active. Show rundown/cue lists/timed advancement
+  remain excluded. No release or publication is requested.
+- Added `history-design.md` with local-observation semantics, explicit gaps/unknown
+  ends, bounded persistence, the export allow-list and remaining integration work.
+  This is a foundation checkpoint, not completed History capture/UI or full W6.
+- Room schema 8 adds sessions, events and preferences, registered in the production
+  migration chain. Historical schema fixtures through version 7 preserve previous
+  data, including bookmark identity/order/labels. Existing bookmarks are unchanged.
+- `HistoryRepository` delegates transaction-bound writes and explicit read states.
+  Defaults retain 30 observations (10/30/100 choices), each with the newest 500 events.
+  Insertion sequence and ordinals survive backward calendar changes; missing capture
+  and retention omissions have separate counts. Replays are idempotent, conflicting
+  retained writes fail, and obsolete/pruned events never reinsert.
+- Clear/delete invalidate queued starts through preference generation; append/touch
+  never recreate a deleted parent. FK cascade removes its events. Deleting an older
+  observation leaves a surviving active writer usable. Disable/re-enable changes the
+  capture generation and closes previous observations without inventing output stops.
+- Recovery closes another process's open observations with `PROCESS_ENDED`, keeping
+  the last observed point and an unknown exact end. Heartbeats update that point
+  without another event. Owner checks prevent another writer from finishing/touching
+  an observation; caller cancellation propagates and storage failures are explicit.
+- Export snapshots are consistent, bounded and offline. Versioned JSON uses explicit
+  DTOs for observation metadata and typed output/program/warning/gap events. It omits
+  process ownership, DB bookkeeping, endpoints, credentials, raw protocol/comments,
+  arbitrary errors and output paths. No file chooser/export UI is active yet.
+- Added 21 storage tests plus the schema 7→8 preservation regression. Coverage
+  includes concurrent duplicate writes, clear/start races, transaction rollback after
+  an inserted event, failed-storage retry, process reopen, corrupt/unsupported/oversize
+  payloads, unknown states, scope isolation, retention, deletion and JSON escaping.
+- The first focused compile exposed new source files placed outside the module source
+  directory; moved them into `src/main/java`. The corrected focused run passed all
+  25 selected tests. The first full gate found two SQL line lengths and one oversized
+  test method; these were fixed without relaxing checks. Final review also preserved
+  idempotent start retries for a surviving active observation after deletion of an
+  older observation; the regression now asserts both start and append still work.
+  Final gates were rerun after this correction, with one Gradle owner at a time.
+- Final verification with JDK 21 and uv:
+  - `scripts/check-quality.sh`: exit 0; Gradle **1m 45s, 1,112 tasks**. Full debug
+    XML totals: **850 tests across 150 suites, zero failures/errors/skips** (22 new
+    tests). Existing screenshot regressions passed; no screens changed in this slice.
+  - Semgrep: seven rules across 318 files, zero findings. Gitleaks: 70 commits and
+    the working tree scanned, no leaks.
+  - Explicit `./gradlew assembleDebug testDebugUnitTest`: exit 0, **2s, 876 tasks**.
+  - Evidence: `/tmp/scenedeck-history-focused.log`,
+    `/tmp/scenedeck-history-quality-final.log`, `/tmp/scenedeck-history-explicit.log`,
+    module test XML and `build/reports/security/`. `git diff --check` passed.
+- Updated AGENTS, FEATURE_SPEC, ARCHITECTURE, ROADMAP and the durable workflow. No
+  new screen/preview, real-OBS/device run, performance measurement or publication
+  is claimed. W6a/b/c remain unchecked because integrated capture and user flows are
+  not yet implemented; schema/serializer verification is not feature completion.
+- Next: implement the context-guarded shared-state recorder, then History list/detail,
+  capture/retention controls, clear/delete and SAF export. Resolve bookmark link/edit/
+  deletion semantics before integrating saves. Actual preset results depend on W7;
+  defining a payload type alone must not check off W6a. Update privacy documentation
+  when capture becomes active and render every changed screen in required themes.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the
