@@ -5,12 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.RegistryRepository
+import com.scenedeck.android.core.data.RegistryState
 import com.scenedeck.android.core.data.SceneRegistryEntry
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.WorkspaceSession
+import com.scenedeck.android.core.data.WorkspaceState
+import com.scenedeck.android.core.data.assignRoleToUnassigned
+import com.scenedeck.android.core.data.reorder
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -18,7 +24,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,12 +50,16 @@ data class InventoryScene(
 }
 
 /** A stale entry the user just removed; kept so the snackbar can undo the removal. */
-data class RemovedStaleEntry(val entry: SceneRegistryEntry)
+data class RemovedStaleEntry(val origin: WorkspaceSession, val entry: SceneRegistryEntry)
 
 data class InventoryUiState(
     val connection: ConnectionState = ConnectionState.Disconnected,
     val scenes: List<InventoryScene> = emptyList(),
     val unassignedCount: Int = 0,
+    val workspace: WorkspaceSession? = null,
+    val workspaceState: WorkspaceState = WorkspaceState.Unavailable,
+    val failed: Boolean = false,
+    val hasLegacyCuration: Boolean = false,
 )
 
 @HiltViewModel
@@ -63,8 +75,24 @@ constructor(
         combine(
                 client.connectionState,
                 obsState.deckState,
-                registry.entries,
-            ) { connection, deck, entries ->
+                registry.state,
+                registry.legacyEntries
+                    .map { it.isNotEmpty() }
+                    .catch { error ->
+                        if (error is CancellationException) throw error
+                        emit(false)
+                    },
+            ) { connection, deck, metadata, hasLegacy ->
+                val ready = metadata as? RegistryState.Ready
+                val origin = deck.workspace?.takeIf(registry.workspaces::isCurrent)
+                if (origin == null || ready?.session != origin)
+                    return@combine InventoryUiState(
+                        connection = connection,
+                        workspaceState = deck.workspaceState,
+                        failed = deck.curationFailed || deck.scenesFailed,
+                        hasLegacyCuration = hasLegacy,
+                    )
+                val entries = ready.entries
                 // Live scenes in exactly the deck's order; stale entries follow in saved order.
                 val byName = entries.associateBy { it.sceneName }
                 val live = deck.allScenes.map { it.name }
@@ -78,6 +106,9 @@ constructor(
                     connection = connection,
                     scenes = scenes,
                     unassignedCount = scenes.count { it.unassigned },
+                    workspace = origin,
+                    workspaceState = deck.workspaceState,
+                    hasLegacyCuration = hasLegacy,
                 )
             }
             .stateIn(
@@ -99,74 +130,60 @@ constructor(
     /**
      * Registry export/import transfer; file work runs on [viewModelScope] so it survives rotation.
      */
-    val transfer =
-        RegistryTransfer(registry, viewModelScope, _messages) {
-            uiState.value.scenes.mapNotNull { it.entry }.map { it.sceneName }.toSet()
-        }
+    val transfer = RegistryTransfer(registry, viewModelScope, _messages)
 
     val importPreview: StateFlow<ImportPreview?>
         get() = transfer.importPreview
 
-    fun setRole(sceneName: String, role: SceneRole) {
-        launchAction {
-            val existing = registry.byName(sceneName)
-            registry.update(sceneName, role, existing?.accentColorArgb, existing?.iconName)
+    fun setRole(origin: WorkspaceSession, sceneName: String, role: SceneRole) {
+        launchAction(origin) { bound -> registry.edit(bound, sceneName) { it.copy(role = role) } }
+    }
+
+    fun setAccent(origin: WorkspaceSession, sceneName: String, accentArgb: Long?) {
+        launchAction(origin) { bound ->
+            registry.edit(bound, sceneName) { it.copy(accentColorArgb = accentArgb) }
         }
     }
 
-    fun setAccent(sceneName: String, accentArgb: Long?) {
-        launchAction {
-            val existing = registry.byName(sceneName)
-            registry.update(
-                sceneName,
-                existing?.role,
-                accentArgb,
-                existing?.iconName,
-            )
+    fun setIcon(origin: WorkspaceSession, sceneName: String, iconName: String?) {
+        launchAction(origin) { bound ->
+            registry.edit(bound, sceneName) { it.copy(iconName = iconName) }
         }
     }
 
-    fun setIcon(sceneName: String, iconName: String?) {
-        launchAction {
-            val existing = registry.byName(sceneName)
-            registry.update(
-                sceneName,
-                existing?.role,
-                existing?.accentColorArgb,
-                iconName,
-            )
+    fun removeStale(origin: WorkspaceSession, sceneName: String) {
+        launchAction(origin) { bound ->
+            val removed = registry.remove(bound, sceneName) ?: return@launchAction
+            _removals.send(RemovedStaleEntry(bound, removed))
         }
     }
 
-    fun removeStale(sceneName: String) {
-        launchAction {
-            val removed = registry.remove(sceneName) ?: return@launchAction
-            _removals.send(RemovedStaleEntry(removed))
-        }
-    }
-
-    /** Undo for [removeStale]: puts the entry back with its role, colors, icon and position. */
     fun undoRemoveStale(removed: RemovedStaleEntry) {
-        launchAction { registry.restore(removed.entry) }
+        launchAction(removed.origin) { origin -> registry.restore(origin, removed.entry) }
     }
 
-    fun reorder(orderedSceneNames: List<String>) {
-        launchAction { registry.reorder(orderedSceneNames) }
+    fun reorder(origin: WorkspaceSession, orderedSceneNames: List<String>) {
+        launchAction(origin) { bound -> registry.reorder(bound, orderedSceneNames) }
     }
 
-    fun bulkAssignUnassigned() {
-        launchAction {
-            val names = uiState.value.scenes.filter { it.unassigned }.map { it.name }
-            registry.assignRoleToUnassigned(names, SceneRole.SECONDARY)
+    fun bulkAssignUnassigned(origin: WorkspaceSession) {
+        val names = uiState.value.scenes.filter { it.unassigned }.map { it.name }
+        launchAction(origin) { bound ->
+            registry.assignRoleToUnassigned(bound, names, SceneRole.SECONDARY)
             _messages.emit("Assigned ${names.size} scenes to Secondary")
         }
     }
 
-    private fun launchAction(action: suspend () -> Unit) {
+    fun retryWorkspace() = obsState.retryWorkspace()
+
+    private fun launchAction(
+        origin: WorkspaceSession?,
+        action: suspend (WorkspaceSession) -> Unit,
+    ) {
         viewModelScope.launch {
-            coroutineResult { action() }
+            coroutineResult { action(requireNotNull(origin)) }
                 .onFailure {
-                    _messages.emit("Couldn't save scene curation. Please try again.")
+                    _messages.emit("Couldn't save curation. Check the workspace and try again.")
                 }
         }
     }

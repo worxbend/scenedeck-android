@@ -117,7 +117,19 @@ must pass, and Compose preview(s) for changed screens must render.
   command invalidates its identity before suspension; only the matching successful
   attempt confirms it. WorkspaceRepository resolves the collection on that target and
   Ready token, exposes failed discovery as unknown, and guards results synchronously.
-  Scoped registry/UI/widget/cache activation remains incomplete until W1b is verified.
+  Scoped registry/UI/widget/cache activation uses WorkspaceSession captured by the
+  displayed UI. Every registry operation takes that origin; import/picker and Undo
+  keep it. W1b activation is verified; named decks and W1d remain tracked separately.
+- Legacy curation is recovery-only: explicit Copy previous curation stages a merge
+  preview and preserves the source. Never add a global fallback to make tests pass.
+- Mixer snapshots, selected/pinned lists, media and sampled meters retain context;
+  debounce targets include WorkspaceSession. Saved selected-scene identity includes
+  profile + collection; old unscoped choices are not automatically restored. Locks,
+  audio allow-list, mode and grouping remain app-wide. Successful profile deletion
+  disconnects only the matching current target; curation storage is retained.
+- Use ObsClient.withSession for caller-bound compound requests and deferred actions,
+  including before their first protocol call. Widget caches/actions retain profile +
+  collection; reject unscoped old actions and mismatched cold connections.
   Clear obsolete connection failures after canceled preparation joins; a late credential
   failure must not become the next successful attempt's outcome.
 - Password drafts never enter saved-state Bundles; diagnostic strings redact credentials.

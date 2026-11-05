@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+    testFixtures { enable = true }
     lint {
         lintConfig = rootProject.file("lint.xml")
         warningsAsErrors = true
@@ -53,6 +54,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kaml)
+
+    testFixturesApi(project(":core:database"))
+    testFixturesApi(project(":core:model"))
+    testFixturesApi(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.turbine)

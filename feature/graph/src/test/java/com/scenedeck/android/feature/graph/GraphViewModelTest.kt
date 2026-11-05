@@ -2,8 +2,8 @@ package com.scenedeck.android.feature.graph
 
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.EdgeVerdict
-import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.singleWorkspaceRegistry
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.model.ConnectionState
@@ -52,7 +52,7 @@ class GraphViewModelTest {
             client.extraScene = "Created during initial read"
             client.events.tryEmit(ObsEvent.SceneCreated(client.extraScene!!, false))
         }
-        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        val viewModel = GraphViewModel(singleWorkspaceRegistry(FakeRegistryDao()), client)
         try {
             backgroundScope.launch(dispatcher) { viewModel.uiState.collect {} }
             runCurrent()
@@ -72,7 +72,7 @@ class GraphViewModelTest {
 
         val client = FakeObsClient()
         client.setReady()
-        val viewModel = GraphViewModel(RegistryRepository(registryDao), client)
+        val viewModel = GraphViewModel(singleWorkspaceRegistry(registryDao), client)
 
         val state = withTimeout(5_000) { viewModel.uiState.first { it.graph != null } }
         val graph = state.graph!!
@@ -99,7 +99,7 @@ class GraphViewModelTest {
     fun nodeDetailsExposeParentsAndChildren(): Unit = runBlocking {
         val client = FakeObsClient()
         client.setReady()
-        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        val viewModel = GraphViewModel(singleWorkspaceRegistry(FakeRegistryDao()), client)
         withTimeout(5_000) { viewModel.uiState.first { it.graph != null } }
 
         assertEquals(listOf("LowerThird", "Scratch"), viewModel.childrenOf("Show"))
@@ -111,7 +111,7 @@ class GraphViewModelTest {
     fun sceneEventsRefreshGraphWithoutRegistryEdits(): Unit = runBlocking {
         val client = FakeObsClient()
         client.setReady()
-        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        val viewModel = GraphViewModel(singleWorkspaceRegistry(FakeRegistryDao()), client)
         withTimeout(5_000) { viewModel.uiState.first { it.graph != null } }
         client.extraScene = "New scene"
         client.events.emit(ObsEvent.SceneCreated("New scene", false))
@@ -128,7 +128,7 @@ class GraphViewModelTest {
     fun selectedNodeFollowsObsRenames(): Unit = runBlocking {
         val client = FakeObsClient()
         client.setReady()
-        val viewModel = GraphViewModel(RegistryRepository(FakeRegistryDao()), client)
+        val viewModel = GraphViewModel(singleWorkspaceRegistry(FakeRegistryDao()), client)
         viewModel.selectNode("LowerThird")
         withTimeout(5_000) { client.events.subscriptionCount.first { it > 0 } }
 

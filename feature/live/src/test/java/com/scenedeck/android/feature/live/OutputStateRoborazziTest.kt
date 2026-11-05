@@ -12,6 +12,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
@@ -158,6 +159,7 @@ class OutputStateRoborazziTest {
 
     private fun deckFixture(program: String) =
         DeckState(
+            workspace = TEST_WORKSPACE,
             connectionState =
                 ConnectionState.Ready(ObsVersionInfo("32.2.2", "5.7.4", 1, "fixture")),
             currentProgramScene = program,

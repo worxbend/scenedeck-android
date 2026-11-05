@@ -6,6 +6,7 @@ import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ScreenshotRequest
+import com.scenedeck.android.core.obs.withSession
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+
+data class SceneThumbnails(
+    val workspace: WorkspaceSession? = null,
+    val frames: Map<String, Bitmap> = emptyMap(),
+)
 
 /**
  * Scene preview thumbnails via OBS `GetSourceScreenshot` (FEATURE_SPEC §8, M6).
@@ -45,10 +51,10 @@ constructor(
     private val obsState: ObsStateRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    private val _thumbnails = MutableStateFlow<Map<String, Bitmap>>(emptyMap())
+    private val _thumbnails = MutableStateFlow(SceneThumbnails())
 
     /** sceneName → latest captured frame (decoded off the main thread). */
-    val thumbnails: StateFlow<Map<String, Bitmap>> = _thumbnails.asStateFlow()
+    val thumbnails: StateFlow<SceneThumbnails> = _thumbnails.asStateFlow()
 
     /** Elapsed time must remain stable when the device wall clock changes. */
     internal var nowMs: () -> Long = { System.nanoTime() / 1_000_000L }
@@ -58,6 +64,7 @@ constructor(
 
     private data class CaptureConfiguration(
         val enabled: Boolean,
+        val workspace: WorkspaceSession?,
         val scenes: List<String>,
         val hotScenes: Set<String>,
     )
@@ -71,8 +78,10 @@ constructor(
                     _thumbnails.subscriptionCount,
                 ) { connection, userSettings, deck, subscribers ->
                     CaptureConfiguration(
+                        workspace = deck.workspace,
                         enabled =
                             connection is ConnectionState.Ready &&
+                                deck.workspace?.let(obsState::isWorkspaceCurrent) == true &&
                                 subscribers > 0 &&
                                 userSettings.scenePreviewsEnabled,
                         scenes = deck.allScenes.map { it.name }.distinct(),
@@ -82,13 +91,19 @@ constructor(
                 }
                 .distinctUntilChanged()
                 .collectLatest { configuration ->
+                    if (_thumbnails.value.workspace != configuration.workspace) {
+                        _thumbnails.value = SceneThumbnails(configuration.workspace)
+                        lastFetchMs.clear()
+                    }
                     if (configuration.enabled) {
                         val liveNames = configuration.scenes.toSet()
                         lastFetchMs.keys.retainAll(liveNames)
-                        _thumbnails.update { frames -> frames.filterKeys { it in liveNames } }
+                        _thumbnails.update {
+                            it.copy(frames = it.frames.filterKeys { name -> name in liveNames })
+                        }
                         pollLoop(configuration)
                     } else {
-                        _thumbnails.value = emptyMap()
+                        _thumbnails.value = SceneThumbnails()
                         lastFetchMs.clear()
                     }
                 }
@@ -102,20 +117,20 @@ constructor(
             if (due.isEmpty()) {
                 delay(TICK_MS)
             } else {
-                captureBatch(due, now)
+                captureBatch(requireNotNull(configuration.workspace), due, now)
                 yield()
             }
         }
     }
 
-    private suspend fun captureBatch(names: List<String>, now: Long) {
+    private suspend fun captureBatch(origin: WorkspaceSession, names: List<String>, now: Long) {
         var completed = false
         try {
             coroutineScope {
                 names.forEach { name ->
                     currentCoroutineContext().ensureActive()
                     lastFetchMs[name] = now
-                    launch { capture(name) }
+                    launch { capture(origin, name) }
                 }
             }
             completed = true
@@ -149,21 +164,27 @@ constructor(
         } else batch
     }
 
-    private suspend fun capture(sceneName: String) {
+    private suspend fun capture(origin: WorkspaceSession, sceneName: String) {
         requestResult {
             val bytes =
-                client.getSourceScreenshot(
-                    ScreenshotRequest(
-                        sourceName = sceneName,
-                        format = "jpeg",
-                        compressionQuality = JPEG_QUALITY,
-                        width = WIDTH_PX,
+                client.withSession(origin.token) {
+                    getSourceScreenshot(
+                        ScreenshotRequest(
+                            sourceName = sceneName,
+                            format = "jpeg",
+                            compressionQuality = JPEG_QUALITY,
+                            width = WIDTH_PX,
+                        )
                     )
-                )
+                }
             // ApplicationScope uses Dispatchers.Default, keeping decoding off main.
             val bitmap = decodeBitmap(bytes)?.takeUnless(::isBlankFrame) ?: return@requestResult
             currentCoroutineContext().ensureActive()
-            _thumbnails.update { it + (sceneName to bitmap) }
+            _thumbnails.update {
+                if (it.workspace == origin && obsState.isWorkspaceCurrent(origin))
+                    it.copy(frames = it.frames + (sceneName to bitmap))
+                else it
+            }
         }
         // On failure: keep the previous frame (or nothing → icon fallback).
     }

@@ -90,6 +90,20 @@ class ObsSessionHolderTest {
     }
 
     @Test
+    fun deletingCurrentProfileInvalidatesIdentityButAnotherProfileDoesNot(): Unit = runBlocking {
+        val holder =
+            ObsSessionHolder(client, profiles, secrets, settings, holderScope, activeConnection)
+        holder.connectAndAwait(FakeProfileDao.PROFILE_ID)
+        holder.disconnectIfProfile(FakeProfileDao.PROFILE_ID + 1)
+        assertEquals(FakeProfileDao.PROFILE_ID, activeConnection.target.value.profileId)
+        assertTrue(!client.disconnectCalled)
+        holder.disconnectIfProfile(FakeProfileDao.PROFILE_ID)
+        assertEquals(null, activeConnection.target.value.profileId)
+        withTimeout(5_000) { holder.connectionState.first { it == ConnectionState.Disconnected } }
+        assertTrue(client.disconnectCalled)
+    }
+
+    @Test
     fun autoConnectsToLastUsedProfileAfterOnboarding(): Unit = runBlocking {
         settings.setOnboardingCompleted(true)
         settings.setLastUsedProfileId(FakeProfileDao.PROFILE_ID)

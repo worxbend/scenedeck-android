@@ -7,9 +7,11 @@ import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.model.TransitionInfo
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.withSession
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -47,13 +49,14 @@ data class DeckState(
     val transitions: List<TransitionInfo> = emptyList(),
     /** All OBS scenes, with local metadata, in registry order. */
     val allScenes: List<SceneCardState> = scenes,
+    /** Present only when scenes and curation belong to the same current workspace. */
+    val workspace: WorkspaceSession? = null,
+    val workspaceState: WorkspaceState = WorkspaceState.Unavailable,
+    val curationFailed: Boolean = false,
+    val scenesFailed: Boolean = false,
 )
 
-/**
- * Combines the OBS scene list/program state with the local registry into the deck model
- * (docs/ARCHITECTURE.md rule 2). M3 DEFAULT RULE: scenes without a registry entry are treated as
- * PRIMARY so the deck shows everything until Inventory (M5).
- */
+/** Combines only snapshots from the same authoritative workspace. */
 @Singleton
 @Suppress("TooManyFunctions") // deck state + studio control surface
 class ObsStateRepository
@@ -64,227 +67,302 @@ constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val settings: SettingsRepository,
 ) {
-    private val sceneList = MutableStateFlow<List<SceneSummary>>(emptyList())
-    private val programScene = MutableStateFlow<String?>(null)
-    private val studioMode = MutableStateFlow(false)
-    private val previewScene = MutableStateFlow<String?>(null)
-    private val currentTransition = MutableStateFlow<CurrentTransition?>(null)
-    private val transitions = MutableStateFlow<List<TransitionInfo>>(emptyList())
-    private val renameLog = SceneRenameLog()
+    private class SceneContext(val origin: WorkspaceSession) {
+        val renames = SceneRenameLog()
+    }
 
-    private data class StudioSnapshot(
-        val studioMode: Boolean,
-        val previewScene: String?,
-        val currentTransition: CurrentTransition?,
-        val transitions: List<TransitionInfo>,
+    private data class Snapshot(
+        val context: SceneContext? = null,
+        val scenes: List<SceneSummary>? = null,
+        val scenesFailed: Boolean = false,
+        val program: String? = null,
+        val programRevision: Long = 0,
+        val listRevision: Long = 0,
+        val studioMode: Boolean = false,
+        val preview: String? = null,
+        val transition: CurrentTransition? = null,
+        val transitions: List<TransitionInfo> = emptyList(),
     )
 
-    private val studio =
-        combine(
-            studioMode,
-            previewScene,
-            currentTransition,
-            transitions,
-        ) { mode, preview, transition, list ->
-            StudioSnapshot(mode, preview, transition, list)
-        }
+    private val snapshot = MutableStateFlow(Snapshot())
 
     val deckState: StateFlow<DeckState> =
-        combine(
-                client.connectionState,
-                sceneList,
-                programScene,
-                registry.entries,
-                studio,
-            ) { connection, scenes, program, entries, studioSnap ->
-                val entriesByName = entries.associateBy { it.sceneName }
-                // Saved positions first; unplaced scenes follow OBS's list, whose top scene has
-                // the highest sceneIndex.
-                val cards =
-                    scenes
-                        .sortedWith(compareBy({ -it.index }, { it.name }))
-                        .map { scene ->
-                            val entry = entriesByName[scene.name]
-                            SceneCardState(
-                                name = scene.name,
-                                role = entry?.role ?: SceneRole.PRIMARY,
-                                accentColorArgb = entry?.accentColorArgb,
-                                iconName = entry?.iconName,
-                                sortOrder = entry?.sortOrder ?: UNPLACED_SORT_ORDER,
-                                isActive = scene.name == program,
-                                isPreview =
-                                    studioSnap.studioMode && scene.name == studioSnap.previewScene,
-                            )
-                        }
-                        .sortedBy { it.sortOrder } // stable: ties keep OBS order
-                DeckState(
-                    connectionState = connection,
-                    currentProgramScene = program,
-                    studioMode = studioSnap.studioMode,
-                    previewScene = studioSnap.previewScene,
-                    currentTransition = studioSnap.currentTransition,
-                    transitions = studioSnap.transitions,
-                    scenes = cards.filter { it.role == SceneRole.PRIMARY },
-                    allScenes = cards,
-                )
+        combine(client.connectionState, snapshot, registry.state, registry.workspaces.state) {
+                connection,
+                scene,
+                metadata,
+                workspace ->
+                buildDeck(connection, scene, metadata, workspace)
             }
             .stateIn(scope, SharingStarted.WhileSubscribed(5_000), DeckState())
 
     init {
-        scope.launch {
-            client.connectionState.collectLatest { state ->
-                when (state) {
-                    is ConnectionState.Ready -> refresh()
-                    ConnectionState.Disconnected -> {
-                        renameLog.clear()
-                        sceneList.value = emptyList()
-                        programScene.value = null
-                        studioMode.value = false
-                        previewScene.value = null
-                        currentTransition.value = null
-                        transitions.value = emptyList()
-                    }
-
-                    else -> Unit
+        // Subscribe before initial discovery, including when using in-memory Flow adapters.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventsWithContext.collect { received ->
+                val context = snapshot.value.context ?: return@collect
+                if (received.token == context.origin.token && isCurrent(context)) {
+                    reduce(context, received.event)
                 }
             }
         }
         scope.launch {
-            client.events.collect { event ->
-                when (event) {
-                    is ObsEvent.CurrentProgramSceneChanged -> programScene.value = event.sceneName
-
-                    is ObsEvent.StudioModeStateChanged -> {
-                        studioMode.value = event.enabled
-                        refreshStudio()
-                    }
-
-                    is ObsEvent.CurrentPreviewSceneChanged -> previewScene.value = event.sceneName
-
-                    is ObsEvent.CurrentSceneTransitionChanged,
-                    is ObsEvent.CurrentSceneTransitionDurationChanged -> refreshTransition()
-
-                    is ObsEvent.SceneTransitionStarted,
-                    is ObsEvent.SceneTransitionEnded -> Unit
-
-                    is ObsEvent.SceneNameChanged -> applyRename(event)
-
-                    is ObsEvent.SceneListChanged -> {
-                        sceneList.value = event.scenes
-                        // Retain local curation across hosts/collections; Doctor offers explicit
-                        // cleanup.
-                    }
-
-                    else -> Unit
+            combine(registry.workspaces.state, client.connectionState) { workspace, connection ->
+                    workspace to connection
                 }
-            }
+                .collectLatest { (state, connection) ->
+                    val origin =
+                        (state as? WorkspaceState.Ready)
+                            ?.session
+                            ?.takeIf(registry.workspaces::isCurrent)
+                    val ready = connection as? ConnectionState.Ready
+                    val context =
+                        origin
+                            ?.takeIf { ready?.token == it.token && !ready.collectionChanging }
+                            ?.let(::SceneContext)
+                    snapshot.value = Snapshot(context)
+                    if (context != null) refresh(context)
+                }
         }
     }
 
-    /**
-     * OBS sends no SceneListChanged (nor program/preview change) for renames; follow them locally
-     * so taps target the new name, then move the local curation. The log is written before the
-     * state so a concurrent read's compare-and-set retry replays it (see [refresh]).
-     */
-    private suspend fun applyRename(event: ObsEvent.SceneNameChanged) {
+    private fun buildDeck(
+        connection: ConnectionState,
+        scene: Snapshot,
+        metadata: RegistryState,
+        workspace: WorkspaceState,
+    ): DeckState {
+        val context = scene.context
+        val ready = metadata as? RegistryState.Ready
+        val usable =
+            context != null &&
+                isCurrent(context) &&
+                ready?.session == context.origin &&
+                scene.scenes != null
+        val base =
+            DeckState(
+                connectionState = connection,
+                workspaceState = workspace,
+                curationFailed = metadata is RegistryState.Failed,
+                scenesFailed = scene.scenesFailed,
+            )
+        if (!usable) return base
+        val entries = requireNotNull(ready).entries.associateBy { it.sceneName }
+        val cards =
+            requireNotNull(scene.scenes)
+                .sortedWith(compareBy({ -it.index }, { it.name }))
+                .map { item ->
+                    val entry = entries[item.name]
+                    SceneCardState(
+                        item.name,
+                        entry?.role ?: SceneRole.PRIMARY,
+                        entry?.accentColorArgb,
+                        entry?.iconName,
+                        entry?.sortOrder ?: UNPLACED_SORT_ORDER,
+                        item.name == scene.program,
+                        scene.studioMode && item.name == scene.preview,
+                    )
+                }
+                .sortedBy { it.sortOrder }
+        return base.copy(
+            workspace = context.origin,
+            scenes = cards.filter { it.role == SceneRole.PRIMARY },
+            allScenes = cards,
+            currentProgramScene = scene.program,
+            studioMode = scene.studioMode,
+            previewScene = scene.preview,
+            currentTransition = scene.transition,
+            transitions = scene.transitions,
+        )
+    }
+
+    private fun isCurrent(context: SceneContext): Boolean =
+        snapshot.value.context === context && registry.workspaces.isCurrent(context.origin)
+
+    private fun update(context: SceneContext, change: (Snapshot) -> Snapshot) {
+        snapshot.update { current ->
+            if (current.context === context && registry.workspaces.isCurrent(context.origin))
+                change(current)
+            else current
+        }
+    }
+
+    private suspend fun reduce(context: SceneContext, event: ObsEvent) {
+        when (event) {
+            is ObsEvent.CurrentProgramSceneChanged ->
+                update(context) {
+                    it.copy(program = event.sceneName, programRevision = it.programRevision + 1)
+                }
+            is ObsEvent.StudioModeStateChanged -> {
+                update(context) { it.copy(studioMode = event.enabled) }
+                refreshStudio(context)
+            }
+            is ObsEvent.CurrentPreviewSceneChanged ->
+                update(context) { it.copy(preview = event.sceneName) }
+            is ObsEvent.CurrentSceneTransitionChanged,
+            is ObsEvent.CurrentSceneTransitionDurationChanged -> refreshTransition(context)
+            is ObsEvent.SceneNameChanged -> applyRename(context, event)
+            is ObsEvent.SceneListChanged ->
+                update(context) {
+                    it.copy(
+                        scenes = event.scenes,
+                        scenesFailed = false,
+                        listRevision = it.listRevision + 1,
+                    )
+                }
+            else -> Unit
+        }
+    }
+
+    private suspend fun applyRename(context: SceneContext, event: ObsEvent.SceneNameChanged) {
         val (old, new) = event.oldSceneName to event.sceneName
         if (old == new) return
-        renameLog.record(old, new)
-        sceneList.update { list -> list.map { if (it.name == old) it.copy(name = new) else it } }
-        programScene.update { if (it == old) new else it }
-        previewScene.update { if (it == old) new else it }
-        requestResult { registry.rename(old, new) }
-        followMixerSelection(old, new)
+        context.renames.record(old, new)
+        update(context) { current ->
+            current.copy(
+                scenes = current.scenes?.map { if (it.name == old) it.copy(name = new) else it },
+                program = if (current.program == old) new else current.program,
+                preview = if (current.preview == old) new else current.preview,
+            )
+        }
+        requestResult { registry.rename(context.origin, old, new) }
+        migrateMixerSelection(context, old, new)
     }
 
-    /**
-     * This repository runs from app start, so the saved Mixer selection follows renames even before
-     * Mixer is first opened (one atomic update; a newer selection is left alone).
-     */
-    private suspend fun followMixerSelection(old: String, new: String) {
+    private suspend fun migrateMixerSelection(context: SceneContext, old: String, new: String) {
         requestResult {
             settings.update {
-                if (it.mixerSelectedScene == old) it.copy(mixerSelectedScene = new) else it
+                registry.workspaces.requireCurrent(context.origin)
+                if (it.selectionBelongsTo(context.origin.key) && it.mixerSelectedScene == old)
+                    it.copy(mixerSelectedScene = new)
+                else it
             }
         }
     }
 
-    private suspend fun refresh() {
+    private suspend fun refresh(context: SceneContext) {
+        val before = snapshot.value
         requestResult {
-            var mark = renameLog.mark()
-            var list = client.getSceneList()
-            // A read that raced a rename may predate it: re-read (OBS answers after the events it
-            // already sent), and replay the renames only if they keep racing.
+            var mark = context.renames.mark()
+            var list = read(context) { getSceneList() }
             var rereads = 0
-            while (renameLog.mark() != mark && rereads++ < MAX_RENAME_REREADS) {
-                mark = renameLog.mark()
-                list = client.getSceneList()
+            while (context.renames.mark() != mark && rereads++ < MAX_RENAME_REREADS) {
+                mark = context.renames.mark()
+                list = read(context) { getSceneList() }
             }
-            // Compare-and-set against renames only: a rename recorded before this commits is
-            // replayed on the retry. A program change event that lands during the read is still
-            // overwritten by this older answer until the next event or refresh.
-            sceneList.update { renameLog.followScenes(list.scenes, mark) }
-            programScene.update { renameLog.follow(list.currentProgramScene, mark) }
-            // Renames kept racing every re-read, so the list above is a replay (which keeps the raw
-            // read if replaying would duplicate a name): settle on one more fresh read.
-            if (renameLog.mark() != mark) scope.launch { refresh() }
-            // Scene absence on this connection must not delete another host/collection's curation.
-            refreshStudio()
+            publishSceneList(context, before, list, mark)
+            if (context.renames.mark() != mark && isCurrent(context))
+                scope.launch { refresh(context) }
+            refreshStudio(context)
+        }
+            .onFailure { update(context) { it.copy(scenesFailed = true) } }
+    }
+
+    private fun publishSceneList(
+        context: SceneContext,
+        before: Snapshot,
+        list: com.scenedeck.android.core.model.SceneListSnapshot,
+        mark: Long,
+    ) {
+        update(context) {
+            it.copy(
+                scenes =
+                    if (it.listRevision == before.listRevision)
+                        context.renames.followScenes(list.scenes, mark)
+                    else it.scenes,
+                scenesFailed = false,
+                program =
+                    if (it.programRevision == before.programRevision)
+                        context.renames.follow(list.currentProgramScene, mark)
+                    else it.program,
+            )
         }
     }
 
-    private suspend fun refreshStudio() {
+    private suspend fun refreshStudio(context: SceneContext) {
         requestResult {
-            studioMode.value = client.getStudioModeEnabled()
-            if (studioMode.value) {
-                val mark = renameLog.mark()
-                val preview = client.getCurrentPreviewScene()
-                previewScene.update { renameLog.follow(preview, mark) }
-            } else {
-                previewScene.value = null
-            }
+            val enabled = read(context) { getStudioModeEnabled() }
+            update(context) { it.copy(studioMode = enabled) }
+            if (enabled) {
+                val mark = context.renames.mark()
+                val preview = read(context) { getCurrentPreviewScene() }
+                update(context) { it.copy(preview = context.renames.follow(preview, mark)) }
+            } else update(context) { it.copy(preview = null) }
         }
-        refreshTransition()
+        refreshTransition(context)
     }
 
-    private suspend fun refreshTransition() {
+    private suspend fun refreshTransition(context: SceneContext) {
         requestResult {
-            currentTransition.value = client.getCurrentSceneTransition()
-            transitions.value = client.getSceneTransitionList().transitions
+            val transition = read(context) { getCurrentSceneTransition() }
+            val list = read(context) { getSceneTransitionList() }.transitions
+            update(context) { it.copy(transition = transition, transitions = list) }
         }
     }
 
-    suspend fun setStudioModeEnabled(enabled: Boolean) = client.setStudioModeEnabled(enabled)
+    private suspend fun <T> read(context: SceneContext, action: suspend ObsClient.() -> T): T =
+        inWorkspace(context.origin, action)
 
-    suspend fun setCurrentPreviewScene(sceneName: String) = client.setCurrentPreviewScene(sceneName)
+    private suspend fun <T> inWorkspace(
+        origin: WorkspaceSession,
+        action: suspend ObsClient.() -> T,
+    ): T {
+        registry.workspaces.requireCurrent(origin)
+        val result = client.withSession(origin.token, action)
+        registry.workspaces.requireCurrent(origin)
+        return result
+    }
 
-    suspend fun triggerStudioModeTransition() = client.triggerStudioModeTransition()
+    fun isWorkspaceCurrent(origin: WorkspaceSession): Boolean =
+        registry.workspaces.isCurrent(origin)
 
-    suspend fun setCurrentSceneTransition(transitionName: String) =
-        client.setCurrentSceneTransition(transitionName)
+    fun retryWorkspace() {
+        registry.retry()
+        snapshot.value.context?.takeIf(::isCurrent)?.let { context ->
+            scope.launch { refresh(context) }
+        }
+    }
 
-    suspend fun setCurrentSceneTransitionDuration(durationMs: Int) =
-        client.setCurrentSceneTransitionDuration(durationMs)
+    suspend fun setStudioModeEnabled(origin: WorkspaceSession, enabled: Boolean) =
+        inWorkspace(origin) { setStudioModeEnabled(enabled) }
 
-    suspend fun setCurrentProgramScene(sceneName: String) = client.setCurrentProgramScene(sceneName)
+    suspend fun setCurrentPreviewScene(origin: WorkspaceSession, sceneName: String) =
+        inWorkspace(origin) { setCurrentPreviewScene(sceneName) }
+
+    suspend fun triggerStudioModeTransition(origin: WorkspaceSession) =
+        inWorkspace(origin) { triggerStudioModeTransition() }
+
+    suspend fun setCurrentSceneTransition(origin: WorkspaceSession, transitionName: String) =
+        inWorkspace(origin) { setCurrentSceneTransition(transitionName) }
+
+    suspend fun setCurrentSceneTransitionDuration(origin: WorkspaceSession, durationMs: Int) =
+        inWorkspace(origin) { setCurrentSceneTransitionDuration(durationMs) }
+
+    suspend fun setCurrentProgramScene(origin: WorkspaceSession, sceneName: String) =
+        inWorkspace(origin) { setCurrentProgramScene(sceneName) }
 
     suspend fun updateSceneMeta(
+        origin: WorkspaceSession,
         sceneName: String,
         role: SceneRole,
         accentColorArgb: Long?,
         iconName: String?,
-    ) = registry.update(sceneName, role, accentColorArgb, iconName)
+    ) = registry.update(origin, sceneName, role, accentColorArgb, iconName)
 
-    suspend fun reorderDeck(orderedSceneNames: List<String>) = registry.reorder(orderedSceneNames)
-
-    // ── Power features (M7) ─────────────────────────────────────────────────
+    suspend fun reorderDeck(origin: WorkspaceSession, orderedSceneNames: List<String>) =
+        registry.reorder(origin, orderedSceneNames)
 
     suspend fun toggleVirtualCam(): Boolean = client.toggleVirtualCam()
 
-    suspend fun setSceneItemEnabled(sceneName: String, sceneItemId: Int, enabled: Boolean) =
-        client.setSceneItemEnabled(sceneName, sceneItemId, enabled)
+    suspend fun setSceneItemEnabled(
+        origin: WorkspaceSession,
+        sceneName: String,
+        sceneItemId: Int,
+        enabled: Boolean,
+    ) = inWorkspace(origin) { setSceneItemEnabled(sceneName, sceneItemId, enabled) }
 
-    suspend fun getSceneItemList(sceneName: String) = client.getSceneItemList(sceneName)
+    suspend fun getSceneItemList(origin: WorkspaceSession, sceneName: String) =
+        inWorkspace(origin) { getSceneItemList(sceneName) }
 
     private companion object {
         const val MAX_RENAME_REREADS = 2

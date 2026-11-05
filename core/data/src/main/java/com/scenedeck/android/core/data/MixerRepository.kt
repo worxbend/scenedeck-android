@@ -8,9 +8,11 @@ import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
+import com.scenedeck.android.core.obs.withSession
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -51,6 +53,14 @@ data class MixerState(
     /** Program scene the discovery followed (null while disconnected). */
     val activeScene: String? = null,
     val inputs: List<MixerInputState> = emptyList(),
+    val workspace: WorkspaceSession? = null,
+    val sceneNames: List<String> = emptyList(),
+    val failed: Boolean = false,
+)
+
+data class MixerMediaStatus(
+    val workspace: WorkspaceSession? = null,
+    val inputs: Map<String, MediaStatus> = emptyMap(),
 )
 
 /**
@@ -65,6 +75,7 @@ class MixerRepository
 constructor(
     private val client: ObsClient,
     private val settings: SettingsRepository,
+    val workspaces: WorkspaceContext,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val discovery = AudioDiscovery(client)
@@ -75,61 +86,96 @@ constructor(
     private val muteControls = mutableMapOf<String, OptimisticControl<Boolean>>()
     private val discoveryRequests = MutableStateFlow(0L)
 
-    private val discovered = MutableStateFlow<List<DiscoveredInput>>(emptyList())
-    private val activeScene = MutableStateFlow<String?>(null)
+    private data class Snapshot(
+        val workspace: WorkspaceSession? = null,
+        val activeScene: String? = null,
+        val inputs: List<DiscoveredInput> = emptyList(),
+        val sceneNames: List<String> = emptyList(),
+        val loaded: Boolean = false,
+        val failed: Boolean = false,
+    )
 
-    /** All OBS scene names (for the mixer scene picker), refreshed on discovery. */
-    private val _sceneNames = MutableStateFlow<List<String>>(emptyList())
-    val sceneNames: StateFlow<List<String>> = _sceneNames.asStateFlow()
+    private val snapshot = MutableStateFlow(Snapshot())
 
     val mixerState: StateFlow<MixerState> =
-        combine(
-                client.connectionState,
-                activeScene,
-                discovered,
-                settings.settings,
-            ) { connection, scene, inputs, userSettings ->
+        combine(client.connectionState, workspaces.state, snapshot, settings.settings) {
+                connection,
+                workspace,
+                discovery,
+                userSettings ->
+                val current = (workspace as? WorkspaceState.Ready)?.session
+                val valid = current != null && isCurrent(current) && discovery.workspace == current
+                val loaded = valid && discovery.loaded
                 MixerState(
                     connection = connection,
-                    activeScene = scene,
+                    workspace = current.takeIf { loaded },
+                    activeScene = discovery.activeScene.takeIf { loaded },
+                    sceneNames = if (loaded) discovery.sceneNames else emptyList(),
+                    failed = workspace == WorkspaceState.Failed || (valid && discovery.failed),
                     inputs =
-                        inputs.map { input ->
-                            MixerInputState(
-                                name = input.name,
-                                scope = input.scope,
-                                scopePath = input.scopePath,
-                                volumeMul = input.volumeMul,
-                                muted = input.muted,
-                                locked = input.name in userSettings.lockedInputs,
-                                inputKind = input.inputKind,
-                            )
-                        },
+                        if (loaded)
+                            discovery.inputs.map { input ->
+                                MixerInputState(
+                                    name = input.name,
+                                    scope = input.scope,
+                                    scopePath = input.scopePath,
+                                    volumeMul = input.volumeMul,
+                                    muted = input.muted,
+                                    locked = input.name in userSettings.lockedInputs,
+                                    inputKind = input.inputKind,
+                                )
+                            }
+                        else emptyList(),
                 )
             }
             .stateIn(scope, SharingStarted.WhileSubscribed(5_000), MixerState())
 
-    private val _mediaStatus = MutableStateFlow<Map<String, MediaStatus>>(emptyMap())
+    private val _mediaStatus = MutableStateFlow(MixerMediaStatus())
 
-    /**
-     * Playback status per media-kind input, polled at ~2 s only while connected AND a collector is
-     * subscribed (i.e. the mixer UI is actually visible).
-     */
-    val mediaStatus: StateFlow<Map<String, MediaStatus>> = _mediaStatus.asStateFlow()
+    /** Tagged playback status, polled only while this workspace has an active collector. */
+    val mediaStatus: StateFlow<MixerMediaStatus> = _mediaStatus.asStateFlow()
+
+    fun isCurrent(origin: WorkspaceSession): Boolean {
+        val ready = client.connectionState.value as? ConnectionState.Ready
+        return workspaces.isCurrent(origin) &&
+            ready?.token == origin.token &&
+            !ready.collectionChanging
+    }
+
+    fun retry() {
+        workspaces.retry()
+        requestDiscovery()
+    }
+
+    private fun requireCurrent(origin: WorkspaceSession) {
+        if (!isCurrent(origin)) throw WorkspaceChangedException()
+    }
+
+    private suspend fun <T> inWorkspace(
+        origin: WorkspaceSession,
+        action: suspend ObsClient.() -> T,
+    ): T {
+        requireCurrent(origin)
+        val result = client.withSession(origin.token, action)
+        requireCurrent(origin)
+        return result
+    }
 
     init {
         scope.launch {
-            client.connectionState.collect { state ->
-                synchronized(controlLock) {
-                    requestDiscovery()
-                    if (state !is ConnectionState.Ready) {
-                        discovered.value = emptyList()
-                        activeScene.value = null
-                        _sceneNames.value = emptyList()
+            combine(workspaces.state, client.connectionState) { workspace, _ ->
+                    (workspace as? WorkspaceState.Ready)?.session?.takeIf(::isCurrent)
+                }
+                .distinctUntilChanged()
+                .collect { origin ->
+                    synchronized(controlLock) {
+                        snapshot.value = Snapshot(workspace = origin)
+                        _mediaStatus.value = MixerMediaStatus(origin)
                         volumeControls.clear()
                         muteControls.clear()
+                        requestDiscovery()
                     }
                 }
-            }
         }
         scope.launch {
             discoveryRequests
@@ -139,9 +185,11 @@ constructor(
                 }
                 .collectLatest { refreshDiscovery(it) }
         }
-        scope.launch {
-            client.events.collect { event ->
-                when (event) {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventsWithContext.collect { stamped ->
+                val origin = workspaces.currentSession() ?: return@collect
+                if (stamped.token != origin.token || !isCurrent(origin)) return@collect
+                when (val event = stamped.event) {
                     is ObsEvent.CurrentProgramSceneChanged -> requestDiscovery()
 
                     is ObsEvent.SceneNameChanged,
@@ -154,10 +202,10 @@ constructor(
                     is ObsEvent.InputNameChanged -> requestDiscovery()
 
                     is ObsEvent.InputMuteStateChanged ->
-                        observeInputMute(event.inputName, event.muted)
+                        observeInputMute(origin, event.inputName, event.muted)
 
                     is ObsEvent.InputVolumeChanged ->
-                        previewInputVolume(event.inputName, event.volumeMul)
+                        previewInputVolume(origin, event.inputName, event.volumeMul)
 
                     else -> Unit
                 }
@@ -174,30 +222,29 @@ constructor(
             // Poll only while connected AND subscribed; mixerState emissions (e.g. per-frame
             // fader previews) must not restart the loop.
             combine(
+                    workspaces.state,
                     client.connectionState,
                     _mediaStatus.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
-                ) { state, subscribed ->
-                    state is ConnectionState.Ready && subscribed
-                }
-                .distinctUntilChanged()
-                .collectLatest { active ->
-                    if (active) {
-                        pollMediaLoop()
-                    } else {
-                        _mediaStatus.value = emptyMap()
+                ) { workspace, _, subscribed ->
+                    (workspace as? WorkspaceState.Ready)?.session?.takeIf {
+                        subscribed && isCurrent(it)
                     }
                 }
+                .distinctUntilChanged()
+                .collectLatest { origin ->
+                    _mediaStatus.value = MixerMediaStatus(origin)
+                    if (origin != null) pollMediaLoop(origin)
+                }
         }
-        scope.launch {
-            client.events.collect { event ->
-                when (event) {
-                    is ObsEvent.MediaInputPlaybackStarted,
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventsWithContext.collect { stamped ->
+                val origin = workspaces.currentSession() ?: return@collect
+                if (stamped.token != origin.token || !isCurrent(origin)) return@collect
+                when (val event = stamped.event) {
+                    is ObsEvent.MediaInputPlaybackStarted ->
+                        refreshMediaStatus(origin, event.inputName)
                     is ObsEvent.MediaInputPlaybackEnded ->
-                        refreshMediaStatus(
-                            (event as? ObsEvent.MediaInputPlaybackStarted)?.inputName
-                                ?: (event as ObsEvent.MediaInputPlaybackEnded).inputName
-                        )
-
+                        refreshMediaStatus(origin, event.inputName)
                     else -> Unit
                 }
             }
@@ -211,45 +258,70 @@ constructor(
 
     suspend fun refreshDiscovery() = refreshDiscovery(discoveryRequests.value)
 
-    private suspend fun refreshDiscovery(generation: Long) = discoveryMutex.withLock {
-        if (client.connectionState.value !is ConnectionState.Ready) return@withLock
-        val startedAt = synchronized(controlLock) { controlRevision }
-        val list = requestResult { client.getSceneList() }.getOrNull() ?: return@withLock
-        val inputs = discoverScene(list.currentProgramScene)
-        currentCoroutineContext().ensureActive()
-        synchronized(controlLock) {
-            if (
-                client.connectionState.value !is ConnectionState.Ready ||
-                    discoveryRequests.value != generation
-            )
-                return@synchronized
-            activeScene.value = list.currentProgramScene
-            _sceneNames.value = list.scenes.map { it.name }
-            val names = inputs.mapTo(mutableSetOf()) { it.name }
-            volumeControls.keys.retainAll(names)
-            muteControls.keys.retainAll(names)
-            discovered.value = inputs.map { input ->
-                val volume =
-                    volumeControls.getOrPut(input.name) {
-                        OptimisticControl(input.volumeMul, startedAt)
+    private suspend fun refreshDiscovery(generation: Long) {
+        val origin = workspaces.currentSession() ?: return
+        discoveryMutex.withLock {
+            if (!isCurrent(origin)) return@withLock
+            val startedAt = synchronized(controlLock) { controlRevision }
+            val result = requestResult {
+                inWorkspace(origin) {
+                    val list = getSceneList()
+                    list to discoverScene(origin, list.currentProgramScene)
+                }
+            }
+            currentCoroutineContext().ensureActive()
+            synchronized(controlLock) {
+                if (!isCurrent(origin) || discoveryRequests.value != generation) return@synchronized
+                val discovered = result.getOrNull()
+                snapshot.value =
+                    if (discovered == null) {
+                        Snapshot(workspace = origin, failed = true)
+                    } else {
+                        val (list, inputs) = discovered
+                        Snapshot(
+                            origin,
+                            list.currentProgramScene,
+                            reconcileControls(inputs, startedAt),
+                            list.scenes.map { it.name },
+                            loaded = true,
+                        )
                     }
-                val mute =
-                    muteControls.getOrPut(input.name) { OptimisticControl(input.muted, startedAt) }
-                input.copy(
-                    volumeMul = volume.observe(input.volumeMul, startedAt),
-                    muted = mute.observe(input.muted, startedAt),
-                )
             }
         }
     }
 
-    /** Runs discovery for an arbitrary scene (mixer SELECTED mode). */
-    suspend fun discoverScene(sceneName: String?): List<DiscoveredInput> =
-        discovery.discover(sceneName, settings.settings.first().audioAllowList)
+    /** Called under controlLock; new events and pending controls take precedence over a read. */
+    private fun reconcileControls(
+        inputs: List<DiscoveredInput>,
+        startedAt: Long,
+    ): List<DiscoveredInput> {
+        val names = inputs.mapTo(mutableSetOf()) { it.name }
+        volumeControls.keys.retainAll(names)
+        muteControls.keys.retainAll(names)
+        return inputs.map { input ->
+            val volume =
+                volumeControls.getOrPut(input.name) {
+                    OptimisticControl(input.volumeMul, startedAt)
+                }
+            val mute =
+                muteControls.getOrPut(input.name) { OptimisticControl(input.muted, startedAt) }
+            input.copy(
+                volumeMul = volume.observe(input.volumeMul, startedAt),
+                muted = mute.observe(input.muted, startedAt),
+            )
+        }
+    }
 
-    suspend fun setInputVolume(inputName: String, volumeMul: Double) {
+    /** Runs discovery for a scene in the caller's displayed workspace. */
+    suspend fun discoverScene(origin: WorkspaceSession, sceneName: String?): List<DiscoveredInput> =
+        inWorkspace(origin) {
+            discovery.discover(sceneName, settings.settings.first().audioAllowList)
+        }
+
+    suspend fun setInputVolume(origin: WorkspaceSession, inputName: String, volumeMul: Double) {
         val revision =
             synchronized(controlLock) {
+                requireCurrent(origin)
                 val revision = ++controlRevision
                 volumeControls[inputName]?.begin(revision, volumeMul)?.let { value ->
                     updateInput(inputName) { it.copy(volumeMul = value) }
@@ -258,10 +330,11 @@ constructor(
             }
         var succeeded = false
         try {
-            client.setInputVolume(inputName, volumeMul)
+            inWorkspace(origin) { setInputVolume(inputName, volumeMul) }
             succeeded = true
         } finally {
             synchronized(controlLock) {
+                if (!isCurrent(origin)) return@synchronized
                 volumeControls[inputName]?.complete(revision, succeeded)?.let { value ->
                     updateInput(inputName) { it.copy(volumeMul = value) }
                 }
@@ -270,8 +343,9 @@ constructor(
     }
 
     /** Local preview or OBS event supersedes any older optimistic write. */
-    fun previewInputVolume(inputName: String, volumeMul: Double) {
+    fun previewInputVolume(origin: WorkspaceSession, inputName: String, volumeMul: Double) {
         synchronized(controlLock) {
+            if (!isCurrent(origin)) return@synchronized
             val revision = ++controlRevision
             volumeControls
                 .getOrPut(inputName) { OptimisticControl(volumeMul, revision) }
@@ -280,8 +354,9 @@ constructor(
         }
     }
 
-    private fun observeInputMute(inputName: String, muted: Boolean) {
+    private fun observeInputMute(origin: WorkspaceSession, inputName: String, muted: Boolean) {
         synchronized(controlLock) {
+            if (!isCurrent(origin)) return@synchronized
             val revision = ++controlRevision
             muteControls
                 .getOrPut(inputName) { OptimisticControl(muted, revision) }
@@ -290,9 +365,10 @@ constructor(
         }
     }
 
-    suspend fun setInputMute(inputName: String, muted: Boolean) {
+    suspend fun setInputMute(origin: WorkspaceSession, inputName: String, muted: Boolean) {
         val revision =
             synchronized(controlLock) {
+                requireCurrent(origin)
                 val revision = ++controlRevision
                 muteControls[inputName]?.begin(revision, muted)?.let { value ->
                     updateInput(inputName) { it.copy(muted = value) }
@@ -301,10 +377,11 @@ constructor(
             }
         var succeeded = false
         try {
-            client.setInputMute(inputName, muted)
+            inWorkspace(origin) { setInputMute(inputName, muted) }
             succeeded = true
         } finally {
             synchronized(controlLock) {
+                if (!isCurrent(origin)) return@synchronized
                 muteControls[inputName]?.complete(revision, succeeded)?.let { value ->
                     updateInput(inputName) { it.copy(muted = value) }
                 }
@@ -312,60 +389,86 @@ constructor(
         }
     }
 
-    suspend fun setLocked(inputName: String, locked: Boolean) {
-        settings.setInputLocked(inputName, locked)
-    }
-
-    // ── Media inputs (M7) ───────────────────────────────────────────────────
-
-    suspend fun triggerMediaInputAction(inputName: String, action: MediaActionKind) {
-        client.triggerMediaInputAction(inputName, action)
-        refreshMediaStatus(inputName)
-    }
-
-    suspend fun setMediaInputCursor(inputName: String, cursorMs: Long) =
-        client.setMediaInputCursor(inputName, cursorMs)
-
-    private suspend fun refreshMediaStatus(inputName: String) {
-        requestResult {
-            val status = client.getMediaInputStatus(inputName)
-            _mediaStatus.update { it + (inputName to status) }
+    suspend fun setLocked(origin: WorkspaceSession, inputName: String, locked: Boolean) {
+        settings.update { current ->
+            requireCurrent(origin)
+            current.copy(
+                lockedInputs =
+                    if (locked) current.lockedInputs + inputName
+                    else current.lockedInputs - inputName
+            )
         }
     }
 
-    private suspend fun pollMediaLoop() {
-        while (currentCoroutineContext().isActive) {
-            val mediaInputs = discovered.value.filter { it.inputKind in MEDIA_INPUT_KINDS }
+    suspend fun triggerMediaInputAction(
+        origin: WorkspaceSession,
+        inputName: String,
+        action: MediaActionKind,
+    ) {
+        inWorkspace(origin) { triggerMediaInputAction(inputName, action) }
+        refreshMediaStatus(origin, inputName)
+    }
+
+    suspend fun setMediaInputCursor(origin: WorkspaceSession, inputName: String, cursorMs: Long) =
+        inWorkspace(origin) { setMediaInputCursor(inputName, cursorMs) }
+
+    private suspend fun refreshMediaStatus(origin: WorkspaceSession, inputName: String) {
+        requestResult {
+            val status = inWorkspace(origin) { getMediaInputStatus(inputName) }
+            _mediaStatus.update { current ->
+                if (isCurrent(origin) && current.workspace == origin)
+                    current.copy(inputs = current.inputs + (inputName to status))
+                else current
+            }
+        }
+    }
+
+    private suspend fun pollMediaLoop(origin: WorkspaceSession) {
+        while (currentCoroutineContext().isActive && isCurrent(origin)) {
+            val mediaInputs =
+                snapshot.value
+                    .takeIf { it.workspace == origin }
+                    ?.inputs
+                    .orEmpty()
+                    .filter { it.inputKind in MEDIA_INPUT_KINDS }
             val liveNames = mediaInputs.mapTo(mutableSetOf()) { it.name }
-            // Prune inputs removed mid-session so stale statuses can't linger.
-            _mediaStatus.update { statuses -> statuses.filterKeys { it in liveNames } }
-            mediaInputs.forEach { input -> refreshMediaStatus(input.name) }
+            _mediaStatus.update { current ->
+                if (current.workspace == origin)
+                    current.copy(inputs = current.inputs.filterKeys { it in liveNames })
+                else current
+            }
+            mediaInputs.forEach { input -> refreshMediaStatus(origin, input.name) }
             delay(MEDIA_POLL_MS)
         }
     }
 
-    // ── Audio extras (M7) ───────────────────────────────────────────────────
+    suspend fun getInputAudioBalance(origin: WorkspaceSession, inputName: String) =
+        inWorkspace(origin) { getInputAudioBalance(inputName) }
 
-    suspend fun getInputAudioBalance(inputName: String) = client.getInputAudioBalance(inputName)
+    suspend fun setInputAudioBalance(origin: WorkspaceSession, inputName: String, balance: Double) =
+        inWorkspace(origin) { setInputAudioBalance(inputName, balance) }
 
-    suspend fun setInputAudioBalance(inputName: String, balance: Double) =
-        client.setInputAudioBalance(inputName, balance)
+    suspend fun getInputAudioSyncOffset(origin: WorkspaceSession, inputName: String) =
+        inWorkspace(origin) { getInputAudioSyncOffset(inputName) }
 
-    suspend fun getInputAudioSyncOffset(inputName: String) =
-        client.getInputAudioSyncOffset(inputName)
+    suspend fun setInputAudioSyncOffset(
+        origin: WorkspaceSession,
+        inputName: String,
+        offsetMs: Int,
+    ) = inWorkspace(origin) { setInputAudioSyncOffset(inputName, offsetMs) }
 
-    suspend fun setInputAudioSyncOffset(inputName: String, offsetMs: Int) =
-        client.setInputAudioSyncOffset(inputName, offsetMs)
+    suspend fun getInputAudioMonitorType(origin: WorkspaceSession, inputName: String) =
+        inWorkspace(origin) { getInputAudioMonitorType(inputName) }
 
-    suspend fun getInputAudioMonitorType(inputName: String) =
-        client.getInputAudioMonitorType(inputName)
-
-    suspend fun setInputAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) =
-        client.setInputAudioMonitorType(inputName, monitorType)
+    suspend fun setInputAudioMonitorType(
+        origin: WorkspaceSession,
+        inputName: String,
+        monitorType: MonitorTypeKind,
+    ) = inWorkspace(origin) { setInputAudioMonitorType(inputName, monitorType) }
 
     private inline fun updateInput(name: String, transform: (DiscoveredInput) -> DiscoveredInput) {
-        discovered.update { inputs ->
-            inputs.map { if (it.name == name) transform(it) else it }
+        snapshot.update { current ->
+            current.copy(inputs = current.inputs.map { if (it.name == name) transform(it) else it })
         }
     }
 

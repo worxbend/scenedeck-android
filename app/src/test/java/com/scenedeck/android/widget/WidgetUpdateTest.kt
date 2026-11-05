@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.scenedeck.android.core.data.DeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsVersionInfo
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -18,7 +19,7 @@ class WidgetUpdateTest {
     @Test
     fun connectedEmptyDeckClearsCachedSceneActionsAndProgram() {
         val prefs = mutablePreferencesOf()
-        WidgetSnapshot(listOf("Removed"), "Removed", "Connected").writeTo(prefs)
+        WidgetSnapshot(listOf("Removed"), "Removed", "Connected", TEST_WORKSPACE.key).writeTo(prefs)
 
         WidgetUpdate(WidgetSnapshot(connectionLabel = "Connected"), ready = true).writeTo(prefs)
 
@@ -31,7 +32,7 @@ class WidgetUpdateTest {
     @Test
     fun unreadyDeckPreservesColdStartActionsAndUpdatesHeader() {
         val prefs = mutablePreferencesOf()
-        WidgetSnapshot(listOf("Main"), "Main", "Connected").writeTo(prefs)
+        WidgetSnapshot(listOf("Main"), "Main", "Connected", TEST_WORKSPACE.key).writeTo(prefs)
 
         WidgetUpdate(WidgetSnapshot(connectionLabel = "Retry 2"), ready = false).writeTo(prefs)
 
@@ -44,7 +45,12 @@ class WidgetUpdateTest {
     fun unrelatedMetadataAndStudioChangesDoNotScheduleWidgetWork() = runTest {
         val states = MutableSharedFlow<DeckState>()
         states.widgetUpdates().test {
-            val deck = DeckState(connectionState = ready, scenes = listOf(scene("Main")))
+            val deck =
+                DeckState(
+                    workspace = TEST_WORKSPACE,
+                    connectionState = ready,
+                    scenes = listOf(scene("Main")),
+                )
             states.emit(deck)
             assertEquals(listOf("Main"), awaitItem().snapshot.sceneNames)
 
@@ -64,16 +70,32 @@ class WidgetUpdateTest {
         val states = MutableSharedFlow<DeckState>()
         states.widgetUpdates().test {
             val visible = (1..6).map { scene("Scene $it") }
-            states.emit(DeckState(connectionState = ready, scenes = visible + scene("Hidden")))
+            states.emit(
+                DeckState(
+                    workspace = TEST_WORKSPACE,
+                    connectionState = ready,
+                    scenes = visible + scene("Hidden"),
+                )
+            )
             val update = awaitItem()
             assertTrue(update.ready)
             assertEquals(visible.map { it.name }, update.snapshot.sceneNames)
 
             states.emit(
-                DeckState(connectionState = ready, scenes = visible + scene("Renamed hidden"))
+                DeckState(
+                    workspace = TEST_WORKSPACE,
+                    connectionState = ready,
+                    scenes = visible + scene("Renamed hidden"),
+                )
             )
             expectNoEvents()
-            states.emit(DeckState(connectionState = ready, scenes = visible.reversed()))
+            states.emit(
+                DeckState(
+                    workspace = TEST_WORKSPACE,
+                    connectionState = ready,
+                    scenes = visible.reversed(),
+                )
+            )
             assertEquals(visible.reversed().map { it.name }, awaitItem().snapshot.sceneNames)
         }
     }

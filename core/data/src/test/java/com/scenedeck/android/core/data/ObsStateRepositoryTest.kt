@@ -3,11 +3,13 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -53,12 +56,49 @@ class ObsStateRepositoryTest {
             )
         registryDao = FakeRegistryDao()
         settings = SettingsRepository(SettingsRepositoryTest.newIsolatedStore())
-        repository = ObsStateRepository(client, RegistryRepository(registryDao), scope, settings)
+        repository =
+            ObsStateRepository(client, singleWorkspaceRegistry(registryDao), scope, settings)
     }
 
     @After
     fun tearDown() {
         scope.cancel()
+    }
+
+    @Test
+    fun obsoleteSceneReadAndActionsCannotFollowAReconnection(): Unit = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var firstRead = true
+        val staleClient =
+            object : FakeObsClient() {
+                override suspend fun getSceneList(): SceneListSnapshot {
+                    if (firstRead) {
+                        firstRead = false
+                        entered.complete(Unit)
+                        withContext(NonCancellable) { release.await() }
+                        return SceneListSnapshot("Old", listOf(SceneSummary("Old", 0)))
+                    }
+                    return SceneListSnapshot("New", listOf(SceneSummary("New", 0)))
+                }
+            }
+        val registry = singleWorkspaceRegistry(FakeRegistryDao())
+        val state = ObsStateRepository(staleClient, registry, scope, settings)
+        staleClient.setReady()
+        withTimeout(5_000) { entered.await() }
+        val replacement = TEST_WORKSPACE.copy(targetGeneration = 2, token = ObsSessionToken(2))
+        staleClient.setReady(sessionId = 2)
+        (registry.workspaces as MutableWorkspaceContext).select(replacement)
+        val failure = runCatching {
+            state.setCurrentProgramScene(TEST_WORKSPACE, "Old")
+        }
+            .exceptionOrNull()
+        assertTrue(failure is WorkspaceChangedException)
+        assertTrue(staleClient.sceneSwitchCalls.isEmpty())
+        release.complete(Unit)
+        val deck = withTimeout(5_000) { state.deckState.first { it.workspace == replacement } }
+        assertEquals(listOf("New"), deck.allScenes.map { it.name })
+        assertEquals("New", deck.currentProgramScene)
     }
 
     @Test
@@ -136,7 +176,7 @@ class ObsStateRepositoryTest {
         client.setReady()
         awaitDeck { it.scenes.isNotEmpty() }
 
-        repository.reorderDeck(listOf("Screen", "Cam 1", "Scene"))
+        repository.reorderDeck(TEST_WORKSPACE, listOf("Screen", "Cam 1", "Scene"))
 
         val deck = awaitDeck { it.scenes.first().name == "Screen" }
         assertEquals(listOf("Screen", "Cam 1", "Scene"), deck.scenes.map { it.name })
@@ -195,7 +235,8 @@ class ObsStateRepositoryTest {
 
     @Test
     fun sceneRenameInObsKeepsCurationAndPosition(): Unit = runBlocking {
-        RegistryRepository(registryDao).reorder(listOf("Cam 1", "Screen", "Scene"))
+        singleWorkspaceRegistry(registryDao)
+            .reorder(TEST_WORKSPACE, listOf("Cam 1", "Screen", "Scene"))
         registryDao.upsert(
             SceneRegistryEntity(
                 sceneName = "Cam 1",
@@ -218,7 +259,13 @@ class ObsStateRepositoryTest {
 
     @Test
     fun sceneRenameMovesThePersistedMixerSelectionWithoutAMixerScreen(): Unit = runBlocking {
-        settings.setMixerSelectedScene("Cam 1")
+        settings.update {
+            it.copy(
+                mixerSelectedScene = "Cam 1",
+                mixerSelectedProfileId = TEST_WORKSPACE.key.profileId,
+                mixerSelectedCollection = TEST_WORKSPACE.key.collectionName,
+            )
+        }
         client.setReady()
         awaitDeck { it.allScenes.size == 3 }
 
@@ -247,7 +294,10 @@ class ObsStateRepositoryTest {
         assertEquals("Display", deck.allScenes.single { it.isPreview }.name)
 
         // A tap on the renamed card targets OBS by its new name.
-        repository.setCurrentProgramScene(deck.allScenes.single { it.isActive }.name)
+        repository.setCurrentProgramScene(
+            TEST_WORKSPACE,
+            deck.allScenes.single { it.isActive }.name,
+        )
         assertEquals(listOf("Main"), client.sceneSwitchCalls)
     }
 
@@ -291,7 +341,7 @@ class ObsStateRepositoryTest {
                 }
             }
         val slowRepository =
-            ObsStateRepository(slowClient, RegistryRepository(registryDao), scope, settings)
+            ObsStateRepository(slowClient, singleWorkspaceRegistry(registryDao), scope, settings)
         registryDao.upsert(SceneRegistryEntity("Cam 1", role = "SECONDARY"))
         val deckJob = scope.launch { slowRepository.deckState.collect {} }
         slowClient.setReady()

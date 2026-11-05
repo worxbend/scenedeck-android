@@ -2,7 +2,9 @@ package com.scenedeck.android.feature.mixer
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -40,7 +42,11 @@ class MixerActionFailureTest {
             )
         repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         viewModel =
-            MixerViewModel(MixerRepository(client, settings, repositoryScope), settings, client)
+            MixerViewModel(
+                MixerRepository(client, settings, MutableWorkspaceContext(), repositoryScope),
+                settings,
+                client,
+            )
     }
 
     @After
@@ -52,7 +58,7 @@ class MixerActionFailureTest {
     fun failedMuteShowsSanitizedError(): Unit = runBlocking {
         client.actionFailure = IllegalStateException("password=secret")
         val error = async(start = CoroutineStart.UNDISPATCHED) { viewModel.errors.first() }
-        viewModel.toggleMute("Desktop Audio", true)
+        viewModel.toggleMute(TEST_WORKSPACE, "Desktop Audio", true)
         val message = withTimeout(5_000) { error.await() }
         assertTrue(message.contains("Check the OBS connection"))
         assertFalse(message.contains("secret"))
@@ -62,7 +68,7 @@ class MixerActionFailureTest {
     fun failedFaderCommitShowsError(): Unit = runBlocking {
         client.actionFailure = IllegalStateException("connection lost")
         val error = async(start = CoroutineStart.UNDISPATCHED) { viewModel.errors.first() }
-        viewModel.onVolumeCommit("Desktop Audio", 0.5)
+        viewModel.onVolumeCommit(TEST_WORKSPACE, "Desktop Audio", 0.5)
         assertTrue(withTimeout(5_000) { error.await() }.contains("Check the OBS connection"))
     }
 
@@ -71,6 +77,7 @@ class MixerActionFailureTest {
         client.actionFailure = IllegalStateException("request denied")
         val error = async(start = CoroutineStart.UNDISPATCHED) { viewModel.errors.first() }
         viewModel.setAudioMonitorType(
+            TEST_WORKSPACE,
             "Desktop Audio",
             com.scenedeck.android.core.model.MonitorTypeKind.NONE,
         )
@@ -81,7 +88,7 @@ class MixerActionFailureTest {
     fun failedMediaActionShowsError(): Unit = runBlocking {
         client.actionFailure = IllegalStateException("request denied")
         val error = async(start = CoroutineStart.UNDISPATCHED) { viewModel.errors.first() }
-        viewModel.mediaRestart("Test Tone 440")
+        viewModel.mediaRestart(TEST_WORKSPACE, "Test Tone 440")
         assertTrue(withTimeout(5_000) { error.await() }.contains("Check the OBS connection"))
     }
 }

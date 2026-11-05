@@ -59,6 +59,7 @@ import com.scenedeck.android.core.model.VolumeMeterReading
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsNotConnectedException
 import com.scenedeck.android.core.obs.ObsRequestFailedException
+import com.scenedeck.android.core.obs.ObsRequestOrigin
 import com.scenedeck.android.core.obs.ObsRequestProtocolException
 import com.scenedeck.android.core.obs.ObsRequestTimeoutException
 import com.scenedeck.android.core.obs.ObsWorkspaceChangedException
@@ -71,6 +72,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -215,7 +217,7 @@ internal class KtobsObsClient(
         allowCollectionChange: Boolean = false,
         block: suspend (ObsSession) -> T,
     ): T {
-        val origin = readyState().token
+        val origin = requestOrigin()
         val session =
             sessionRunner.session?.takeIf { _connectionState.value is ConnectionState.Ready }
                 ?: throw ObsNotConnectedException()
@@ -267,6 +269,13 @@ internal class KtobsObsClient(
 
     private fun readyState(): ConnectionState.Ready =
         _connectionState.value as? ConnectionState.Ready ?: throw ObsNotConnectedException()
+
+    private suspend fun requestOrigin(): ObsSessionToken {
+        val origin = readyState().token
+        val expected = currentCoroutineContext()[ObsRequestOrigin]?.token
+        if (expected != null && expected != origin) throw ObsWorkspaceChangedException()
+        return origin
+    }
 
     override suspend fun getVersion() = request { it.getVersion().toDomain() }
 

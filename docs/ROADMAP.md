@@ -230,3 +230,13 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   synchronize repository skill/design guidance with the existing product contract.
 - Verify meaningful concurrency/resource/operation-count regressions and the full
   JDK 21/uv gate. Review evidence and deferred findings live in `tasks/reports/`.
+
+## Operator workflow — 2026-11-05 (active)
+
+- Verified: workspace-scoped curation and scene/Mixer/diagnostic state, explicit recovery
+  of previous curation, origin-bound import/Undo/control actions and widget caches.
+- Next: named decks with independent membership/order, then the remaining authorized
+  improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
+  truth; foundations alone do not complete a feature.
+- Show rundown, cue lists and timed advancement are excluded. Presets will be invoked
+  independently. No release or store publication is part of this workflow.

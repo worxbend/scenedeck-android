@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
 import com.scenedeck.android.core.obs.ScreenshotRequest
@@ -66,7 +67,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -107,7 +108,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -119,7 +120,7 @@ class ScreenshotRepositoryTest {
         runCurrent()
 
         assertTrue(client.screenshotCalls.isEmpty())
-        assertTrue(repository.thumbnails.value.isEmpty())
+        assertTrue(repository.thumbnails.value.frames.isEmpty())
     }
 
     @Test
@@ -128,7 +129,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -148,7 +149,7 @@ class ScreenshotRepositoryTest {
         advanceTimeBy(12_000)
         runCurrent()
         assertTrue(client.screenshotCalls.isEmpty())
-        assertTrue(repository.thumbnails.value.isEmpty())
+        assertTrue(repository.thumbnails.value.frames.isEmpty())
     }
 
     @Test
@@ -179,7 +180,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 slow,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -204,7 +205,7 @@ class ScreenshotRepositoryTest {
         collector.cancel()
         runCurrent()
         assertEquals(2, cancellations)
-        assertTrue(repository.thumbnails.value.isEmpty())
+        assertTrue(repository.thumbnails.value.frames.isEmpty())
     }
 
     @Test
@@ -213,7 +214,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -223,11 +224,11 @@ class ScreenshotRepositoryTest {
         obsState.deckState.first { it.allScenes.size == 3 }
         backgroundScope.launch { repository.thumbnails.collect {} }
         runCurrent()
-        assertEquals(3, repository.thumbnails.value.size)
+        assertEquals(3, repository.thumbnails.value.frames.size)
         client.emit(ObsEvent.SceneListChanged(listOf(SceneSummary("Hot", 0))))
         obsState.deckState.first { it.allScenes.size == 1 }
         runCurrent()
-        assertEquals(setOf("Hot"), repository.thumbnails.value.keys)
+        assertEquals(setOf("Hot"), repository.thumbnails.value.frames.keys)
         client.screenshotCalls.clear()
         advanceTimeBy(12_000)
         runCurrent()
@@ -241,7 +242,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -267,7 +268,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )
@@ -277,12 +278,36 @@ class ScreenshotRepositoryTest {
         obsState.deckState.first { it.allScenes.size == 3 }
         backgroundScope.launch { repository.thumbnails.collect {} }
         runCurrent()
-        val accepted = repository.thumbnails.value
+        val accepted = repository.thumbnails.value.frames
         assertEquals(3, accepted.size)
         client.screenshotBytes = byteArrayOf(1, 2, 3)
         advanceTimeBy(12_000)
         runCurrent()
-        assertEquals(accepted, repository.thumbnails.value)
+        assertEquals(accepted, repository.thumbnails.value.frames)
+    }
+
+    @Test
+    @Config(sdk = [34])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun reconnectClearsSameNamedFramesEvenWhenNewCapturesFail() = runTest {
+        settings.settings.first()
+        val registry = singleWorkspaceRegistry(FakeRegistryDao())
+        val obsState = ObsStateRepository(client, registry, backgroundScope, settings)
+        val repository = ScreenshotRepository(client, settings, obsState, backgroundScope)
+        repository.nowMs = { testScheduler.currentTime }
+        client.setReady()
+        obsState.deckState.first { it.workspace == TEST_WORKSPACE }
+        backgroundScope.launch { repository.thumbnails.collect {} }
+        runCurrent()
+        assertEquals(3, repository.thumbnails.value.frames.size)
+        client.screenshotBytes = byteArrayOf(1, 2, 3)
+        val replacement = TEST_WORKSPACE.copy(targetGeneration = 2, token = ObsSessionToken(2))
+        client.setReady(sessionId = 2)
+        (registry.workspaces as MutableWorkspaceContext).select(replacement)
+        obsState.deckState.first { it.workspace == replacement }
+        runCurrent()
+        assertEquals(replacement, repository.thumbnails.value.workspace)
+        assertTrue(repository.thumbnails.value.frames.isEmpty())
     }
 
     @Test
@@ -316,7 +341,7 @@ class ScreenshotRepositoryTest {
         val obsState =
             ObsStateRepository(
                 slow,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 backgroundScope,
                 settings,
             )

@@ -44,6 +44,8 @@ data class SettingsSnapshot(
     /** Mixer page mode: ACTIVE / SELECTED / PINNED. */
     val mixerMode: String = "ACTIVE",
     val mixerSelectedScene: String? = null,
+    val mixerSelectedProfileId: Long? = null,
+    val mixerSelectedCollection: String? = null,
     /** Mixer grouping: SCOPE / SCENE_PATH / NONE. */
     val mixerGrouping: String = "SCOPE",
     /** Scene preview thumbnails on deck cards (M6). */
@@ -86,6 +88,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         val profileId = updated.lastUsedProfileId
         if (profileId == null) prefs.remove(KEY_LAST_USED_PROFILE_ID)
         else prefs[KEY_LAST_USED_PROFILE_ID] = profileId
+        prefs.setOrRemove(KEY_MIXER_SELECTED_PROFILE_ID, updated.mixerSelectedProfileId)
+        prefs.setOrRemove(KEY_MIXER_SELECTED_COLLECTION, updated.mixerSelectedCollection)
         val scene = updated.mixerSelectedScene
         if (scene == null) prefs.remove(KEY_MIXER_SELECTED_SCENE)
         else prefs[KEY_MIXER_SELECTED_SCENE] = scene
@@ -114,11 +118,17 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
             lockedInputs = valueOrDefault(KEY_LOCKED_INPUTS, emptySet()),
             mixerMode = valueOrDefault(KEY_MIXER_MODE, "ACTIVE"),
             mixerSelectedScene = this[KEY_MIXER_SELECTED_SCENE],
+            mixerSelectedProfileId = this[KEY_MIXER_SELECTED_PROFILE_ID],
+            mixerSelectedCollection = this[KEY_MIXER_SELECTED_COLLECTION],
             mixerGrouping = valueOrDefault(KEY_MIXER_GROUPING, "SCOPE"),
             scenePreviewsEnabled = valueOrDefault(KEY_SCENE_PREVIEWS_ENABLED, true),
             uiDensity = valueOrDefault(KEY_UI_DENSITY, "COMFORTABLE"),
             meterRefresh = valueOrDefault(KEY_METER_REFRESH, "SMOOTH"),
         )
+
+    private fun <T> MutablePreferences.setOrRemove(key: Preferences.Key<T>, value: T?) {
+        if (value == null) remove(key) else this[key] = value
+    }
 
     private fun <T> Preferences.valueOrDefault(key: Preferences.Key<T>, default: T): T =
         this[key] ?: default
@@ -202,6 +212,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         private val KEY_AUDIO_ALLOW_LIST = stringSetPreferencesKey("audioAllowList")
         private val KEY_LOCKED_INPUTS = stringSetPreferencesKey("lockedInputs")
         private val KEY_MIXER_MODE = stringPreferencesKey("mixerMode")
+        private val KEY_MIXER_SELECTED_PROFILE_ID = longPreferencesKey("mixerSelectedProfileId")
+        private val KEY_MIXER_SELECTED_COLLECTION = stringPreferencesKey("mixerSelectedCollection")
         private val KEY_MIXER_SELECTED_SCENE = stringPreferencesKey("mixerSelectedScene")
         private val KEY_MIXER_GROUPING = stringPreferencesKey("mixerGrouping")
         private val KEY_SCENE_PREVIEWS_ENABLED = booleanPreferencesKey("scenePreviewsEnabled")

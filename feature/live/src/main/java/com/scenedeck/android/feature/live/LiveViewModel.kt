@@ -1,6 +1,5 @@
 package com.scenedeck.android.feature.live
 
-import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
@@ -10,14 +9,17 @@ import com.scenedeck.android.core.data.OutputAction
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.data.OutputSafetyGate
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.SceneThumbnails
 import com.scenedeck.android.core.data.ScreenshotRepository
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.data.Telemetry
+import com.scenedeck.android.core.data.WorkspaceSession
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsRequestFailedException
+import com.scenedeck.android.core.obs.withSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -56,7 +59,7 @@ constructor(
 ) : ViewModel() {
 
     /** Scene thumbnails for deck cards (throttled inside the repository). */
-    val thumbnails: StateFlow<Map<String, Bitmap>> = screenshots.thumbnails
+    val thumbnails: StateFlow<SceneThumbnails> = screenshots.thumbnails
 
     val deckState: StateFlow<DeckState> = obsState.deckState
     val telemetry: StateFlow<Telemetry> = stats.telemetry
@@ -115,12 +118,12 @@ constructor(
 
     /** Tap semantics: studio mode → switch preview; otherwise → switch program. */
     @Suppress("ReturnCount") // guard clauses keep tap semantics readable
-    fun onSceneTap(sceneName: String) {
-        if (deckState.value.connectionState !is ConnectionState.Ready) return
+    fun onSceneTap(origin: WorkspaceSession, sceneName: String) {
+        if (deckState.value.workspace != origin) return
         if (deckState.value.studioMode) {
             if (deckState.value.previewScene == sceneName) return
             viewModelScope.launch {
-                coroutineResult { obsState.setCurrentPreviewScene(sceneName) }
+                coroutineResult { obsState.setCurrentPreviewScene(origin, sceneName) }
                     .onFailure { _errors.tryEmit("Couldn't preview $sceneName") }
             }
             return
@@ -133,7 +136,7 @@ constructor(
                 _pendingScene.value = sceneName
             }
             try {
-                coroutineResult { obsState.setCurrentProgramScene(sceneName) }
+                coroutineResult { obsState.setCurrentProgramScene(origin, sceneName) }
                     .onFailure { _errors.tryEmit("Couldn't switch to $sceneName") }
                 // LAN is fast: wait for the change event, then hide the spinner.
                 withTimeoutOrNull(PENDING_TIMEOUT_MS) {
@@ -147,6 +150,7 @@ constructor(
     }
 
     fun saveSceneMeta(
+        origin: WorkspaceSession,
         sceneName: String,
         primary: Boolean,
         accentColorArgb: Long?,
@@ -155,6 +159,7 @@ constructor(
         viewModelScope.launch {
             coroutineResult {
                 obsState.updateSceneMeta(
+                    origin = origin,
                     sceneName = sceneName,
                     role = if (primary) SceneRole.PRIMARY else SceneRole.SECONDARY,
                     accentColorArgb = accentColorArgb,
@@ -174,15 +179,21 @@ constructor(
     val sceneItemsVersion: StateFlow<Int> = _sceneItemsVersion.asStateFlow()
 
     suspend fun loadSceneItems(
-        sceneName: String
+        origin: WorkspaceSession,
+        sceneName: String,
     ): List<com.scenedeck.android.core.model.SceneItemInfo> = coroutineResult {
-        obsState.getSceneItemList(sceneName)
+        obsState.getSceneItemList(origin, sceneName)
     }
         .getOrDefault(emptyList())
 
-    fun toggleSceneItem(sceneName: String, itemId: Int, enabled: Boolean) {
+    fun toggleSceneItem(
+        origin: WorkspaceSession,
+        sceneName: String,
+        itemId: Int,
+        enabled: Boolean,
+    ) {
         viewModelScope.launch {
-            coroutineResult { obsState.setSceneItemEnabled(sceneName, itemId, enabled) }
+            coroutineResult { obsState.setSceneItemEnabled(origin, sceneName, itemId, enabled) }
                 .onFailure { _errors.tryEmit("Couldn't toggle scene source") }
         }
     }
@@ -199,7 +210,10 @@ constructor(
     /** Start/stop in flight until OBS confirms the new virtual camera state. */
     val virtualCamPending: StateFlow<VirtualCamPending?> = virtualCam.pending
 
-    fun toggleVirtualCam() = virtualCam.request()
+    fun toggleVirtualCam() {
+        val session = currentOutputSession() ?: return
+        virtualCam.request { client.withSession(session.token) { obsState.toggleVirtualCam() } }
+    }
 
     // ── Studio mode & transitions (M6) ──────────────────────────────────────
 
@@ -207,33 +221,33 @@ constructor(
         viewModelScope.launch { settings.setScenePreviewsEnabled(enabled) }
     }
 
-    fun toggleStudioMode(enabled: Boolean) {
+    fun toggleStudioMode(origin: WorkspaceSession, enabled: Boolean) {
         viewModelScope.launch {
-            coroutineResult { obsState.setStudioModeEnabled(enabled) }
+            coroutineResult { obsState.setStudioModeEnabled(origin, enabled) }
                 .onFailure { _errors.tryEmit("Couldn't toggle studio mode") }
         }
     }
 
     /** TRANSITION: commits preview → program with the current transition. */
-    fun onTransitionClick() {
+    fun onTransitionClick(origin: WorkspaceSession) {
         viewModelScope.launch {
-            coroutineResult { obsState.triggerStudioModeTransition() }
+            coroutineResult { obsState.triggerStudioModeTransition(origin) }
                 .onFailure { _errors.tryEmit("Transition failed") }
         }
     }
 
     /** CUT: instant swap of preview to program. */
-    fun onCutClick() {
+    fun onCutClick(origin: WorkspaceSession) {
         val preview = deckState.value.previewScene ?: return
         viewModelScope.launch {
-            coroutineResult { obsState.setCurrentProgramScene(preview) }
+            coroutineResult { obsState.setCurrentProgramScene(origin, preview) }
                 .onFailure { _errors.tryEmit("Couldn't cut to $preview") }
         }
     }
 
-    fun selectTransition(transitionName: String) {
+    fun selectTransition(origin: WorkspaceSession, transitionName: String) {
         viewModelScope.launch {
-            coroutineResult { obsState.setCurrentSceneTransition(transitionName) }
+            coroutineResult { obsState.setCurrentSceneTransition(origin, transitionName) }
                 .onFailure { _errors.tryEmit("Couldn't set transition") }
         }
     }
@@ -241,18 +255,18 @@ constructor(
     private var durationJob: Job? = null
 
     /** Duration slider writes are debounced (trailing 200 ms). */
-    fun setTransitionDuration(durationMs: Int) {
+    fun setTransitionDuration(origin: WorkspaceSession, durationMs: Int) {
         durationJob?.cancel()
         durationJob = viewModelScope.launch {
             delay(DURATION_DEBOUNCE_MS)
-            coroutineResult { obsState.setCurrentSceneTransitionDuration(durationMs) }
+            coroutineResult { obsState.setCurrentSceneTransitionDuration(origin, durationMs) }
                 .onFailure { _errors.tryEmit("Couldn't set transition duration") }
         }
     }
 
-    fun reorderDeck(orderedSceneNames: List<String>) {
+    fun reorderDeck(origin: WorkspaceSession, orderedSceneNames: List<String>) {
         viewModelScope.launch {
-            coroutineResult { obsState.reorderDeck(orderedSceneNames) }
+            coroutineResult { obsState.reorderDeck(origin, orderedSceneNames) }
                 .onFailure { _errors.tryEmit("Couldn't save the scene order") }
         }
     }
@@ -318,7 +332,11 @@ constructor(
     private fun toggleStream(active: Boolean, session: ConnectionState.Ready) {
         viewModelScope.launch {
             if (client.connectionState.value !== session) return@launch
-            coroutineResult { if (active) client.stopStream() else client.startStream() }
+            coroutineResult {
+                client.withSession(session.token) {
+                    if (active) stopStream() else startStream()
+                }
+            }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("stream")) }
         }
     }
@@ -326,19 +344,37 @@ constructor(
     private fun toggleRecord(active: Boolean, session: ConnectionState.Ready) {
         viewModelScope.launch {
             if (client.connectionState.value !== session) return@launch
-            coroutineResult { if (active) client.stopRecord() else client.startRecord() }
+            coroutineResult {
+                client.withSession(session.token) {
+                    if (active) stopRecord() else startRecord()
+                }
+            }
                 .onFailure { _errors.tryEmit(it.toTransportMessage("recording")) }
         }
     }
 
+    fun retryWorkspace() = obsState.retryWorkspace()
+
     init {
+        viewModelScope.launch {
+            deckState
+                .map { it.workspace }
+                .distinctUntilChanged()
+                .collect {
+                    pendingWatch?.cancel()
+                    _pendingScene.value = null
+                    durationJob?.cancel()
+                }
+        }
         viewModelScope.launch {
             client.connectionState.collect { connection ->
                 if (!confirmationSession.matches(connection)) dismissConfirmation()
             }
         }
         viewModelScope.launch {
-            client.events.collect { event ->
+            client.eventsWithContext.collect { received ->
+                if (received.token != deckState.value.workspace?.token) return@collect
+                val event = received.event
                 if (
                     event is com.scenedeck.android.core.model.ObsEvent.SceneItemEnableStateChanged
                 ) {

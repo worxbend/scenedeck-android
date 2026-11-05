@@ -21,6 +21,36 @@ import org.junit.Test
 internal class WorkspaceProtocolTest : ObsClientTestBase() {
 
     @Test
+    fun callerOriginSurvivesSuspensionBeforeItsFirstRequest(): Unit = runBlocking {
+        FakeObsServer().use { server ->
+            server.start()
+            val client = connectedClient(server)
+            val original = (client.connectionState.value as ConnectionState.Ready).token
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val action =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    runCatching {
+                        client.withSession(original) {
+                            entered.complete(Unit)
+                            release.await()
+                            setCurrentProgramScene("Camera")
+                        }
+                    }
+                }
+            entered.await()
+            server.sendEvent("CurrentSceneCollectionChanged", COLLECTION_DATA)
+            withTimeout(5_000) {
+                client.connectionState.first { it is ConnectionState.Ready && it.token != original }
+            }
+            release.complete(Unit)
+            assertTrue(action.await().exceptionOrNull() is ObsWorkspaceChangedException)
+            assertEquals(0, server.receivedCount("SetCurrentProgramScene"))
+            client.disconnect()
+        }
+    }
+
+    @Test
     fun metersRetainOriginAndPauseDuringCollectionChange(): Unit = runBlocking {
         FakeObsServer().use { server ->
             server.start()

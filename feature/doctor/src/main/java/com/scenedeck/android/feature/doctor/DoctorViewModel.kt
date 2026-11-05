@@ -7,10 +7,14 @@ import com.scenedeck.android.core.data.DoctorChecks
 import com.scenedeck.android.core.data.DoctorIssue
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneGraphBuilder
+import com.scenedeck.android.core.data.WorkspaceSession
+import com.scenedeck.android.core.data.WorkspaceState
 import com.scenedeck.android.core.data.probeBrokenAudioInputs
+import com.scenedeck.android.core.data.requireCurrent
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.obs.ObsClient
 import com.scenedeck.android.core.obs.ObsRequestTimeoutException
+import com.scenedeck.android.core.obs.withSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -20,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 data class DoctorUiState(
@@ -32,6 +37,7 @@ data class DoctorUiState(
      * set, [issues] is empty: results from an earlier run are never shown as current.
      */
     val error: String? = null,
+    val workspace: WorkspaceSession? = null,
 )
 
 internal const val DOCTOR_FAILED_MESSAGE =
@@ -58,51 +64,72 @@ constructor(
 
     init {
         viewModelScope.launch {
-            client.connectionState.collectLatest { state ->
-                if (state is ConnectionState.Ready) {
-                    startChecks(state)
-                } else {
-                    checkJob?.cancel()
-                    _uiState.value = DoctorUiState(connection = state)
+            combine(client.connectionState, registry.workspaces.state) { connection, workspace ->
+                    connection to workspace
                 }
-            }
+                .collectLatest { (connection, workspace) ->
+                    val origin =
+                        (workspace as? WorkspaceState.Ready)
+                            ?.session
+                            ?.takeIf(registry.workspaces::isCurrent)
+                    if (origin != null) startChecks(connection, origin)
+                    else {
+                        checkJob?.cancel()
+                        _uiState.value =
+                            DoctorUiState(
+                                connection = connection,
+                                error =
+                                    if (workspace == WorkspaceState.Failed) DOCTOR_FAILED_MESSAGE
+                                    else null,
+                            )
+                    }
+                }
         }
     }
 
     fun refresh() {
-        val state = client.connectionState.value
-        if (state is ConnectionState.Ready) {
-            startChecks(state)
-        }
+        registry.retry()
+        val origin = registry.workspaces.currentSession() ?: return
+        startChecks(client.connectionState.value, origin)
     }
 
-    fun removeStaleEntry(sceneName: String) {
+    fun removeStaleEntry(origin: WorkspaceSession, sceneName: String) {
         viewModelScope.launch {
-            registry.remove(sceneName)
-            refresh()
-        }
-    }
-
-    private fun startChecks(connection: ConnectionState) {
-        checkJob?.cancel()
-        checkJob = viewModelScope.launch {
-            coroutineResult { runChecks(connection) }
-                .onFailure { failure ->
-                    // Drop earlier results: they would read as the outcome of this failed run.
-                    _uiState.value =
-                        DoctorUiState(
-                            connection = connection,
-                            error = doctorFailureMessage(failure),
-                        )
+            coroutineResult { registry.remove(origin, sceneName) }
+                .onSuccess { if (registry.workspaces.isCurrent(origin)) refresh() }
+                .onFailure {
+                    if (registry.workspaces.isCurrent(origin)) {
+                        _uiState.value =
+                            DoctorUiState(
+                                connection = client.connectionState.value,
+                                error = DOCTOR_FAILED_MESSAGE,
+                            )
+                    }
                 }
         }
     }
 
-    private suspend fun runChecks(connection: ConnectionState) {
-        _uiState.value = _uiState.value.copy(connection = connection, running = true, error = null)
+    private fun startChecks(connection: ConnectionState, origin: WorkspaceSession) {
+        checkJob?.cancel()
+        checkJob = viewModelScope.launch {
+            coroutineResult { client.withSession(origin.token) { runChecks(connection, origin) } }
+                .onFailure { failure ->
+                    if (registry.workspaces.isCurrent(origin)) {
+                        _uiState.value =
+                            DoctorUiState(
+                                connection = connection,
+                                error = doctorFailureMessage(failure),
+                            )
+                    }
+                }
+        }
+    }
+
+    private suspend fun runChecks(connection: ConnectionState, origin: WorkspaceSession) {
+        _uiState.value = DoctorUiState(connection = connection, running = true, workspace = origin)
         val sceneList = client.getSceneList().scenes
         val obsScenes = sceneList.map { it.name }
-        val entries = registry.snapshot()
+        val entries = registry.snapshot(origin)
         // Strict: a failed graph read fails the run instead of finishing as a partial all clear.
         val graph = graphBuilder.buildStrict(sceneList, entries)
         // Only explicitly PRIMARY scenes still present in OBS are reported, so only those are
@@ -127,12 +154,14 @@ constructor(
             )
 
         currentCoroutineContext().ensureActive()
+        registry.workspaces.requireCurrent(origin)
         _uiState.value =
             DoctorUiState(
                 connection = connection,
                 running = false,
                 issues = issues,
                 ranOnce = true,
+                workspace = origin,
             )
     }
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -37,6 +38,24 @@ sealed interface WorkspaceState {
     data object Failed : WorkspaceState
 }
 
+/** Read-only identity boundary shared by repositories and feature view models. */
+interface WorkspaceContext {
+    val state: StateFlow<WorkspaceState>
+
+    fun isCurrent(session: WorkspaceSession): Boolean
+
+    fun currentSession(): WorkspaceSession? =
+        (state.value as? WorkspaceState.Ready)?.session?.takeIf(::isCurrent)
+
+    fun retry()
+}
+
+class WorkspaceChangedException : IllegalStateException("Workspace is unavailable or changed")
+
+fun WorkspaceContext.requireCurrent(session: WorkspaceSession) {
+    if (!isCurrent(session)) throw WorkspaceChangedException()
+}
+
 /** Resolves collection identity only after the selected profile's connection is confirmed. */
 @Singleton
 class WorkspaceRepository
@@ -45,9 +64,9 @@ constructor(
     private val client: ObsClient,
     private val activeConnection: ActiveConnection,
     @ApplicationScope appScope: CoroutineScope,
-) {
+) : WorkspaceContext {
     private val current = MutableStateFlow<WorkspaceState>(WorkspaceState.Unavailable)
-    val state = current.asStateFlow()
+    override val state = current.asStateFlow()
     private val retryRevision = MutableStateFlow(0L)
 
     init {
@@ -63,7 +82,7 @@ constructor(
     }
 
     /** A synchronous guard for mutations/results, even before the flow collector catches up. */
-    fun isCurrent(session: WorkspaceSession): Boolean =
+    override fun isCurrent(session: WorkspaceSession): Boolean =
         current.value == WorkspaceState.Ready(session) && isOriginCurrent(session)
 
     private fun isOriginCurrent(session: WorkspaceSession): Boolean {
@@ -76,11 +95,8 @@ constructor(
             ready.token == session.token
     }
 
-    fun currentSession(): WorkspaceSession? =
-        (state.value as? WorkspaceState.Ready)?.session?.takeIf(::isCurrent)
-
     /** Retries only failed discovery. A pending lookup is never duplicated. */
-    fun retry() {
+    override fun retry() {
         if (current.compareAndSet(WorkspaceState.Failed, WorkspaceState.Resolving)) {
             retryRevision.update { it + 1 }
         }

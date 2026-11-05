@@ -117,6 +117,13 @@ constructor(
         enqueue { client.disconnect() }
     }
 
+    /** A completed profile deletion must not disconnect a newer, different target. */
+    fun disconnectIfProfile(profileId: Long) {
+        synchronized(commandLock) {
+            if (activeConnection.target.value.profileId == profileId) disconnect()
+        }
+    }
+
     /**
      * Cuts the current reconnect backoff short ("Retry now", app foreground, network available).
      * Never starts or replaces a session, so pending connect/disconnect commands stay in charge.

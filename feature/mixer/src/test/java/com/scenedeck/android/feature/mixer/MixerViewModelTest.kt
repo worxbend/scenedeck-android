@@ -2,7 +2,9 @@ package com.scenedeck.android.feature.mixer
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.model.SceneItemInfo
@@ -69,7 +71,7 @@ class MixerViewModelTest {
                 )
             )
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        mixer = MixerRepository(client, settings, holderScope)
+        mixer = MixerRepository(client, settings, MutableWorkspaceContext(), holderScope)
         viewModel = MixerViewModel(mixer, settings, client)
     }
 
@@ -96,9 +98,9 @@ class MixerViewModelTest {
         client.setReady()
         awaitState { it.inputs.isNotEmpty() }
 
-        viewModel.setMode(MixerMode.SELECTED)
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.SELECTED)
         awaitState { it.displayedScene != null }
-        viewModel.selectScene("Quiet A")
+        viewModel.selectScene(TEST_WORKSPACE, "Quiet A")
 
         // Discovery for "Quiet A" completes asynchronously: globals remain only.
         val state = awaitState {
@@ -126,7 +128,7 @@ class MixerViewModelTest {
         client.setReady()
         val before = awaitState { it.inputs.isNotEmpty() }.inputs
 
-        viewModel.setMode(MixerMode.PINNED)
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.PINNED)
 
         val state = awaitState { it.mode == MixerMode.PINNED }
         assertEquals(before.map { it.name }, state.inputs.map { it.name })
@@ -137,7 +139,7 @@ class MixerViewModelTest {
     fun selectedModePreservesMediaControls(): Unit = runBlocking {
         client.setReady()
         awaitState { it.inputs.any { input -> input.name == "Test Tone 440" } }
-        viewModel.setMode(MixerMode.SELECTED)
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.SELECTED)
         val state = awaitState {
             it.mode == MixerMode.SELECTED &&
                 it.inputs.any { input -> input.name == "Test Tone 440" }
@@ -149,9 +151,9 @@ class MixerViewModelTest {
     fun pinnedModeReflectsLockChanges(): Unit = runBlocking {
         client.setReady()
         awaitState { it.inputs.isNotEmpty() }
-        viewModel.setMode(MixerMode.PINNED)
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.PINNED)
         awaitState { it.mode == MixerMode.PINNED }
-        viewModel.toggleLock("Desktop Audio", true)
+        viewModel.toggleLock(TEST_WORKSPACE, "Desktop Audio", true)
         val state = awaitState { it.inputs.first { input -> input.name == "Desktop Audio" }.locked }
         assertTrue(state.inputs.first { it.name == "Desktop Audio" }.locked)
     }
@@ -160,7 +162,7 @@ class MixerViewModelTest {
     fun selectingNewSceneCancelsPendingDiscovery(): Unit = runBlocking {
         client.setReady()
         awaitState { it.inputs.isNotEmpty() }
-        viewModel.setMode(MixerMode.SELECTED)
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.SELECTED)
         awaitState { it.inputs.isNotEmpty() && it.mode == MixerMode.SELECTED }
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -175,9 +177,9 @@ class MixerViewModelTest {
                 }
             }
         }
-        viewModel.selectScene("Slow scene")
+        viewModel.selectScene(TEST_WORKSPACE, "Slow scene")
         withTimeout(5_000) { started.await() }
-        viewModel.selectScene("Quiet A")
+        viewModel.selectScene(TEST_WORKSPACE, "Quiet A")
         withTimeout(5_000) { cancelled.await() }
         val state = awaitState {
             it.displayedScene == "Quiet A" && it.inputs.size == 2
@@ -189,8 +191,8 @@ class MixerViewModelTest {
     fun selectedSceneFollowsObsRename(): Unit = runBlocking {
         client.setReady()
         awaitState { it.inputs.isNotEmpty() }
-        viewModel.setMode(MixerMode.SELECTED)
-        viewModel.selectScene("Quiet A")
+        viewModel.setMode(TEST_WORKSPACE, MixerMode.SELECTED)
+        viewModel.selectScene(TEST_WORKSPACE, "Quiet A")
         awaitState { it.displayedScene == "Quiet A" }
         val events = client.events as MutableSharedFlow<ObsEvent>
         withTimeout(5_000) {

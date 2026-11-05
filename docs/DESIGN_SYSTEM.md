@@ -214,3 +214,12 @@ The persistent bottom bar separates connection/output state from performance
 metrics into two compact rows while streaming; standby and recording-only states
 hide performance metrics. It reuses broadcast tally colors and timer pills
 across all main tabs, with explicit OFF AIR, retrying, paused and unknown states.
+
+### Workspace availability
+
+Use the shared `WorkspaceStatus` inline state while collection identity or its data
+is unavailable. Loading has progress; failure has explicit retry and never resembles
+an empty scene list. Scenes retains the output row independently. Key scene sheets
+and Mixer extras to the displayed workspace so they close when it changes. Inventory's
+previous-curation recovery uses a normal confirmation dialog naming the destination
+collection and merge counts, with Copy / Cancel actions.

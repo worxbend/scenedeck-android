@@ -5,11 +5,14 @@ import androidx.room.Room
 import com.scenedeck.android.background.BackgroundSettingsStore
 import com.scenedeck.android.core.data.KeystoreSecretsStore
 import com.scenedeck.android.core.data.SecretsStore
+import com.scenedeck.android.core.data.WorkspaceContext
+import com.scenedeck.android.core.data.WorkspaceRepository
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.database.ConnectionProfileDao
 import com.scenedeck.android.core.database.SceneDeckDatabase
 import com.scenedeck.android.core.database.SceneDeckMigrations
 import com.scenedeck.android.core.database.SceneRegistryDao
+import com.scenedeck.android.core.database.WorkspaceSceneDao
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.Module
@@ -40,6 +43,13 @@ object AppModule {
     @Provides
     fun provideSceneRegistryDao(database: SceneDeckDatabase): SceneRegistryDao =
         database.sceneRegistryDao()
+
+    @Provides
+    fun provideWorkspaceSceneDao(database: SceneDeckDatabase): WorkspaceSceneDao =
+        database.workspaceSceneDao()
+
+    @Provides
+    fun provideWorkspaceContext(repository: WorkspaceRepository): WorkspaceContext = repository
 
     @Provides
     @Singleton

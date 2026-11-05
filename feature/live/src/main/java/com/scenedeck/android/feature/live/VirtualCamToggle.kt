@@ -33,7 +33,7 @@ internal class VirtualCamToggle(
     private val _pending = MutableStateFlow<VirtualCamPending?>(null)
     val pending: StateFlow<VirtualCamPending?> = _pending.asStateFlow()
 
-    fun request() {
+    fun request(toggle: suspend () -> Unit = this.toggle) {
         if (_pending.value != null) return
         val wasActive = currentActive()
         _pending.value = if (wasActive) VirtualCamPending.STOPPING else VirtualCamPending.STARTING

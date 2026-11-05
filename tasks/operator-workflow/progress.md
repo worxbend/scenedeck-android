@@ -3,10 +3,12 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W1b — authoritative workspace integration**.
-- Next action: bind the registry and all consumers to the verified workspace context
-  using `workspace-design.md`. W1a and the W1b identity foundation are verified.
-- Full feature delivery: **in progress**. No new user-facing feature is marked shipped.
+- Active slice: **W1c — named decks** (next implementation).
+- Next action: read `decks-design.md`, add scoped deck/member/selection persistence
+  and lossless Room migration, then wire CRUD, membership/order, selection and transfer.
+  W1a and W1b are verified. W1c/W1d and all later milestones remain incomplete.
+- Full feature delivery: **in progress**. Workspace isolation and explicit previous
+  curation recovery are implemented and verified locally; no release was published.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
 ## 2026-11-05 — Workflow started
@@ -137,6 +139,123 @@
   widget scoping, origin-bound imports/Undo, legacy recovery, and named decks. The
   app intentionally still reads the legacy registry until those consumers migrate.
   This foundation does not check off W1b or ship a workspace user flow.
+
+## W1b — Activation worktree (in progress)
+
+- Identity foundation committed as `1fec41c`; the preceding goal turn was **progress**:
+  final-source gates passed and the checkpoint was committed with a clean worktree.
+- RegistryRepository now uses WorkspaceSceneDao and requires an explicit
+  WorkspaceSession for every read/mutation. A bound store guards each DAO call before
+  and after suspension, retains one mutation mutex, and attaches the captured namespace
+  to every write. Loaded-empty, loading, failed, and unavailable metadata are distinct.
+- Added WorkspaceContext as the injectable read-only identity boundary. Production
+  Hilt binds the existing WorkspaceRepository; legacy curation is read only for recovery.
+- ObsStateRepository now uses one scoped scene snapshot, keeps rename logs per scope,
+  rejects stale snapshots/events, and combines metadata only from the same session.
+  Scene commands use explicit origins. `ObsClient.withSession` carries the caller's
+  token into the protocol admission lane, preventing a coroutine delayed before its
+  first request from addressing a replacement session.
+- Live and Inventory callbacks capture the displayed workspace; sheet state is keyed
+  by workspace. Inventory field edits now read/modify inside the registry mutex.
+  Imports capture before opening the picker and retain destination through preview;
+  Undo carries its removal origin. "Copy previous curation" stages an explicit merge
+  preview and keeps the legacy source untouched.
+- Graph subscribes to stamped events before any initial read, binds reads to origin,
+  and discards stale results. Doctor binds complete scans and stale removals to origin.
+  Their unknown/loading states no longer imply an empty collection or All clear.
+- Thumbnail frames now carry workspace identity; captures bind their request token,
+  reset cache/throttle state at replacement, and Live filters frames by displayed origin.
+- Widget cache/actions persist profile + collection, treat unscoped old cache as
+  unactionable, and verify the intended collection after cold connection. They never
+  select another collection just to satisfy a cached action. Deep links resolve the
+  current workspace before switching.
+- Added a shared inline WorkspaceStatus component. The Material 3 Expressive skill
+  was consulted. Changed screen renders and accessibility checks are still pending.
+- `assembleDebug` **passed** for the initial activation production sources (522 tasks):
+  `/tmp/scenedeck-workspace-activation-app-compile.log`. A missing Graph → core:common
+  dependency was corrected. Subsequent test migration/scene-state guard edits require
+  a fresh final build; this is not full W1b verification.
+- Core test migration started: RegistryRepositoryTest uses the real scoped Room DAO;
+  single-workspace scene/screenshot fixtures have an explicit test-only DAO adapter.
+  Additional actual-DAO isolation, queued/stale mutation and recovery tests are still
+  required. Current targeted run: `/tmp/scenedeck-workspace-activation-data-tests.log`.
+- Outstanding: Mixer discovery/pinned/selected state, meter/media event origins and
+  deferred controls; feature/app test constructor and callback migration; new adversarial
+  scope tests; failure/cancellation/privacy review; quality/build/tests and renders.
+  No W1b checkbox is complete, and named decks plus all later features remain in scope.
+
+## W1b — Mixer and activation verification continuation
+
+- This goal turn is **progress**: migrated Mixer and all remaining feature/app test
+  APIs, added regression and rendering evidence, and fixed issues exposed by checks.
+  The preceding activation worktree is preserved; no additional feature scope was added.
+- Mixer now tags discovery/media snapshots and controls with WorkspaceSession, clears
+  selected/pinned lists and meters on replacement, preserves event tokens through
+  client-side meter sampling, and binds fader/extras debounce targets before delay.
+  Saved selected-scene preferences include profile + collection; legacy unscoped
+  choices are not automatically restored. Mode/grouping/locks/allow-list stay app-wide.
+- Added AGP native test fixtures in core:data (existing pinned dependencies only),
+  sharing the explicit single-workspace adapter and mutable context with feature
+  tests. Real multi-workspace registry tests continue using the actual Room DAO.
+- Graph's initial workspace watcher is also undispatched: a deterministic test exposed
+  it clearing a selection made just after construction. The stamped-event subscription
+  still precedes initial graph reads.
+- Widget targets are tested against wrong profile/collection and cold starts, and
+  legacy unscoped cached actions are rejected. The updater rechecks current identity
+  inside each preference transaction after widget discovery can suspend.
+- Profile deletion disconnects only its matching current target, with an atomic guard
+  against a newer different target. VCam captures the output session before scheduling
+  its coroutine. These close two final review gaps.
+- Added regression coverage for stale import confirmation; stale Mixer actions/events
+  and old write failures; same-named cached frames after reconnect with failed captures;
+  and a late scene-list reply/scene action after reconnect. Scoped Mixer selection
+  migration remains covered by the existing rename regression with explicit identity.
+- Extracted bulk registry operations and screen feedback to keep complexity checks
+  satisfied without blanket baselines. Documentation and protocol guidance now describe
+  actual worktree activation behavior; W1b is not yet checked complete.
+- Focused data/OBS tests passed before Mixer migration:
+  `/tmp/scenedeck-workspace-activation-unit.log`. Data+Mixer tests subsequently passed:
+  `/tmp/scenedeck-workspace-mixer-tests.log`. The complete app build and unit tests
+  passed in `/tmp/scenedeck-workspace-activation-validation.log`, but the combined
+  command failed one LiveDeckContent complexity check. Later source changes require
+  the final gate, so these are intermediate results, not final-source certification.
+- Eight new goldens render workspace loading/failure and recovery confirmation in
+  SceneDeck/OBS, light/dark. Recorded final text variants successfully (12 s):
+  `/tmp/scenedeck-workspace-renders-final.log`. Inspected initial dark/light captures;
+  final copy changes still need visual review. Existing screen goldens passed in the
+  broader unit suite. No real device/OBS or measured-performance claim is made.
+- A quality attempt overlapped further source cleanup and failed formatting plus
+  complexity; it is not a pass (`/tmp/scenedeck-workspace-activation-quality.log`).
+  Source was then formatted and frozen. Current final gate is session **15450**:
+  `/tmp/scenedeck-workspace-activation-quality-final.log` (JDK 21 + uv).
+  Resume by checking that process/log before launching another Gradle run. Then run
+  explicit assembleDebug/testDebugUnitTest, inspect final captures, and record outcomes.
+- Still required before W1b completion/commit: final gates, final diff review and any
+  fixes they expose. W1c named decks and the broader W1d integration checklist remain
+  incomplete, along with every later authorized feature. Show rundown stays excluded.
+
+## W1b — Verified activation checkpoint
+
+- W1b is complete. Identity, registry/scene/Mixer/diagnostic consumers, imports/Undo,
+  thumbnails, widget targets and matching-profile deletion now use explicit context.
+  Named decks are not implemented by this checkpoint.
+- The first final-source gate caught only Inventory's Compose ModifierParameter order;
+  corrected the signature without suppressing lint. The earlier failed log is retained
+  as `/tmp/scenedeck-workspace-activation-quality-final.log`.
+- **Full quality gate passed**, exit 0: JDK 21/uv, 926 Gradle tasks, formatting,
+  complexity, lint, build/tests, seven Semgrep rules on 244 files with zero findings,
+  clean Gitleaks history and working-tree scans. Evidence:
+  `/tmp/scenedeck-workspace-activation-quality-verified.log`.
+- **Explicit assembleDebug + testDebugUnitTest passed**, exit 0, 726 tasks:
+  `/tmp/scenedeck-workspace-activation-explicit.log`. Aggregate XML results (including
+  up-to-date suites): **622 tests / 110 suites, zero failures/errors/skips**.
+- Eight new goldens cover workspace loading/failure and previous-curation confirmation
+  in both SceneDeck and OBS light/dark. Final captures inspected: destination/counts,
+  Copy/Cancel, readable theme colors and unchanged surrounding controls. Existing
+  screen goldens also passed. No real-OBS/device or measured-performance claim is made.
+- Current-checkpoint text and W1b checkbox updated. Historical in-progress entries
+  above describe intermediate states, not remaining work. The durable goal stays active
+  for W1c–W11; Show rundown remains excluded.
 
 ## Decisions / limitations
 

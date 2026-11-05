@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -32,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -91,31 +91,48 @@ fun LiveScreen(
     Box(modifier = modifier.fillMaxSize()) {
         when (val connection = deckState.connectionState) {
             is ConnectionState.Ready ->
-                LiveDeckContent(
-                    deckState = deckState,
-                    telemetry = telemetry,
-                    pendingScene = pendingScene,
-                    hapticsEnabled = hapticsEnabled,
-                    motionLevel = motionLevel,
-                    thumbnails = thumbnails,
-                    onSceneTap = viewModel::onSceneTap,
-                    onStreamClick = viewModel::onStreamClick,
-                    onRecordClick = viewModel::onRecordClick,
-                    onToggleVirtualCam = viewModel::toggleVirtualCam,
-                    onQuickEditSave = viewModel::saveSceneMeta,
-                    sceneItemsVersion = sceneItemsVersion,
-                    onLoadSceneItems = viewModel::loadSceneItems,
-                    onToggleSceneItem = viewModel::toggleSceneItem,
-                    onReorder = viewModel::reorderDeck,
-                    onStudioToggle = viewModel::toggleStudioMode,
-                    onTransitionClick = viewModel::onTransitionClick,
-                    onCutClick = viewModel::onCutClick,
-                    onTransitionSelect = viewModel::selectTransition,
-                    onTransitionDurationChange = viewModel::setTransitionDuration,
-                    previewsEnabled = previewsEnabled,
-                    onPreviewsToggle = viewModel::togglePreviews,
-                    virtualCamPending = virtualCamPending,
-                )
+                key(deckState.workspace) {
+                    val origin = deckState.workspace
+                    LiveDeckContent(
+                        deckState = deckState,
+                        telemetry = telemetry,
+                        pendingScene = pendingScene,
+                        hapticsEnabled = hapticsEnabled,
+                        motionLevel = motionLevel,
+                        thumbnails = thumbnails.takeIf { it.workspace == origin }?.frames.orEmpty(),
+                        onSceneTap = { name -> origin?.let { viewModel.onSceneTap(it, name) } },
+                        onStreamClick = viewModel::onStreamClick,
+                        onRecordClick = viewModel::onRecordClick,
+                        onToggleVirtualCam = viewModel::toggleVirtualCam,
+                        onQuickEditSave = { name, primary, accent, icon ->
+                            origin?.let { viewModel.saveSceneMeta(it, name, primary, accent, icon) }
+                        },
+                        sceneItemsVersion = sceneItemsVersion,
+                        onLoadSceneItems = { name ->
+                            if (origin == null) emptyList()
+                            else viewModel.loadSceneItems(origin, name)
+                        },
+                        onToggleSceneItem = { name, id, enabled ->
+                            origin?.let { viewModel.toggleSceneItem(it, name, id, enabled) }
+                        },
+                        onReorder = { names -> origin?.let { viewModel.reorderDeck(it, names) } },
+                        onStudioToggle = { enabled ->
+                            origin?.let { viewModel.toggleStudioMode(it, enabled) }
+                        },
+                        onTransitionClick = { origin?.let(viewModel::onTransitionClick) },
+                        onCutClick = { origin?.let(viewModel::onCutClick) },
+                        onTransitionSelect = { name ->
+                            origin?.let { viewModel.selectTransition(it, name) }
+                        },
+                        onTransitionDurationChange = { duration ->
+                            origin?.let { viewModel.setTransitionDuration(it, duration) }
+                        },
+                        previewsEnabled = previewsEnabled,
+                        onPreviewsToggle = viewModel::togglePreviews,
+                        virtualCamPending = virtualCamPending,
+                        onRetryWorkspace = viewModel::retryWorkspace,
+                    )
+                }
 
             else ->
                 DisconnectedPlaceholder(
@@ -127,48 +144,8 @@ fun LiveScreen(
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
-    confirmation?.let { pending ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissConfirmation,
-            title = {
-                Text(
-                    when (pending) {
-                        TransportConfirmation.START_STREAM ->
-                            stringResource(R.string.confirm_start_stream_title)
-                        TransportConfirmation.STOP_STREAM ->
-                            stringResource(R.string.confirm_stop_stream_title)
-                        TransportConfirmation.START_RECORD ->
-                            stringResource(R.string.confirm_start_record_title)
-                        TransportConfirmation.STOP_RECORD ->
-                            stringResource(R.string.confirm_stop_record_title)
-                    }
-                )
-            },
-            text = {
-                Text(
-                    when (pending) {
-                        TransportConfirmation.START_STREAM ->
-                            stringResource(R.string.confirm_start_stream_body)
-                        TransportConfirmation.STOP_STREAM ->
-                            stringResource(R.string.confirm_stop_stream_body)
-                        TransportConfirmation.START_RECORD ->
-                            stringResource(R.string.confirm_start_record_body)
-                        TransportConfirmation.STOP_RECORD ->
-                            stringResource(R.string.confirm_stop_record_body)
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmPending) {
-                    Text(stringResource(R.string.action_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissConfirmation) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
+    confirmation?.let {
+        TransportConfirmationDialog(it, viewModel::confirmPending, viewModel::dismissConfirmation)
     }
 }
 
@@ -200,6 +177,7 @@ internal fun LiveDeckContent(
     previewsEnabled: Boolean,
     onPreviewsToggle: (Boolean) -> Unit,
     virtualCamPending: VirtualCamPending? = null,
+    onRetryWorkspace: () -> Unit = {},
 ) {
     var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
 
@@ -232,6 +210,8 @@ internal fun LiveDeckContent(
 
     val streaming = telemetry.stream?.active == true
     val recording = telemetry.record?.active == true
+    val showReorderGrips = reorderMode && reorderAllowed
+    val knownEmpty = deckState.workspace != null && orderedScenes.isEmpty()
 
     Column(
         modifier =
@@ -263,18 +243,15 @@ internal fun LiveDeckContent(
             onToggleVirtualCam = onToggleVirtualCam,
             virtualCamPending = virtualCamPending,
         )
-        if (deckState.studioMode) {
-            Spacer(Modifier.height(8.dp))
-            StudioModeBar(
-                deckState = deckState,
-                onTransitionClick = onTransitionClick,
-                onCutClick = onCutClick,
-                onTransitionSelect = onTransitionSelect,
-                onTransitionDurationChange = onTransitionDurationChange,
-                motionLevel = motionLevel,
-                tBarOpen = tBarOpen,
-            )
-        }
+        StudioModeSection(
+            deckState,
+            onTransitionClick,
+            onCutClick,
+            onTransitionSelect,
+            onTransitionDurationChange,
+            motionLevel,
+            tBarOpen,
+        )
         DeckFilterSection(
             deckOnly = deckOnly,
             onDeckOnlyChange = {
@@ -291,8 +268,10 @@ internal fun LiveDeckContent(
             onSearchChange = { searchQuery = it },
             reorderMode = reorderMode,
             onFinishReordering = { reorderMode = false },
-            listEmpty = orderedScenes.isEmpty(),
+            listEmpty = knownEmpty,
         )
+
+        DeckWorkspaceStatus(deckState, onRetryWorkspace)
 
         LazyVerticalGrid(
             modifier = Modifier.weight(1f),
@@ -308,7 +287,7 @@ internal fun LiveDeckContent(
                         scene,
                         positions[scene.name] ?: (orderedScenes.indexOf(scene) + 1),
                         isDragging,
-                        reorderMode && reorderAllowed,
+                        showReorderGrips,
                         searchQuery.isBlank(),
                         motionLevel,
                         deckState.studioMode,
@@ -325,18 +304,13 @@ internal fun LiveDeckContent(
     }
 
     quickEdit?.let { scene ->
-        QuickEditSheet(
-            scene = scene,
-            onDismiss = { quickEdit = null },
-            onSave = { primary, accentArgb, iconName ->
-                onQuickEditSave(scene.name, primary, accentArgb, iconName)
-                quickEdit = null
-            },
-            sceneItemsVersion = sceneItemsVersion,
-            onLoadSceneItems = onLoadSceneItems?.let { loader -> { loader(scene.name) } },
-            onToggleSceneItem = { itemId, enabled ->
-                onToggleSceneItem(scene.name, itemId, enabled)
-            },
+        DeckQuickEdit(
+            scene,
+            { quickEdit = null },
+            onQuickEditSave,
+            sceneItemsVersion,
+            onLoadSceneItems,
+            onToggleSceneItem,
         )
     }
 }

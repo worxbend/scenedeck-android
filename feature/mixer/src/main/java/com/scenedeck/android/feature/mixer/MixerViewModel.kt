@@ -8,6 +8,10 @@ import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.MixerInputState
 import com.scenedeck.android.core.data.MixerRepository
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.WorkspaceChangedException
+import com.scenedeck.android.core.data.WorkspaceSession
+import com.scenedeck.android.core.data.WorkspaceState
+import com.scenedeck.android.core.data.selectionBelongsTo
 import com.scenedeck.android.core.data.withMeterRefresh
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.model.ConnectionState
@@ -18,10 +22,10 @@ import com.scenedeck.android.core.model.ObsEvent
 import com.scenedeck.android.core.obs.ObsClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +63,8 @@ enum class MixerGrouping {
 
 data class MixerUiState(
     val connection: ConnectionState = ConnectionState.Disconnected,
+    val workspace: WorkspaceSession? = null,
+    val failed: Boolean = false,
     val mode: MixerMode = MixerMode.ACTIVE,
     val grouping: MixerGrouping = MixerGrouping.SCOPE,
     val search: String = "",
@@ -71,32 +77,6 @@ data class MixerUiState(
     val inputs: List<MixerInputState> = emptyList(),
     val sceneNames: List<String> = emptyList(),
 )
-
-/**
- * Coalesces fader writes to OBS: trailing debounce per input, so a fader drag emits at most one
- * request per window; the final value is sent immediately on drag end.
- */
-internal class FaderWriteBatcher(
-    private val scope: kotlinx.coroutines.CoroutineScope,
-    private val delayMs: Long,
-    private val send: suspend (String, Double) -> Unit,
-) {
-    private val jobs = mutableMapOf<String, Job>()
-
-    fun preview(inputName: String, volumeMul: Double) {
-        jobs[inputName]?.cancel()
-        jobs[inputName] = scope.launch {
-            delay(delayMs)
-            send(inputName, volumeMul)
-        }
-    }
-
-    fun commit(inputName: String, volumeMul: Double) {
-        jobs[inputName]?.cancel()
-        jobs.remove(inputName)
-        scope.launch { send(inputName, volumeMul) }
-    }
-}
 
 @HiltViewModel
 @OptIn(FlowPreview::class)
@@ -120,45 +100,55 @@ constructor(
 
     private val mode = MutableStateFlow(MixerMode.ACTIVE)
     private val grouping = MutableStateFlow(MixerGrouping.SCOPE)
-    private val selectedScene = MutableStateFlow<String?>(null)
-    private val selectedInputs = MutableStateFlow<List<DiscoveredInput>>(emptyList())
-    private val pinnedInputs = MutableStateFlow<List<MixerInputState>?>(null)
+
+    private data class Selection(
+        val workspace: WorkspaceSession? = null,
+        val scene: String? = null,
+        val inputs: List<DiscoveredInput> = emptyList(),
+        val pinned: List<MixerInputState>? = null,
+    )
+
+    private data class InputTarget(val workspace: WorkspaceSession, val name: String)
+
+    private val selection = MutableStateFlow(Selection())
     private val search = MutableStateFlow("")
     private var selectionJob: Job? = null
     private var selectionVersion = 0L
-    private val selectedRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val selectedRefresh = MutableSharedFlow<WorkspaceSession>(extraBufferCapacity = 1)
 
     private val batcher =
-        FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS) { name, mul ->
-            performAction { mixer.setInputVolume(name, mul) }
+        FaderWriteBatcher<InputTarget>(viewModelScope, FADER_DEBOUNCE_MS) { target, mul ->
+            performAction { mixer.setInputVolume(target.workspace, target.name, mul) }
         }
 
     val uiState: StateFlow<MixerUiState> =
         combine(
                 mixer.mixerState,
                 combine(mode, grouping, search) { m, g, q -> Triple(m, g, q) },
-                combine(selectedScene, selectedInputs, pinnedInputs) { s, si, p ->
-                    Triple(s, si, p)
-                },
+                selection,
                 settings.settings,
-                mixer.sceneNames,
-            ) { base, (m, g, q), (sel, selInputs, pinned), userSettings, sceneNames ->
+            ) { base, (m, g, q), local, userSettings ->
+                val chosen = local.takeIf { it.workspace == base.workspace } ?: Selection()
+                val sel = chosen.scene
                 val locks = userSettings.lockedInputs
                 val rawInputs =
                     when (m) {
                         MixerMode.ACTIVE -> base.inputs
-                        MixerMode.SELECTED -> selInputs.map { it.toUi(locks) }
+                        MixerMode.SELECTED -> chosen.inputs.map { it.toUi(locks) }
                         MixerMode.PINNED ->
-                            (pinned ?: base.inputs).map { input ->
+                            (chosen.pinned ?: base.inputs).map { input ->
                                 val live = base.inputs.firstOrNull { it.name == input.name }
                                 (live ?: input).copy(locked = input.name in locks)
                             }
                     }
                 val filtered =
-                    if (q.isBlank()) rawInputs
+                    if (base.workspace == null) emptyList()
+                    else if (q.isBlank()) rawInputs
                     else rawInputs.filter { it.name.contains(q, ignoreCase = true) }
                 MixerUiState(
                     connection = base.connection,
+                    workspace = base.workspace,
+                    failed = base.failed,
                     mode = m,
                     grouping = g,
                     search = q,
@@ -172,34 +162,61 @@ constructor(
                     notInProgram =
                         m == MixerMode.SELECTED && sel != null && sel != base.activeScene,
                     inputs = filtered,
-                    sceneNames = sceneNames,
+                    sceneNames = base.sceneNames,
                 )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MixerUiState())
 
+    private val extrasBatchers = mutableMapOf<String, FaderWriteBatcher<InputTarget>>()
+
     init {
         viewModelScope.launch {
-            // Meter refresh setting (FEATURE_SPEC §9): restart the meter pipeline on change.
-            settings.settings
-                .map { it.meterRefresh }
+            combine(mixer.workspaces.state, client.connectionState) { state, _ ->
+                    (state as? WorkspaceState.Ready)?.session?.takeIf(mixer::isCurrent)
+                }
                 .distinctUntilChanged()
-                .collectLatest { refresh ->
-                    if (refresh == MeterRefresh.OFF) levelsStore.clear()
-                    client.volumeMeters.withMeterRefresh(refresh).collect { levelsStore.update(it) }
+                .collectLatest { origin ->
+                    resetWorkspace(origin)
+                    if (origin != null) restoreSelection(origin)
                 }
         }
         viewModelScope.launch {
-            // Mute/volume events also patch the SELECTED-mode local list.
-            client.events.collect { event ->
-                when (event) {
+            combine(
+                    settings.settings.map { it.meterRefresh }.distinctUntilChanged(),
+                    mixer.workspaces.state,
+                    client.connectionState,
+                ) { refresh, workspace, _ ->
+                    refresh to
+                        (workspace as? WorkspaceState.Ready)?.session?.takeIf(mixer::isCurrent)
+                }
+                .distinctUntilChanged()
+                .collectLatest { (refresh, origin) ->
+                    levelsStore.clear()
+                    if (origin != null && refresh != MeterRefresh.OFF) {
+                        client.metersWithContext.withMeterRefresh(refresh).collect { batch ->
+                            if (batch.token == origin.token && mixer.isCurrent(origin))
+                                levelsStore.update(batch.readings)
+                        }
+                    }
+                }
+        }
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventsWithContext.collect { stamped ->
+                val origin = selection.value.workspace ?: return@collect
+                if (!mixer.isCurrent(origin) || stamped.token != origin.token) return@collect
+                when (val event = stamped.event) {
                     is ObsEvent.InputMuteStateChanged -> {
-                        patchSelected(event.inputName) { it.copy(muted = event.muted) }
-                        patchPinned(event.inputName) { it.copy(muted = event.muted) }
+                        patchSelected(origin, event.inputName) { it.copy(muted = event.muted) }
+                        patchPinned(origin, event.inputName) { it.copy(muted = event.muted) }
                     }
 
                     is ObsEvent.InputVolumeChanged -> {
-                        patchSelected(event.inputName) { it.copy(volumeMul = event.volumeMul) }
-                        patchPinned(event.inputName) { it.copy(volumeMul = event.volumeMul) }
+                        patchSelected(origin, event.inputName) {
+                            it.copy(volumeMul = event.volumeMul)
+                        }
+                        patchPinned(origin, event.inputName) {
+                            it.copy(volumeMul = event.volumeMul)
+                        }
                     }
 
                     // Frozen-scene refresh: lifecycle events re-run discovery for the
@@ -210,14 +227,16 @@ constructor(
                     is ObsEvent.SceneListChanged,
                     is ObsEvent.InputCreated,
                     is ObsEvent.InputRemoved,
-                    is ObsEvent.InputNameChanged -> selectedRefresh.tryEmit(Unit)
+                    is ObsEvent.InputNameChanged -> selectedRefresh.tryEmit(origin)
 
                     // ObsStateRepository migrates the persisted selection; follow it in memory.
                     is ObsEvent.SceneNameChanged -> {
-                        selectedScene.update {
-                            if (it == event.oldSceneName) event.sceneName else it
+                        selection.update { current ->
+                            if (current.workspace == origin && current.scene == event.oldSceneName)
+                                current.copy(scene = event.sceneName)
+                            else current
                         }
-                        selectedRefresh.tryEmit(Unit)
+                        selectedRefresh.tryEmit(origin)
                     }
 
                     else -> Unit
@@ -225,9 +244,10 @@ constructor(
             }
         }
         viewModelScope.launch {
-            selectedRefresh.debounce(REFRESH_DEBOUNCE_MS).collectLatest {
-                val scene = selectedScene.value ?: return@collectLatest
-                performAction { discoverSelectedScene(scene, selectionVersion) }
+            selectedRefresh.debounce(REFRESH_DEBOUNCE_MS).collectLatest { origin ->
+                val scene =
+                    selection.value.takeIf { it.workspace == origin }?.scene ?: return@collectLatest
+                performAction { discoverSelectedScene(origin, scene, selectionVersion) }
             }
         }
         viewModelScope.launch {
@@ -238,57 +258,97 @@ constructor(
             grouping.value =
                 coroutineResult { MixerGrouping.valueOf(persisted.mixerGrouping) }
                     .getOrDefault(MixerGrouping.SCOPE)
-            persisted.mixerSelectedScene?.let { selectScene(it, persist = false) }
         }
     }
 
-    fun setMode(newMode: MixerMode) {
-        if (newMode == MixerMode.PINNED && mode.value != MixerMode.PINNED) {
-            pinnedInputs.value = uiState.value.inputs
+    fun retryWorkspace() = mixer.retry()
+
+    private fun resetWorkspace(origin: WorkspaceSession?) {
+        selectionJob?.cancel()
+        selectionVersion++
+        selection.value = Selection(workspace = origin)
+        batcher.cancelAll()
+        extrasBatchers.values.forEach { it.cancelAll() }
+        levelsStore.clear()
+    }
+
+    private suspend fun restoreSelection(origin: WorkspaceSession) {
+        performAction {
+            val persisted = settings.settings.first()
+            if (mixer.isCurrent(origin) && persisted.selectionBelongsTo(origin.key)) {
+                selectScene(origin, persisted.mixerSelectedScene, persist = false)
+            }
         }
-        if (newMode == MixerMode.SELECTED && selectedScene.value == null) {
-            selectScene(uiState.value.activeScene ?: uiState.value.sceneNames.firstOrNull())
+    }
+
+    fun setMode(origin: WorkspaceSession, newMode: MixerMode) {
+        if (!mixer.isCurrent(origin)) return
+        if (newMode == MixerMode.PINNED && mode.value != MixerMode.PINNED) {
+            selection.update { it.copy(workspace = origin, pinned = uiState.value.inputs) }
+        }
+        if (newMode == MixerMode.SELECTED && selection.value.scene == null) {
+            selectScene(origin, uiState.value.activeScene ?: uiState.value.sceneNames.firstOrNull())
         }
         mode.value = newMode
         launchAction { settings.setMixerMode(newMode.name) }
     }
 
-    fun selectScene(sceneName: String?, persist: Boolean = true) {
+    fun selectScene(origin: WorkspaceSession, sceneName: String?, persist: Boolean = true) {
+        if (!mixer.isCurrent(origin)) return
         selectionJob?.cancel()
         selectionVersion++
         val version = selectionVersion
-        selectedScene.value = sceneName
-        selectedInputs.value = emptyList()
+        selection.update { it.copy(workspace = origin, scene = sceneName, inputs = emptyList()) }
         selectionJob = viewModelScope.launch {
             performAction {
-                if (persist) persistSelection(sceneName)
-                discoverSelectedScene(selectedScene.value, version)
+                if (persist) persistSelection(origin, sceneName)
+                discoverSelectedScene(origin, selection.value.scene, version)
             }
         }
     }
 
-    /**
-     * Saves the choice, then re-applies a rename that OBS reported while the write was in flight
-     * (the app-wide rename migration ran before this write and found nothing to move).
-     */
-    private suspend fun persistSelection(sceneName: String?) {
-        settings.setMixerSelectedScene(sceneName)
-        val current = selectedScene.value
-        if (current != sceneName) {
-            settings.update {
-                if (it.mixerSelectedScene == sceneName) it.copy(mixerSelectedScene = current)
-                else it
-            }
+    /** The scope and choice are saved atomically; a concurrent rename is reconciled afterward. */
+    private suspend fun persistSelection(origin: WorkspaceSession, sceneName: String?) {
+        settings.update {
+            if (!mixer.isCurrent(origin)) throw WorkspaceChangedException()
+            it.copy(
+                mixerSelectedScene = sceneName,
+                mixerSelectedProfileId = origin.key.profileId,
+                mixerSelectedCollection = origin.key.collectionName,
+            )
+        }
+        settings.update { current ->
+            val selected = selection.value
+            if (
+                selectionIsCurrent(origin) &&
+                    current.selectionBelongsTo(origin.key) &&
+                    current.mixerSelectedScene == sceneName
+            ) {
+                current.copy(mixerSelectedScene = selected.scene)
+            } else current
         }
     }
 
-    private suspend fun discoverSelectedScene(sceneName: String?, version: Long) {
-        val inputs = mixer.discoverScene(sceneName)
+    private suspend fun discoverSelectedScene(
+        origin: WorkspaceSession,
+        sceneName: String?,
+        version: Long,
+    ) {
+        val inputs = mixer.discoverScene(origin, sceneName)
         currentCoroutineContext().ensureActive()
-        if (selectionVersion == version && selectedScene.value == sceneName) {
-            selectedInputs.value = inputs
+        selection.update { current ->
+            if (
+                selectionIsCurrent(origin) &&
+                    selectionVersion == version &&
+                    current.scene == sceneName
+            )
+                current.copy(inputs = inputs)
+            else current
         }
     }
+
+    private fun selectionIsCurrent(origin: WorkspaceSession) =
+        mixer.isCurrent(origin) && selection.value.workspace == origin
 
     fun setGrouping(newGrouping: MixerGrouping) {
         grouping.value = newGrouping
@@ -299,28 +359,30 @@ constructor(
         search.value = query
     }
 
-    fun onVolumePreview(inputName: String, volumeMul: Double) {
-        batcher.preview(inputName, volumeMul)
+    fun onVolumePreview(origin: WorkspaceSession, inputName: String, volumeMul: Double) {
+        batcher.preview(InputTarget(origin, inputName), volumeMul)
     }
 
-    fun onVolumeCommit(inputName: String, volumeMul: Double) {
-        batcher.commit(inputName, volumeMul)
+    fun onVolumeCommit(origin: WorkspaceSession, inputName: String, volumeMul: Double) {
+        batcher.commit(InputTarget(origin, inputName), volumeMul)
     }
 
-    fun toggleMute(inputName: String, muted: Boolean) {
-        launchAction { mixer.setInputMute(inputName, muted) }
+    fun toggleMute(origin: WorkspaceSession, inputName: String, muted: Boolean) {
+        launchAction { mixer.setInputMute(origin, inputName, muted) }
     }
 
-    fun toggleLock(inputName: String, locked: Boolean) {
-        launchAction { mixer.setLocked(inputName, locked) }
+    fun toggleLock(origin: WorkspaceSession, inputName: String, locked: Boolean) {
+        launchAction { mixer.setLocked(origin, inputName, locked) }
     }
 
     // ── Media controls (M7) ─────────────────────────────────────────────────
 
-    fun mediaPlayPause(inputName: String) {
-        val state = mediaStatus.value[inputName]?.state
+    fun mediaPlayPause(origin: WorkspaceSession, inputName: String) {
+        val state =
+            mediaStatus.value.takeIf { it.workspace == origin }?.inputs?.get(inputName)?.state
         launchAction {
             mixer.triggerMediaInputAction(
+                origin,
                 inputName,
                 if (state == MediaStateKind.PLAYING) MediaActionKind.PAUSE
                 else MediaActionKind.PLAY,
@@ -328,59 +390,79 @@ constructor(
         }
     }
 
-    fun mediaRestart(inputName: String) {
-        launchAction { mixer.triggerMediaInputAction(inputName, MediaActionKind.RESTART) }
+    fun mediaRestart(origin: WorkspaceSession, inputName: String) {
+        launchAction { mixer.triggerMediaInputAction(origin, inputName, MediaActionKind.RESTART) }
     }
 
     // ── Audio extras (M7) ───────────────────────────────────────────────────
 
-    suspend fun loadAudioExtras(inputName: String): AudioExtras =
+    suspend fun loadAudioExtras(origin: WorkspaceSession, inputName: String): AudioExtras =
         AudioExtras(
-            balance = coroutineResult { mixer.getInputAudioBalance(inputName) }.getOrDefault(0.5),
+            balance =
+                coroutineResult { mixer.getInputAudioBalance(origin, inputName) }.getOrDefault(0.5),
             syncOffsetMs =
-                coroutineResult { mixer.getInputAudioSyncOffset(inputName) }.getOrDefault(0),
+                coroutineResult { mixer.getInputAudioSyncOffset(origin, inputName) }
+                    .getOrDefault(0),
             monitorType =
-                coroutineResult { mixer.getInputAudioMonitorType(inputName) }
+                coroutineResult { mixer.getInputAudioMonitorType(origin, inputName) }
                     .getOrDefault(MonitorTypeKind.NONE),
         )
 
-    private val extrasBatchers = mutableMapOf<String, FaderWriteBatcher>()
-
-    private fun extrasBatcher(key: String, send: suspend (String, Double) -> Unit) =
+    private fun extrasBatcher(key: String, send: suspend (InputTarget, Double) -> Unit) =
         extrasBatchers.getOrPut(key) {
             FaderWriteBatcher(viewModelScope, FADER_DEBOUNCE_MS) { name, value ->
                 performAction { send(name, value) }
             }
         }
 
-    fun setAudioBalance(inputName: String, balance: Double) {
-        extrasBatcher("balance") { name, value -> mixer.setInputAudioBalance(name, value) }
-            .preview(inputName, balance)
-    }
-
-    fun setAudioSyncOffset(inputName: String, offsetMs: Int) {
-        extrasBatcher("syncOffset") { name, value ->
-                mixer.setInputAudioSyncOffset(name, value.toInt())
+    fun setAudioBalance(origin: WorkspaceSession, inputName: String, balance: Double) {
+        extrasBatcher("balance") { name, value ->
+                mixer.setInputAudioBalance(name.workspace, name.name, value)
             }
-            .preview(inputName, offsetMs.toDouble())
+            .preview(InputTarget(origin, inputName), balance)
     }
 
-    fun setAudioMonitorType(inputName: String, monitorType: MonitorTypeKind) {
-        launchAction { mixer.setInputAudioMonitorType(inputName, monitorType) }
+    fun setAudioSyncOffset(origin: WorkspaceSession, inputName: String, offsetMs: Int) {
+        extrasBatcher("syncOffset") { name, value ->
+                mixer.setInputAudioSyncOffset(name.workspace, name.name, value.toInt())
+            }
+            .preview(InputTarget(origin, inputName), offsetMs.toDouble())
     }
 
-    private inline fun patchPinned(name: String, transform: (MixerInputState) -> MixerInputState) {
-        pinnedInputs.value = pinnedInputs.value?.map { if (it.name == name) transform(it) else it }
+    fun setAudioMonitorType(
+        origin: WorkspaceSession,
+        inputName: String,
+        monitorType: MonitorTypeKind,
+    ) {
+        launchAction { mixer.setInputAudioMonitorType(origin, inputName, monitorType) }
+    }
+
+    private inline fun patchPinned(
+        origin: WorkspaceSession,
+        name: String,
+        transform: (MixerInputState) -> MixerInputState,
+    ) {
+        selection.update { current ->
+            if (current.workspace == origin)
+                current.copy(
+                    pinned = current.pinned?.map { if (it.name == name) transform(it) else it }
+                )
+            else current
+        }
     }
 
     private inline fun patchSelected(
+        origin: WorkspaceSession,
         name: String,
         transform: (DiscoveredInput) -> DiscoveredInput,
     ) {
-        selectedInputs.value =
-            selectedInputs.value.map {
-                if (it.name == name) transform(it) else it
-            }
+        selection.update { current ->
+            if (current.workspace == origin)
+                current.copy(
+                    inputs = current.inputs.map { if (it.name == name) transform(it) else it }
+                )
+            else current
+        }
     }
 
     private fun DiscoveredInput.toUi(locks: Set<String>) =

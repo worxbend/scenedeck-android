@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.testing.unit.runGlanceAppWidgetUnitTest
 import androidx.glance.testing.unit.hasText
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -38,6 +39,7 @@ class SceneDeckWidgetTest {
             GlanceTheme {
                 WidgetContent(
                     WidgetSnapshot(
+                        workspace = TEST_WORKSPACE.key,
                         sceneNames = listOf("Cam 1", "Screen", "Quiet B", "Scene"),
                         programScene = "Cam 1",
                         connectionLabel = "Live",

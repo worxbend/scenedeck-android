@@ -35,6 +35,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.scenedeck.android.MainActivity
 import com.scenedeck.android.R
+import com.scenedeck.android.core.data.WorkspaceKey
 
 /**
  * Home-screen mini-deck: 2-column grid of PRIMARY scenes (up to [SceneDeckWidgetKeys.MAX_SCENES])
@@ -79,6 +80,7 @@ internal fun WidgetContent(snapshot: WidgetSnapshot) {
                 items(snapshot.sceneNames.size) { slot ->
                     SceneChip(
                         name = snapshot.sceneNames[slot],
+                        workspace = requireNotNull(snapshot.workspace),
                         isProgram = snapshot.sceneNames[slot] == snapshot.programScene,
                     )
                 }
@@ -106,7 +108,7 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun SceneChip(name: String, isProgram: Boolean) {
+private fun SceneChip(name: String, isProgram: Boolean, workspace: WorkspaceKey) {
     val background =
         if (isProgram) GlanceTheme.colors.error else GlanceTheme.colors.secondaryContainer
     val content =
@@ -119,7 +121,11 @@ private fun SceneChip(name: String, isProgram: Boolean) {
                 .background(background)
                 .clickable(
                     actionRunCallback<SetSceneAction>(
-                        actionParametersOf(SceneDeckWidgetKeys.sceneNameParam to name)
+                        actionParametersOf(
+                            SceneDeckWidgetKeys.sceneNameParam to name,
+                            SceneDeckWidgetKeys.profileIdParam to workspace.profileId,
+                            SceneDeckWidgetKeys.collectionParam to workspace.collectionName,
+                        )
                     )
                 )
                 .padding(horizontal = 12.dp, vertical = 12.dp),

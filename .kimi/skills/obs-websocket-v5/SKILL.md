@@ -47,7 +47,9 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
   revision. Preserve changes received during initial GetVersion. A deliberate
   SetCurrentSceneCollection can finish through its own events, but pre-dispatch checks
   must still reject a queued command from an obsolete collection. No automatic retry
-  of a write with an uncertain outcome.
+  of a write with an uncertain outcome. Caller-bound compound/deferred operations
+  use `ObsClient.withSession(token)`, which carries the expected origin through
+  suspension before the first request and rechecks at admission/publication.
 - **Failure privacy**: expose typed safe descriptions, never raw server comments,
   response/parser payloads or transport causes in diagnostic/UI strings.
 - **Thumbnails**: reject images above 2 MiB compressed before base64 allocation;

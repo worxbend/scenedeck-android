@@ -3,6 +3,7 @@ package com.scenedeck.android.widget
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.model.ConnectionState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -17,6 +18,7 @@ class WidgetSnapshotTest {
     fun `write then read round-trips`() {
         val snapshot =
             WidgetSnapshot(
+                workspace = TEST_WORKSPACE.key,
                 sceneNames = listOf("Cam 1", "Screen"),
                 programScene = "Cam 1",
                 connectionLabel = "Live",
@@ -31,12 +33,18 @@ class WidgetSnapshotTest {
     fun `write clears stale slots from a larger previous snapshot`() {
         val big =
             WidgetSnapshot(
+                workspace = TEST_WORKSPACE.key,
                 sceneNames = listOf("A", "B", "C", "D"),
                 programScene = "A",
             )
         val prefs = big.writtenTo(emptyPreferences())
 
-        val small = WidgetSnapshot(sceneNames = listOf("A"), programScene = null)
+        val small =
+            WidgetSnapshot(
+                workspace = TEST_WORKSPACE.key,
+                sceneNames = listOf("A"),
+                programScene = null,
+            )
         val restored = WidgetSnapshot.readFrom(small.writtenTo(prefs))
 
         assertEquals(listOf("A"), restored.sceneNames)
@@ -53,7 +61,12 @@ class WidgetSnapshotTest {
     @Test
     fun `write mutates in place (Glance updateAppWidgetState discards return values)`() {
         val prefs = mutablePreferencesOf()
-        WidgetSnapshot(sceneNames = listOf("Cam 1"), connectionLabel = "Live").writeTo(prefs)
+        WidgetSnapshot(
+                workspace = TEST_WORKSPACE.key,
+                sceneNames = listOf("Cam 1"),
+                connectionLabel = "Live",
+            )
+            .writeTo(prefs)
 
         assertEquals(1, prefs[SceneDeckWidgetKeys.sceneCount])
         assertEquals("Cam 1", prefs[SceneDeckWidgetKeys.sceneName(0)])
@@ -72,15 +85,28 @@ class WidgetSnapshotTest {
     fun `corrupt excessive count is bounded before allocation`() {
         val prefs = mutablePreferencesOf(SceneDeckWidgetKeys.sceneCount to Int.MAX_VALUE)
         prefs[SceneDeckWidgetKeys.sceneName(0)] = "Main"
+        prefs[SceneDeckWidgetKeys.profileId] = TEST_WORKSPACE.key.profileId
+        prefs[SceneDeckWidgetKeys.collectionName] = TEST_WORKSPACE.key.collectionName
         assertEquals(listOf("Main"), WidgetSnapshot.readFrom(prefs).sceneNames)
     }
 
     @Test
     fun `snapshot writes at most the supported scene count`() {
         val prefs = mutablePreferencesOf()
-        WidgetSnapshot(sceneNames = (0..20).map { "Scene $it" }).writeTo(prefs)
+        WidgetSnapshot(workspace = TEST_WORKSPACE.key, sceneNames = (0..20).map { "Scene $it" })
+            .writeTo(prefs)
         assertEquals(SceneDeckWidgetKeys.MAX_SCENES, prefs[SceneDeckWidgetKeys.sceneCount])
         assertNull(prefs[SceneDeckWidgetKeys.sceneName(SceneDeckWidgetKeys.MAX_SCENES)])
+    }
+
+    @Test
+    fun `legacy cached actions without identity must be refreshed before use`() {
+        val prefs = mutablePreferencesOf(SceneDeckWidgetKeys.sceneCount to 2)
+        prefs[SceneDeckWidgetKeys.sceneName(0)] = "Cam 1"
+        prefs[SceneDeckWidgetKeys.sceneName(1)] = "Screen"
+        val snapshot = WidgetSnapshot.readFrom(prefs)
+        assertEquals(emptyList<String>(), snapshot.sceneNames)
+        assertNull(snapshot.workspace)
     }
 
     private companion object {

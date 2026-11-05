@@ -5,6 +5,10 @@ import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.TEST_WORKSPACE
+import com.scenedeck.android.core.data.reorder
+import com.scenedeck.android.core.data.singleWorkspaceRegistry
+import com.scenedeck.android.core.data.update
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
@@ -53,7 +57,7 @@ class InventoryViewModelTest {
     @Before
     fun setUp() {
         dao = FakeRegistryDao()
-        registry = RegistryRepository(dao)
+        registry = singleWorkspaceRegistry(dao)
         client = FakeObsClient()
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         viewModel =
@@ -84,8 +88,8 @@ class InventoryViewModelTest {
 
     @Test
     fun listsObsScenesAndStaleEntriesWithUnassignedCount(): Unit = runBlocking {
-        registry.update("Cam 1", SceneRole.PRIMARY, null, null)
-        registry.update("Ghost", SceneRole.MODULE, null, null)
+        registry.update(TEST_WORKSPACE, "Cam 1", SceneRole.PRIMARY, null, null)
+        registry.update(TEST_WORKSPACE, "Ghost", SceneRole.MODULE, null, null)
         client.setReady()
 
         val state = awaitState { it.scenes.size == 4 }
@@ -99,8 +103,8 @@ class InventoryViewModelTest {
 
     @Test
     fun implicitPrimaryIsNotReportedAsAssigned(): Unit = runBlocking {
-        registry.update("Cam 1", SceneRole.PRIMARY, null, null)
-        registry.update("Ghost", null, 0xFF7E57C2, null)
+        registry.update(TEST_WORKSPACE, "Cam 1", SceneRole.PRIMARY, null, null)
+        registry.update(TEST_WORKSPACE, "Ghost", null, 0xFF7E57C2, null)
         client.setReady()
 
         val state = awaitState { it.scenes.size == 4 }
@@ -113,21 +117,21 @@ class InventoryViewModelTest {
 
     @Test
     fun removeStaleCanBeUndone(): Unit = runBlocking {
-        registry.update("Ghost", SceneRole.MODULE, 0xFF7E57C2, "FILM")
-        registry.reorder(listOf("Ghost"))
-        val original = registry.byName("Ghost")
+        registry.update(TEST_WORKSPACE, "Ghost", SceneRole.MODULE, 0xFF7E57C2, "FILM")
+        registry.reorder(TEST_WORKSPACE, listOf("Ghost"))
+        val original = registry.byName(TEST_WORKSPACE, "Ghost")
         client.setReady()
         awaitState { it.scenes.any { scene -> scene.name == "Ghost" } }
 
         val removal = async(start = CoroutineStart.UNDISPATCHED) { viewModel.removals.first() }
-        viewModel.removeStale("Ghost")
+        viewModel.removeStale(TEST_WORKSPACE, "Ghost")
         val removed = withTimeout(5_000) { removal.await() }
         awaitState { it.scenes.none { scene -> scene.name == "Ghost" } }
         assertEquals(original, removed.entry)
 
         viewModel.undoRemoveStale(removed)
         awaitState { it.scenes.any { scene -> scene.name == "Ghost" && scene.stale } }
-        assertEquals(original, registry.byName("Ghost"))
+        assertEquals(original, registry.byName(TEST_WORKSPACE, "Ghost"))
     }
 
     @Test
@@ -135,62 +139,62 @@ class InventoryViewModelTest {
         client.setReady()
         awaitState { it.scenes.count { scene -> !scene.stale } == 3 }
 
-        viewModel.setRole("Quiet A", SceneRole.ARCHIVE)
+        viewModel.setRole(TEST_WORKSPACE, "Quiet A", SceneRole.ARCHIVE)
         awaitState { state ->
             state.scenes.single { it.name == "Quiet A" }.role == SceneRole.ARCHIVE
         }
 
-        assertEquals(SceneRole.ARCHIVE, registry.byName("Quiet A")?.role)
+        assertEquals(SceneRole.ARCHIVE, registry.byName(TEST_WORKSPACE, "Quiet A")?.role)
     }
 
     @Test
     fun bulkAssignCreatesSecondaryEntriesOnlyForUnassigned(): Unit = runBlocking {
-        registry.update("Cam 1", SceneRole.PRIMARY, null, null)
+        registry.update(TEST_WORKSPACE, "Cam 1", SceneRole.PRIMARY, null, null)
         client.setReady()
         awaitState { it.scenes.count { scene -> !scene.stale } == 3 }
 
-        viewModel.bulkAssignUnassigned()
+        viewModel.bulkAssignUnassigned(TEST_WORKSPACE)
         awaitState { it.unassignedCount == 0 }
 
-        assertEquals(SceneRole.PRIMARY, registry.byName("Cam 1")?.role) // untouched
-        assertEquals(SceneRole.SECONDARY, registry.byName("Screen")?.role)
-        assertEquals(SceneRole.SECONDARY, registry.byName("Quiet A")?.role)
+        assertEquals(SceneRole.PRIMARY, registry.byName(TEST_WORKSPACE, "Cam 1")?.role) // untouched
+        assertEquals(SceneRole.SECONDARY, registry.byName(TEST_WORKSPACE, "Screen")?.role)
+        assertEquals(SceneRole.SECONDARY, registry.byName(TEST_WORKSPACE, "Quiet A")?.role)
     }
 
     @Test
     fun exportImportRoundTripsThroughViewModel(): Unit = runBlocking {
-        registry.update("Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA")
-        registry.update("Quiet A", SceneRole.ARCHIVE, null, null)
+        registry.update(TEST_WORKSPACE, "Cam 1", SceneRole.PRIMARY, 0xFF7E57C2, "CAMERA")
+        registry.update(TEST_WORKSPACE, "Quiet A", SceneRole.ARCHIVE, null, null)
 
-        val yaml = viewModel.transfer.encode()
+        val yaml = viewModel.transfer.encode(TEST_WORKSPACE)
         assertTrue(yaml.contains("Cam 1"))
 
-        registry.remove("Cam 1")
-        registry.remove("Quiet A")
-        viewModel.transfer.stage(yaml)
+        registry.remove(TEST_WORKSPACE, "Cam 1")
+        registry.remove(TEST_WORKSPACE, "Quiet A")
+        viewModel.transfer.stage(yaml, TEST_WORKSPACE)
         viewModel.importPreview.first { it != null }
         viewModel.transfer.confirmImport()
         withTimeout(5_000) {
-            while (registry.byName("Cam 1")?.role != SceneRole.PRIMARY) {
+            while (registry.byName(TEST_WORKSPACE, "Cam 1")?.role != SceneRole.PRIMARY) {
                 kotlinx.coroutines.delay(25)
             }
         }
 
-        assertEquals(SceneRole.PRIMARY, registry.byName("Cam 1")?.role)
-        assertEquals(0xFF7E57C2, registry.byName("Cam 1")?.accentColorArgb)
-        assertEquals("CAMERA", registry.byName("Cam 1")?.iconName)
-        assertEquals(SceneRole.ARCHIVE, registry.byName("Quiet A")?.role)
+        assertEquals(SceneRole.PRIMARY, registry.byName(TEST_WORKSPACE, "Cam 1")?.role)
+        assertEquals(0xFF7E57C2, registry.byName(TEST_WORKSPACE, "Cam 1")?.accentColorArgb)
+        assertEquals("CAMERA", registry.byName(TEST_WORKSPACE, "Cam 1")?.iconName)
+        assertEquals(SceneRole.ARCHIVE, registry.byName(TEST_WORKSPACE, "Quiet A")?.role)
     }
 
     @Test
     fun ordersLikeTheDeckAndKeepsUnassignedAfterReorder(): Unit = runBlocking {
-        registry.update("Ghost", SceneRole.MODULE, null, null)
+        registry.update(TEST_WORKSPACE, "Ghost", SceneRole.MODULE, null, null)
         client.setReady()
         // No saved positions: OBS order (top scene has the highest index), stale entry last.
         var state = awaitState { it.scenes.size == 4 }
         assertEquals(listOf("Quiet A", "Screen", "Cam 1", "Ghost"), state.scenes.map { it.name })
 
-        viewModel.reorder(listOf("Cam 1", "Ghost", "Quiet A", "Screen"))
+        viewModel.reorder(TEST_WORKSPACE, listOf("Cam 1", "Ghost", "Quiet A", "Screen"))
         state = awaitState { it.scenes.firstOrNull()?.name == "Cam 1" }
 
         assertEquals(listOf("Cam 1", "Quiet A", "Screen", "Ghost"), state.scenes.map { it.name })
@@ -202,7 +206,7 @@ class InventoryViewModelTest {
         val received = async { viewModel.messages.first() }
         yield()
 
-        viewModel.transfer.stage("not: [a registry")
+        viewModel.transfer.stage("not: [a registry", TEST_WORKSPACE)
 
         assertTrue(withTimeout(5_000) { received.await() }.startsWith("Import failed"))
     }
@@ -211,9 +215,9 @@ class InventoryViewModelTest {
     fun storageFailureShowsSanitizedMessage(): Unit = runBlocking {
         dao.failure = IllegalStateException("sensitive/file/path")
         val message = async(start = CoroutineStart.UNDISPATCHED) { viewModel.messages.first() }
-        viewModel.setRole("Cam 1", SceneRole.ARCHIVE)
+        viewModel.setRole(TEST_WORKSPACE, "Cam 1", SceneRole.ARCHIVE)
         assertEquals(
-            "Couldn't save scene curation. Please try again.",
+            "Couldn't save curation. Check the workspace and try again.",
             withTimeout(5_000) { message.await() },
         )
     }

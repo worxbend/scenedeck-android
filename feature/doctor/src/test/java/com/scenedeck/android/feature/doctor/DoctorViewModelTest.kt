@@ -1,7 +1,7 @@
 package com.scenedeck.android.feature.doctor
 
-import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.singleWorkspaceRegistry
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.model.ConnectionState
@@ -59,7 +59,7 @@ class DoctorViewModelTest {
         dao.upsert(SceneRegistryEntity("Ghost", SceneRole.PRIMARY.name))
         val client = FakeObsClient().apply { setReady() }
 
-        val viewModel = DoctorViewModel(RegistryRepository(dao), client)
+        val viewModel = DoctorViewModel(singleWorkspaceRegistry(dao), client)
         val state = withTimeout(5_000) { viewModel.uiState.first { it.ranOnce } }
 
         assertNull(state.error)
@@ -77,7 +77,7 @@ class DoctorViewModelTest {
         val dao = FakeRegistryDao()
         dao.upsert(SceneRegistryEntity("Ghost", SceneRole.PRIMARY.name))
         val client = FakeObsClient().apply { setReady() }
-        val viewModel = DoctorViewModel(RegistryRepository(dao), client)
+        val viewModel = DoctorViewModel(singleWorkspaceRegistry(dao), client)
         val first = withTimeout(5_000) { viewModel.uiState.first { it.ranOnce } }
         assertTrue(first.issues.isNotEmpty())
 
@@ -141,7 +141,7 @@ class DoctorViewModelTest {
     fun graphWalkTimeoutFailsTheRunInsteadOfReportingAllClear(): Unit = runBlocking {
         val client = FakeObsClient().apply { setReady() }
         client.sceneItemFailure = ObsRequestTimeoutException()
-        val viewModel = DoctorViewModel(RegistryRepository(FakeRegistryDao()), client)
+        val viewModel = DoctorViewModel(singleWorkspaceRegistry(FakeRegistryDao()), client)
 
         val state = withTimeout(5_000) { viewModel.uiState.first { it.error != null } }
 

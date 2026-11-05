@@ -29,6 +29,8 @@ data class UserSettings(
     val lockedInputs: Set<String> = emptySet(),
     val mixerMode: String = "ACTIVE",
     val mixerSelectedScene: String? = null,
+    val mixerSelectedProfileId: Long? = null,
+    val mixerSelectedCollection: String? = null,
     val mixerGrouping: String = "SCOPE",
     /** Scene preview thumbnails on deck cards (M6). */
     val scenePreviewsEnabled: Boolean = true,
@@ -108,6 +110,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
             lockedInputs = lockedInputs,
             mixerMode = mixerMode,
             mixerSelectedScene = mixerSelectedScene,
+            mixerSelectedProfileId = mixerSelectedProfileId,
+            mixerSelectedCollection = mixerSelectedCollection,
             mixerGrouping = mixerGrouping,
             scenePreviewsEnabled = scenePreviewsEnabled,
             uiDensity = uiDensity,
@@ -132,6 +136,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
             lockedInputs = lockedInputs,
             mixerMode = mixerMode,
             mixerSelectedScene = mixerSelectedScene,
+            mixerSelectedProfileId = mixerSelectedProfileId,
+            mixerSelectedCollection = mixerSelectedCollection,
             mixerGrouping = mixerGrouping,
             scenePreviewsEnabled = scenePreviewsEnabled,
             uiDensity = uiDensity,
@@ -143,3 +149,6 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
     }
         .getOrDefault(DarkMode.SYSTEM)
 }
+
+fun UserSettings.selectionBelongsTo(key: WorkspaceKey): Boolean =
+    mixerSelectedProfileId == key.profileId && mixerSelectedCollection == key.collectionName

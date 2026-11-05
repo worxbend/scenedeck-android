@@ -37,7 +37,7 @@ small useful improvements while establishing shared state before automation.
 ### W1 — Workspace isolation and named decks
 
 - [x] W1a: Add scoped persistence and lossless Room migration with real-database tests.
-- [ ] W1b: Bind registry/Inventory/Graph/Doctor/widget projection to an authoritative
+- [x] W1b: Bind registry/Inventory/Graph/Doctor/widget projection to an authoritative
   profile + collection context; handle connecting, collection changes, reconnection,
   profile deletion, migration, and stale asynchronous work.
 - [ ] W1c: Add named deck CRUD, independent membership and ordering, selection

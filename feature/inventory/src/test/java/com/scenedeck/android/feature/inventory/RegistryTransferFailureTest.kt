@@ -1,9 +1,11 @@
 package com.scenedeck.android.feature.inventory
 
+import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.RegistryExportCodec
-import com.scenedeck.android.core.data.RegistryRepository
 import com.scenedeck.android.core.data.SceneRegistryEntry
 import com.scenedeck.android.core.data.SceneRole
+import com.scenedeck.android.core.data.TEST_WORKSPACE
+import com.scenedeck.android.core.data.singleWorkspaceRegistry
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import kotlinx.coroutines.CompletableDeferred
@@ -28,9 +30,13 @@ class RegistryTransferFailureTest {
         val dao = ImportDao()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val transfer =
-            RegistryTransfer(RegistryRepository(dao), scope, MutableSharedFlow(), { emptySet() })
+            RegistryTransfer(
+                singleWorkspaceRegistry(dao),
+                scope,
+                MutableSharedFlow(),
+            )
         try {
-            transfer.stage(payload())
+            transfer.stage(payload(), TEST_WORKSPACE)
             dao.failure = IllegalStateException("storage unavailable")
             transfer.confirmImport()
             withTimeout(5_000) { dao.started.await() }
@@ -52,9 +58,13 @@ class RegistryTransferFailureTest {
         val dao = ImportDao()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val transfer =
-            RegistryTransfer(RegistryRepository(dao), scope, MutableSharedFlow(), { emptySet() })
+            RegistryTransfer(
+                singleWorkspaceRegistry(dao),
+                scope,
+                MutableSharedFlow(),
+            )
         try {
-            transfer.stage(payload())
+            transfer.stage(payload(), TEST_WORKSPACE)
             dao.release = CompletableDeferred()
             transfer.confirmImport()
             transfer.confirmImport()
@@ -63,6 +73,26 @@ class RegistryTransferFailureTest {
             dao.release!!.complete(Unit)
             withTimeout(5_000) { transfer.importing.first { !it } }
             assertEquals(1, dao.writes)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun importPreviewCannotFollowAReconnectedSession(): Unit = runBlocking {
+        val dao = ImportDao()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val registry = singleWorkspaceRegistry(dao)
+        val transfer = RegistryTransfer(registry, scope, MutableSharedFlow())
+        try {
+            transfer.stage(payload(), TEST_WORKSPACE)
+            assertNotNull(transfer.importPreview.value)
+            (registry.workspaces as MutableWorkspaceContext).select(
+                TEST_WORKSPACE.copy(targetGeneration = 2)
+            )
+            transfer.confirmImport()
+            withTimeout(5_000) { transfer.importPreview.first { it == null } }
+            assertEquals(0, dao.writes)
         } finally {
             scope.cancel()
         }

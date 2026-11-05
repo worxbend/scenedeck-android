@@ -21,14 +21,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,17 +70,7 @@ fun InventoryScreen(
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
-    LaunchedEffect(Unit) {
-        viewModel.removals.collect { removal ->
-            val result =
-                snackbarHostState.showSnackbar(
-                    message = "Removed stale entry “${removal.entry.sceneName}”",
-                    actionLabel = "Undo",
-                    duration = SnackbarDuration.Long,
-                )
-            if (result == SnackbarResult.ActionPerformed) viewModel.undoRemoveStale(removal)
-        }
-    }
+    StaleRemovalSnackbar(viewModel, snackbarHostState)
 
     val exportLauncher =
         rememberLauncherForActivityResult(
@@ -99,17 +88,12 @@ fun InventoryScreen(
 
     when (val connection = uiState.connection) {
         is ConnectionState.Ready ->
-            InventoryContent(
-                uiState = uiState,
-                snackbarHostState = snackbarHostState,
-                onSetRole = viewModel::setRole,
-                onSetAccent = viewModel::setAccent,
-                onSetIcon = viewModel::setIcon,
-                onRemoveStale = viewModel::removeStale,
-                onReorder = viewModel::reorder,
-                onBulkAssign = viewModel::bulkAssignUnassigned,
-                onExport = { exportLauncher.launch(EXPORT_FILE_NAME) },
-                onImport = { importLauncher.launch(arrayOf("*/*")) },
+            InventoryWorkspaceContent(
+                uiState,
+                viewModel,
+                snackbarHostState,
+                onLaunchExport = { exportLauncher.launch(EXPORT_FILE_NAME) },
+                onLaunchImport = { importLauncher.launch(arrayOf("*/*")) },
                 modifier = modifier,
             )
 
@@ -120,27 +104,12 @@ fun InventoryScreen(
             )
     }
 
-    importPreview?.let { preview ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = viewModel.transfer::dismissPreview,
-            title = { Text("Import registry?") },
-            text = {
-                Text(
-                    "Merge by scene name: ${preview.newCount} new, " +
-                        "${preview.updateCount} updated. Existing curation not in " +
-                        "the file is kept."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel.transfer::confirmImport, enabled = !importing) {
-                    Text("Import")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel.transfer::dismissPreview, enabled = !importing) {
-                    Text("Cancel")
-                }
-            },
+    importPreview?.let {
+        ImportConfirmationDialog(
+            it,
+            importing,
+            viewModel.transfer::confirmImport,
+            viewModel.transfer::dismissPreview,
         )
     }
 }
@@ -158,6 +127,7 @@ internal fun InventoryContent(
     onExport: () -> Unit,
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
+    onCopyPrevious: () -> Unit = {},
 ) {
     var roleMenuFor by remember { mutableStateOf<String?>(null) }
     var accentEditorFor by remember { mutableStateOf<String?>(null) }
@@ -185,11 +155,14 @@ internal fun InventoryContent(
             Spacer(Modifier.height(spacing.sectionGap))
             StudioPageHeader(
                 "Inventory",
-                "Scene roles, colors & deck order",
+                uiState.workspace?.key?.collectionName ?: "Scene roles, colors & deck order",
                 SceneDeckIcons.Inventory,
             )
             Spacer(Modifier.height(spacing.sectionGap))
             InventoryActions(uiState.unassignedCount > 0, onBulkAssign, onExport, onImport)
+            if (uiState.hasLegacyCuration) {
+                TextButton(onClick = onCopyPrevious) { Text("Copy previous curation") }
+            }
             Spacer(Modifier.height(spacing.itemGap))
             Text(
                 text = "${uiState.scenes.size} scenes · ${uiState.unassignedCount} unassigned",

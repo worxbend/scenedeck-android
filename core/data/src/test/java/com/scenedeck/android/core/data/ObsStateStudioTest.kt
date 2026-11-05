@@ -40,7 +40,7 @@ class ObsStateStudioTest {
         repository =
             ObsStateRepository(
                 client,
-                RegistryRepository(FakeRegistryDao()),
+                singleWorkspaceRegistry(FakeRegistryDao()),
                 scope,
                 SettingsRepository(SettingsRepositoryTest.newIsolatedStore()),
             )

@@ -1,11 +1,14 @@
 package com.scenedeck.android.background
 
 import com.scenedeck.android.core.data.ConnectionProfile
+import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.ObsSessionHolder
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.ProfileRepository
 import com.scenedeck.android.core.data.SettingsRepository
+import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.data.UserSettings
+import com.scenedeck.android.core.data.WorkspaceKey
 import com.scenedeck.android.core.model.ConnectionError
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.ObsVersionInfo
@@ -44,8 +47,16 @@ class SceneSwitcherTest {
     fun setUp() {
         connectionFlow = MutableStateFlow(ConnectionState.Disconnected)
         every { client.connectionState } returns connectionFlow
-        coEvery { deck.setCurrentProgramScene(any()) } returns Unit
-        switcher = SceneSwitcher(client, sessionHolder, settings, profiles, deck)
+        coEvery { deck.setCurrentProgramScene(TEST_WORKSPACE, any()) } returns Unit
+        switcher =
+            SceneSwitcher(
+                client,
+                sessionHolder,
+                settings,
+                profiles,
+                deck,
+                MutableWorkspaceContext(),
+            )
     }
 
     @Test
@@ -56,26 +67,34 @@ class SceneSwitcherTest {
 
         assertEquals(SceneSwitchResult.Success, result)
         coVerify(exactly = 0) { sessionHolder.connectAndAwait(any()) }
-        coVerify { deck.setCurrentProgramScene("Cam 1") }
+        coVerify { deck.setCurrentProgramScene(TEST_WORKSPACE, "Cam 1") }
     }
 
     @Test
     fun `disconnected connects to last used profile then switches`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 7L))
-        coEvery { sessionHolder.connectAndAwait(7L) } returns ready
+        coEvery { sessionHolder.connectAndAwait(7L) } coAnswers
+            {
+                connectionFlow.value = ready
+                ready
+            }
 
         val result = switcher.switchTo("Screen")
 
         assertEquals(SceneSwitchResult.Success, result)
         coVerify { sessionHolder.connectAndAwait(7L) }
-        coVerify { deck.setCurrentProgramScene("Screen") }
+        coVerify { deck.setCurrentProgramScene(TEST_WORKSPACE, "Screen") }
     }
 
     @Test
     fun `falls back to most recently used profile when setting is absent`() = runTest {
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = null))
         coEvery { profiles.lastUsed() } returns profile(id = 3L)
-        coEvery { sessionHolder.connectAndAwait(3L) } returns ready
+        coEvery { sessionHolder.connectAndAwait(3L) } coAnswers
+            {
+                connectionFlow.value = ready
+                ready
+            }
 
         val result = switcher.switchTo("Screen")
 
@@ -92,7 +111,7 @@ class SceneSwitcherTest {
 
         assertEquals(SceneSwitchResult.NoProfile, result)
         coVerify(exactly = 0) { sessionHolder.connectAndAwait(any()) }
-        coVerify(exactly = 0) { deck.setCurrentProgramScene(any()) }
+        coVerify(exactly = 0) { deck.setCurrentProgramScene(TEST_WORKSPACE, any()) }
     }
 
     @Test
@@ -104,13 +123,13 @@ class SceneSwitcherTest {
         val result = switcher.switchTo("Screen")
 
         assertEquals(SceneSwitchResult.NotConnected, result)
-        coVerify(exactly = 0) { deck.setCurrentProgramScene(any()) }
+        coVerify(exactly = 0) { deck.setCurrentProgramScene(TEST_WORKSPACE, any()) }
     }
 
     @Test
     fun `OBS rejecting the switch returns RequestFailed`() = runTest {
         connectionFlow.value = ready
-        coEvery { deck.setCurrentProgramScene("Ghost") } throws
+        coEvery { deck.setCurrentProgramScene(TEST_WORKSPACE, "Ghost") } throws
             ObsRequestFailedException("SetCurrentProgramScene", "ResourceNotFound", null)
 
         val result = switcher.switchTo("Ghost")
@@ -122,9 +141,40 @@ class SceneSwitcherTest {
     fun `retry ignores previous failed connection state`() = runTest {
         connectionFlow.value = ConnectionState.Failed(ConnectionError.Auth())
         every { settings.settings } returns flowOf(UserSettings(lastUsedProfileId = 7L))
-        coEvery { sessionHolder.connectAndAwait(7L) } returns ready
+        coEvery { sessionHolder.connectAndAwait(7L) } coAnswers
+            {
+                connectionFlow.value = ready
+                ready
+            }
         assertEquals(SceneSwitchResult.Success, switcher.switchTo("Screen"))
-        coVerify { deck.setCurrentProgramScene("Screen") }
+        coVerify { deck.setCurrentProgramScene(TEST_WORKSPACE, "Screen") }
+    }
+
+    @Test
+    fun `widget never switches a same named scene on another workspace`() = runTest {
+        connectionFlow.value = ready
+        assertEquals(
+            SceneSwitchResult.RequestFailed,
+            switcher.switchTo("Cam 1", WorkspaceKey(99, "Studio")),
+        )
+        assertEquals(
+            SceneSwitchResult.RequestFailed,
+            switcher.switchTo("Cam 1", WorkspaceKey(7, "Other collection")),
+        )
+        coVerify(exactly = 0) { deck.setCurrentProgramScene(any(), any()) }
+        coVerify(exactly = 0) { sessionHolder.connectAndAwait(any()) }
+    }
+
+    @Test
+    fun `cold widget uses its own profile without reading last used preferences`() = runTest {
+        coEvery { sessionHolder.connectAndAwait(7) } coAnswers
+            {
+                connectionFlow.value = ready
+                ready
+            }
+        assertEquals(SceneSwitchResult.Success, switcher.switchTo("Cam 1", TEST_WORKSPACE.key))
+        coVerify { sessionHolder.connectAndAwait(7) }
+        coVerify { deck.setCurrentProgramScene(TEST_WORKSPACE, "Cam 1") }
     }
 
     private fun profile(id: Long) =

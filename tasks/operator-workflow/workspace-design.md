@@ -1,7 +1,8 @@
 # W1b integration notes
 
-These are integration constraints. The session/context foundation is implemented;
-registry/UI/widget/cache activation and legacy recovery are still pending.
+These are integration constraints. Session identity and the registry/UI/widget/cache
+activation are implemented and verified (see progress.md). Named decks remain the
+next independent slice.
 
 ## Evidence
 
@@ -20,18 +21,18 @@ registry/UI/widget/cache activation and legacy recovery are still pending.
   discovers the collection after the matching target is confirmed and offers
   `currentSession()` / `isCurrent(session)` guards for operation boundaries. Do not
   use `state.value as? Ready` alone as an action guard: flow delivery can lag identity.
-- `ObsStateRepository` combines independent scene/program/registry flows. Scope each
-  snapshot so a new registry cannot combine with the previous collection's scenes.
+- `ObsStateRepository` owns a scoped snapshot and combines it with matching registry
+  metadata. A new registry cannot combine with the previous collection's scenes.
 - Graph's initial event subscription race was reproduced and fixed while validating
   this foundation. Preserve subscription-before-initial-read when migrating Graph
   to the context stream (whose public type is Flow). Its deterministic startup-event
   regression must continue to pass; do not reintroduce an onStart gap.
-- Screenshot caches currently use scene names. Clear or scope frames/throttle state
-  on workspace replacement so a same-named scene cannot display another host's image.
-- `RegistryTransfer` stages file contents, then imports into the registry when confirmed.
-  Capture the origin workspace at staging, including before document I/O suspends.
-- Widget cached actions contain only a scene name and connect through the last-used
-  profile. They need explicit profile/collection identity to avoid same-name ambiguity.
+- Screenshot frames carry workspace identity; replacing a workspace clears both
+  frames and throttle state, including when replacement captures fail.
+- `RegistryTransfer` captures origin before opening a document picker, retains it
+  through staging/confirmation, and rejects a replaced session before writing.
+- Widget caches/actions carry profile + collection. Cold actions use the saved
+  profile and verify collection identity; unscoped caches have no scene actions.
 
 ## Required implementation properties
 

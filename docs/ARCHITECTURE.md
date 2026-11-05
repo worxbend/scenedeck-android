@@ -94,7 +94,7 @@ one module owns the wire protocol.**
 | Registry (roles/colors/order) | `RegistryRepository` → Room + DataStore | persisted, YAML export |
 | Connection profiles | `ProfileRepository` → Room | persisted |
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
-| Resolved workspace identity (W1b foundation) | `WorkspaceRepository` | connection/collection revision |
+| Resolved workspace identity | `WorkspaceRepository` | connection/collection revision |
 | Passwords | `SecretsStore` → Keystore | persisted |
 | Stats ring buffer (2 min) | `StatsRepository` | connection-scoped |
 | Screen UI state | feature ViewModels | config-change scoped |
@@ -152,7 +152,8 @@ snapshot, index it and write a batch while preserving duplicate-import merge/cou
 semantics and default ordering. Deck/graph reducers index metadata once; the public
 graph builder preserves the first duplicate registry entry.
 Graph registers its shared-event subscription before triggering the initial read
-(`onSubscription`); an event arriving during that read must trigger another refresh.
+(an undispatched stamped-event collector); an event arriving during that read must
+trigger another refresh.
 
 Room schema 3 prepares workspace isolation: registry identity is the composite
 `connectionProfileId`, `sceneCollectionName`, and `sceneName`. Migrations live in
@@ -160,9 +161,13 @@ Room schema 3 prepares workspace isolation: registry identity is the composite
 profile `0` / empty collection. The legacy `SceneRegistryDao` only reads/deletes
 that legacy scope; `WorkspaceSceneDao` requires explicit scope for reads, cleanup,
 and transactional renames. Profile removal does not cascade into curation storage.
-This is a persistence foundation: the application still uses the legacy registry
-until authoritative session-context integration is complete (see
-`tasks/operator-workflow/plan.md`, W1b). No named-deck UI is shipped by the migration.
+RegistryRepository reads only the resolved workspace. Every operation takes a
+WorkspaceSession captured by the caller; a bound DAO adapter checks origin before
+and after suspension while retaining that namespace throughout. Compound mutations
+share one mutex. Loading, failed, unavailable, and loaded-empty states are distinct.
+The old scope is only exposed through Inventory's explicit Copy previous curation
+preview. Recovery copies into one active workspace and retains its source. Named
+decks remain a separate, incomplete checkpoint in `tasks/operator-workflow/plan.md`.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously
@@ -174,7 +179,16 @@ joined, so a blocking credential provider's obsolete error cannot poison its res
 `WorkspaceRepository` resolves `GetSceneCollectionList` only for a confirmed target
 and stable Ready token. Failure is unknown identity, with an explicit coalesced retry;
 its synchronous origin check rejects changes before flow collectors catch up.
-Registry/UI/widget/cache consumers are not activated by this foundation alone.
+Scenes, Inventory, Graph, Doctor, Mixer, and thumbnails consume this identity.
+Scene snapshots, rename logs, media snapshots and cached frames belong to a session;
+views reject mismatched data. Commands and delayed controls retain the displayed
+origin. `ObsClient.withSession` carries that token through coroutine suspension to
+protocol admission, including delays before the first request. Imports capture
+before opening the document picker; preview confirmation and Undo retain the origin.
+Mixer resets selected/pinned lists and meters on replacement. Selected-scene
+persistence includes its connection profile and collection; legacy unscoped choices
+are not automatically restored. Mode, locks, allow-list and display preferences
+remain app-wide. Sampled meter batches retain their token until delivery.
 
 Password drafts stay in memory, outside saved-state Bundles, and secret-bearing
 models redact their diagnostic strings. Keystore writes verify synchronous persistence
@@ -183,15 +197,20 @@ cancelled. QR camera dismissal releases only its owned camera use cases.
 
 Widget input counts are bounded before allocation; updates serialize, reread current
 state and isolate removed-widget failures. A distinct projection of six visible
-Primary scenes, program scene, connection label and readiness avoids unrelated
+Primary scenes, program scene, workspace key, connection label and readiness avoids unrelated
 writes. Ready with an empty deck clears cached actions; unready preserves the cached
-grid. Explicit placement/refresh `poke()` remains unconditional. Foreground-service work is confined to Main;
+grid. Cache entries without a profile/collection have no scene actions. A cold
+widget connects its recorded profile and verifies the resolved collection without
+selecting another collection. Writes recheck the current workspace inside each
+widget preference transaction. Explicit placement/refresh `poke()` remains unconditional. Foreground-service work is confined to Main;
 failed foreground startup cannot reconnect, and Android15 dataSync timeouts disconnect.
 
 Profile metadata/credential writes use a coordinated persistence boundary with
 best-effort noncancellable rollback. Recoverable save/delete errors are sanitized,
 observable UI state; failed saves retain the form draft and duplicate writes are
-gated. Testing an edited profile reuses its stored credential when the draft is blank.
+gated. Successful deletion disconnects only if the deleted profile is still the
+current target, invalidating workspace identity synchronously; curation is retained.
+Testing an edited profile reuses its stored credential when the draft is blank.
 
 The persistent status bar consumes the shared session telemetry at app-shell scope,
 so changing tabs never resets output state. Output events update the feed promptly;

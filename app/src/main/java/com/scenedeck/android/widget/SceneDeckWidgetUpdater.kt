@@ -45,18 +45,24 @@ constructor(
     }
 
     private suspend fun pushCurrent() = updateMutex.withLock {
-        val update = deck.deckState.value.toWidgetUpdate()
         // A removed/broken widget must not terminate the long-lived deck collector.
-        coroutineResult { push(update) }
+        coroutineResult { push() }
         Unit
     }
 
-    private suspend fun push(update: WidgetUpdate) {
+    private fun currentUpdate(): WidgetUpdate {
+        val state = deck.deckState.value
+        val update = state.toWidgetUpdate()
+        return if (state.workspace?.let(deck::isWorkspaceCurrent) == true) update
+        else update.copy(ready = false)
+    }
+
+    private suspend fun push() {
         val glanceIds = GlanceAppWidgetManager(context).getGlanceIds(SceneDeckWidget::class.java)
         glanceIds.forEach { glanceId ->
             coroutineResult {
                 updateAppWidgetState(context, glanceId) { prefs ->
-                    update.writeTo(prefs)
+                    currentUpdate().writeTo(prefs)
                 }
                 SceneDeckWidget().update(context, glanceId)
             }

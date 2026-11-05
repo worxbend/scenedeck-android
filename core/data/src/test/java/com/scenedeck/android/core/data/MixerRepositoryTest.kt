@@ -3,6 +3,8 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.model.MediaStateKind
 import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.ObsEvent
+import com.scenedeck.android.core.model.ObsSessionEvent
+import com.scenedeck.android.core.model.ObsSessionToken
 import com.scenedeck.android.core.model.SceneItemInfo
 import com.scenedeck.android.core.model.SceneListSnapshot
 import com.scenedeck.android.core.model.SceneSummary
@@ -12,6 +14,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -35,7 +38,8 @@ class MixerRepositoryTest {
     @Test
     fun mediaPollingRunsOnlyWhileSubscribed() = runTest {
         val client = MediaClient()
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { state -> state.inputs.any { it.name == "Music" } }
         runCurrent()
@@ -58,18 +62,19 @@ class MixerRepositoryTest {
         advanceTimeBy(8_000) // 4 poll cadences
         runCurrent()
         assertTrue(client.mediaStatusCalls.isEmpty())
-        assertTrue(repository.mediaStatus.value.isEmpty())
+        assertTrue(repository.mediaStatus.value.inputs.isEmpty())
     }
 
     @Test
     fun mediaStatusPrunesInputsRemovedMidSession() = runTest {
         val client = MediaClient()
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { state -> state.inputs.any { it.name == "Music" } }
         val collector = backgroundScope.launch { repository.mediaStatus.collect {} }
         runCurrent()
-        assertEquals(setOf("Music"), repository.mediaStatus.value.keys)
+        assertEquals(setOf("Music"), repository.mediaStatus.value.inputs.keys)
 
         // OBS removes the input; discovery re-runs and the next poll tick prunes it.
         client.sceneItems = emptyList()
@@ -79,7 +84,7 @@ class MixerRepositoryTest {
         repository.mixerState.first { s -> s.inputs.none { it.name == "Music" } }
         advanceTimeBy(2_001) // MEDIA_POLL_MS + 1
         runCurrent()
-        assertTrue(repository.mediaStatus.value.isEmpty())
+        assertTrue(repository.mediaStatus.value.inputs.isEmpty())
 
         collector.cancel()
     }
@@ -91,13 +96,14 @@ class MixerRepositoryTest {
                 override suspend fun setInputVolume(inputName: String, volumeMul: Double) =
                     throw IOException("socket closed")
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         val state = repository.mixerState.first { s -> s.inputs.any { it.name == "Music" } }
         assertEquals(1.0, state.inputs.single { it.name == "Music" }.volumeMul, 0.0)
 
         try {
-            repository.setInputVolume("Music", 0.25)
+            repository.setInputVolume(TEST_WORKSPACE, "Music", 0.25)
             error("Expected the OBS failure to propagate")
         } catch (expected: IOException) {
             // expected: caller sees the failure
@@ -122,12 +128,15 @@ class MixerRepositoryTest {
                     }
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
-        val older = async { runCatching { repository.setInputVolume("Music", 0.25) } }
+        val older = async {
+            runCatching { repository.setInputVolume(TEST_WORKSPACE, "Music", 0.25) }
+        }
         runCurrent()
-        repository.setInputVolume("Music", 0.75)
+        repository.setInputVolume(TEST_WORKSPACE, "Music", 0.75)
         failureGate.complete(Unit)
         assertTrue(older.await().isFailure)
         runCurrent()
@@ -145,12 +154,13 @@ class MixerRepositoryTest {
                 override suspend fun setInputMute(inputName: String, muted: Boolean) =
                     throw IOException("socket closed")
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { s -> s.inputs.any { it.name == "Music" } }
 
         try {
-            repository.setInputMute("Music", true)
+            repository.setInputMute(TEST_WORKSPACE, "Music", true)
             error("Expected the OBS failure to propagate")
         } catch (expected: IOException) {
             // expected: caller sees the failure
@@ -175,13 +185,16 @@ class MixerRepositoryTest {
                         }
                     }
                 }
-            val repository = MixerRepository(client, settings, backgroundScope)
+            val repository =
+                MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
             client.setReady()
             repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
-            val older = async { runCatching { repository.setInputMute("Music", true) } }
+            val older = async {
+                runCatching { repository.setInputMute(TEST_WORKSPACE, "Music", true) }
+            }
             runCurrent()
             if (useEvent) client.emit(ObsEvent.InputMuteStateChanged("Music", true))
-            else repository.setInputMute("Music", true)
+            else repository.setInputMute(TEST_WORKSPACE, "Music", true)
             runCurrent()
             gate.complete(Unit)
             assertTrue(older.await().isFailure)
@@ -200,10 +213,11 @@ class MixerRepositoryTest {
                     CompletableDeferred<Unit>().await()
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
-        val write = async { repository.setInputMute("Music", true) }
+        val write = async { repository.setInputMute(TEST_WORKSPACE, "Music", true) }
         entered.await()
         write.cancel()
         try {
@@ -235,7 +249,8 @@ class MixerRepositoryTest {
                     return false
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         // Keep the WhileSubscribed projection active while a real DataStore read suspends.
@@ -270,7 +285,8 @@ class MixerRepositoryTest {
                     return SpecialInputs()
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         val baseline = reads
@@ -304,7 +320,8 @@ class MixerRepositoryTest {
                     return super.getSceneItemList(sceneName)
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.activeScene == "Main" }
         val published = mutableListOf<String?>()
@@ -334,10 +351,11 @@ class MixerRepositoryTest {
                     throw IOException("old request failed")
                 }
             }
-        val repository = MixerRepository(client, settings, backgroundScope)
+        val repository =
+            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
-        val write = async { runCatching { repository.setInputMute("Music", true) } }
+        val write = async { runCatching { repository.setInputMute(TEST_WORKSPACE, "Music", true) } }
         runCurrent()
         observedMute = true
         repository.refreshDiscovery()
@@ -345,6 +363,85 @@ class MixerRepositoryTest {
         assertTrue(write.await().isFailure)
         runCurrent()
         assertEquals(true, repository.mixerState.value.inputs.single().muted)
+    }
+
+    @Test
+    fun staleActionsAndBufferedEventsCannotReachTheReplacementWorkspace() = runTest {
+        val stamped = MutableSharedFlow<ObsSessionEvent>(extraBufferCapacity = 8)
+        var writes = 0
+        val client =
+            object : MediaClient() {
+                override val eventsWithContext = stamped
+
+                override suspend fun setInputMute(inputName: String, muted: Boolean) {
+                    writes++
+                }
+            }
+        val workspaces = MutableWorkspaceContext()
+        val repository = MixerRepository(client, settings, workspaces, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.workspace == TEST_WORKSPACE }
+        backgroundScope.launch { repository.mixerState.collect {} }
+        val replacement =
+            TEST_WORKSPACE.copy(
+                key = WorkspaceKey(8, "Studio"),
+                targetGeneration = 2,
+                token = ObsSessionToken(2, 1),
+            )
+        client.setReady(sessionId = 2, collectionRevision = 1)
+        workspaces.select(replacement)
+        // Rejection is synchronous even before the workspace-reset collector runs.
+        assertTrue(
+            runCatching { repository.setInputMute(TEST_WORKSPACE, "Music", true) }.exceptionOrNull()
+                is WorkspaceChangedException
+        )
+        assertEquals(0, writes)
+        repository.mixerState.first { it.workspace == replacement }
+        stamped.emit(
+            ObsSessionEvent(TEST_WORKSPACE.token, ObsEvent.InputMuteStateChanged("Music", true))
+        )
+        runCurrent()
+        assertEquals(false, repository.mixerState.value.inputs.single().muted)
+        stamped.emit(
+            ObsSessionEvent(replacement.token, ObsEvent.InputMuteStateChanged("Music", true))
+        )
+        repository.mixerState.first { it.inputs.singleOrNull()?.muted == true }
+        repository.setInputMute(replacement, "Music", false)
+        assertEquals(1, writes)
+    }
+
+    @Test
+    fun oldWriteFailureCannotRollBackSameNamedInputOnAnotherProfile() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var observed = 1.0
+        val client =
+            object : MediaClient() {
+                override suspend fun getInputVolume(inputName: String) = observed
+
+                override suspend fun setInputVolume(inputName: String, volumeMul: Double) {
+                    entered.complete(Unit)
+                    release.await()
+                    throw IOException("obsolete write")
+                }
+            }
+        val workspaces = MutableWorkspaceContext()
+        val repository = MixerRepository(client, settings, workspaces, backgroundScope)
+        client.setReady()
+        repository.mixerState.first { it.workspace == TEST_WORKSPACE }
+        backgroundScope.launch { repository.mixerState.collect {} }
+        val pending = async {
+            runCatching { repository.setInputVolume(TEST_WORKSPACE, "Music", 0.2) }
+        }
+        entered.await()
+        val replacement = TEST_WORKSPACE.copy(key = WorkspaceKey(8, "Studio"), targetGeneration = 2)
+        observed = 0.8
+        workspaces.select(replacement)
+        repository.mixerState.first { it.workspace == replacement }
+        release.complete(Unit)
+        assertTrue(pending.await().isFailure)
+        runCurrent()
+        assertEquals(0.8, repository.mixerState.value.inputs.single().volumeMul, 0.0)
     }
 
     /** One media-kind input ("Music") in the single program scene. */

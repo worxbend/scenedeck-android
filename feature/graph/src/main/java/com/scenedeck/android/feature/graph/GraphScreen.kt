@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -36,6 +37,7 @@ import com.scenedeck.android.core.designsystem.components.GraphCanvas
 import com.scenedeck.android.core.designsystem.components.GraphEdgeSpec
 import com.scenedeck.android.core.designsystem.components.GraphNodeSpec
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.SceneDeckColors
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
@@ -53,15 +55,24 @@ fun GraphScreen(
 
     when (val connection = uiState.connection) {
         is ConnectionState.Ready ->
-            GraphContent(
-                graph = uiState.graph,
-                selectedNode = selectedNode,
-                onNodeClick = viewModel::selectNode,
-                onDismissDetail = { viewModel.selectNode(null) },
-                parentsOf = viewModel::parentsOf,
-                childrenOf = viewModel::childrenOf,
-                modifier = modifier,
-            )
+            key(uiState.workspace) {
+                if (uiState.workspace == null)
+                    WorkspaceStatus(
+                        uiState.failed,
+                        viewModel::retryWorkspace,
+                        modifier.statusBarsPadding(),
+                    )
+                else
+                    GraphContent(
+                        graph = uiState.graph,
+                        selectedNode = selectedNode,
+                        onNodeClick = viewModel::selectNode,
+                        onDismissDetail = { viewModel.selectNode(null) },
+                        parentsOf = viewModel::parentsOf,
+                        childrenOf = viewModel::childrenOf,
+                        modifier = modifier,
+                    )
+            }
 
         else ->
             DisconnectedPlaceholder(

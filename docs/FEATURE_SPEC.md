@@ -64,6 +64,10 @@ colors, icons, ordering) lives in a local registry on the device.
   notch, pre-fader base square visible even when muted.
 - Mixer page modes: **Active** (follows program scene), **Selected** (frozen scene),
   **Pinned**; grouping by scope / scene path / none; session search field.
+  Selected/pinned channel snapshots reset on connection/collection replacement.
+  The remembered selected scene is restored only for its saved profile + collection.
+  Buffered meters, media reads and delayed controls cannot affect a replacement
+  workspace. Locks, audio allow-list, mode and grouping remain app-wide preferences.
 - **Extensions**: audio balance/pan, sync offset, monitor type (desktop explicitly
   doesn't do these — mobile differentiator, phase M7+).
 
@@ -98,12 +102,23 @@ colors, icons, ordering) lives in a local registry on the device.
 
 ## 6. Inventory page (local scene registry)
 
+- Curation is local to the connection profile and OBS scene collection. Same-named
+  scenes elsewhere have independent roles, colors, icons and order. Until identity
+  and reads finish, show a workspace loading/error state with retry; a failed read
+  is never presented as an empty collection. Outputs remain available independently.
+- Previous global curation is retained. **Copy previous curation** previews a merge
+  into the current collection; confirming never deletes the source. No automatic
+  copying to each connected host occurs. Deleting a connection retains its curation
+  and disconnects that target if it is still active.
+
 - Lists OBS scenes; assign local **roles**: `Primary` (deck), `Secondary`, `Module`
   (nested reusable), `Raw`, `Debug`, `Archive`.
 - Drag-to-reorder (persisted, same order as the Scenes grid; stale entries listed
   last), accent color picker, icon picker, stale-entry detection (registry entry whose
   scene vanished from OBS) with one-tap cleanup; the removal snackbar offers **Undo**,
   which restores role, accent, icon and position (newer curation for the name wins).
+  Undo and import confirmation cannot follow a replacement connection/collection;
+  reopen the action in the intended workspace after a reconnect.
 - Rows keep the scene name readable (up to two lines); stale rows put the stale badge and
   Remove on a second line. Bulk/Export/Import actions wrap instead of clipping.
 - Roles are only assigned explicitly: reordering or changing a color/icon keeps a scene
@@ -121,7 +136,8 @@ colors, icons, ordering) lives in a local registry on the device.
 - **Export/import registry as YAML/JSON** (backup, share between devices). Export carries
   roles (`UNASSIGNED` for none) and positions; import applies the file's order first,
   then local placed scenes the file doesn't mention, so export → import restores the
-  same order. Entries without positions keep file order.
+  same order. Entries without positions keep file order. The destination is captured
+  before the file picker opens, and appears in the import preview.
 
 ## 7. Graph & Doctor (health tooling)
 

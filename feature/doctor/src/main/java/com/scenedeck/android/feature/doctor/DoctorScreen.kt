@@ -43,6 +43,7 @@ import com.scenedeck.android.core.data.DoctorIssue
 import com.scenedeck.android.core.data.DoctorSeverity
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
+import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.components.studioFilterChipColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.icons.SceneIcon
@@ -62,18 +63,24 @@ fun DoctorScreen(
 
     when (val connection = uiState.connection) {
         is ConnectionState.Ready ->
-            DoctorContent(
-                uiState = uiState,
-                onRefresh = viewModel::refresh,
-                onFix = { issue ->
-                    when (val fix = issue.fix) {
-                        is DoctorFix.RemoveStaleEntry -> viewModel.removeStaleEntry(fix.sceneName)
-                        is DoctorFix.AssignRole -> onNavigateToInventory()
-                        null -> Unit
-                    }
-                },
-                modifier = modifier,
-            )
+            if (uiState.workspace == null && uiState.error == null)
+                WorkspaceStatus(false, viewModel::refresh, modifier.statusBarsPadding())
+            else
+                DoctorContent(
+                    uiState = uiState,
+                    onRefresh = viewModel::refresh,
+                    onFix = { issue ->
+                        when (val fix = issue.fix) {
+                            is DoctorFix.RemoveStaleEntry ->
+                                uiState.workspace?.let {
+                                    viewModel.removeStaleEntry(it, fix.sceneName)
+                                }
+                            is DoctorFix.AssignRole -> onNavigateToInventory()
+                            null -> Unit
+                        }
+                    },
+                    modifier = modifier,
+                )
 
         else ->
             DisconnectedPlaceholder(

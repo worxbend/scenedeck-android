@@ -1,6 +1,5 @@
 package com.scenedeck.android.core.data
 
-import com.scenedeck.android.core.model.VolumeMeterReading
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -34,9 +33,7 @@ enum class MeterRefresh(
 
 /** Applies [refresh] to a meter stream: pass-through, sampled to the latest batch, or nothing. */
 @OptIn(FlowPreview::class)
-fun Flow<List<VolumeMeterReading>>.withMeterRefresh(
-    refresh: MeterRefresh
-): Flow<List<VolumeMeterReading>> =
+fun <T> Flow<T>.withMeterRefresh(refresh: MeterRefresh): Flow<T> =
     when {
         refresh == MeterRefresh.OFF -> emptyFlow()
         refresh.periodMs == 0L -> this

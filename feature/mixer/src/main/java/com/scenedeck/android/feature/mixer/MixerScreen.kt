@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,12 +45,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.MixerInputState
+import com.scenedeck.android.core.data.WorkspaceSession
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.MediaControls
 import com.scenedeck.android.core.designsystem.components.MeterLevelsStore
 import com.scenedeck.android.core.designsystem.components.MixerStrip
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
+import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.components.studioSegmentedButtonColors
 import com.scenedeck.android.core.designsystem.components.studioTextFieldColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
@@ -75,7 +78,6 @@ fun MixerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val mediaStatus by viewModel.mediaStatus.collectAsStateWithLifecycle()
-    var extrasFor by remember { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) {
@@ -84,28 +86,25 @@ fun MixerScreen(
     Box(modifier.fillMaxSize()) {
         when (val connection = uiState.connection) {
             is ConnectionState.Ready ->
-                MixerContent(
-                    uiState = uiState,
-                    levelsStore = viewModel.levelsStore,
-                    motionLevel = motionLevel,
-                    hapticsEnabled = hapticsEnabled,
-                    callbacks =
-                        MixerCallbacks(
-                            onModeChange = viewModel::setMode,
-                            onSelectScene = { viewModel.selectScene(it) },
-                            onGroupingChange = viewModel::setGrouping,
-                            onSearchChange = viewModel::setSearch,
-                            onVolumePreview = viewModel::onVolumePreview,
-                            onVolumeCommit = viewModel::onVolumeCommit,
-                            onToggleMute = viewModel::toggleMute,
-                            onToggleLock = viewModel::toggleLock,
-                            onMediaPlayPause = viewModel::mediaPlayPause,
-                            onMediaRestart = viewModel::mediaRestart,
-                        ),
-                    mediaStatus = mediaStatus,
-                    onExtrasClick = { extrasFor = it },
-                    modifier = Modifier,
-                )
+                key(uiState.workspace) {
+                    val origin = uiState.workspace
+                    if (origin == null) {
+                        WorkspaceStatus(
+                            failed = uiState.failed,
+                            onRetry = viewModel::retryWorkspace,
+                            modifier = Modifier.statusBarsPadding().padding(20.dp),
+                        )
+                    } else {
+                        ScopedMixerContent(
+                            uiState,
+                            origin,
+                            viewModel,
+                            motionLevel,
+                            hapticsEnabled,
+                            if (mediaStatus.workspace == origin) mediaStatus.inputs else emptyMap(),
+                        )
+                    }
+                }
 
             else ->
                 DisconnectedPlaceholder(
@@ -116,17 +115,34 @@ fun MixerScreen(
 
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
+}
 
-    LaunchedEffect(uiState.connection) {
-        if (uiState.connection !is ConnectionState.Ready) extrasFor = null
-    }
+@Composable
+private fun ScopedMixerContent(
+    uiState: MixerUiState,
+    origin: WorkspaceSession,
+    viewModel: MixerViewModel,
+    motionLevel: MotionLevel,
+    hapticsEnabled: Boolean,
+    mediaStatus: Map<String, MediaStatus>,
+) {
+    var extrasFor by remember { mutableStateOf<String?>(null) }
+    MixerContent(
+        uiState = uiState,
+        levelsStore = viewModel.levelsStore,
+        motionLevel = motionLevel,
+        hapticsEnabled = hapticsEnabled,
+        callbacks = viewModel.callbacks(origin),
+        mediaStatus = mediaStatus,
+        onExtrasClick = { extrasFor = it },
+    )
     extrasFor?.let { inputName ->
         AudioExtrasSheet(
             inputName = inputName,
-            loadExtras = { viewModel.loadAudioExtras(inputName) },
-            onBalanceChange = { viewModel.setAudioBalance(inputName, it) },
-            onSyncOffsetChange = { viewModel.setAudioSyncOffset(inputName, it) },
-            onMonitorTypeChange = { viewModel.setAudioMonitorType(inputName, it) },
+            loadExtras = { viewModel.loadAudioExtras(origin, inputName) },
+            onBalanceChange = { viewModel.setAudioBalance(origin, inputName, it) },
+            onSyncOffsetChange = { viewModel.setAudioSyncOffset(origin, inputName, it) },
+            onMonitorTypeChange = { viewModel.setAudioMonitorType(origin, inputName, it) },
             onDismiss = { extrasFor = null },
         )
     }

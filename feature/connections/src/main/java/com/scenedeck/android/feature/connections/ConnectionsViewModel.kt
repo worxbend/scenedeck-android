@@ -115,6 +115,7 @@ constructor(
     fun deleteProfile(id: Long) {
         runProfileOperation(ProfileOperationState.Deleting, ProfileOperationError.DELETE) {
             persistence.delete(id)
+            sessionHolder.disconnectIfProfile(id)
             settings.update {
                 if (it.lastUsedProfileId == id) it.copy(lastUsedProfileId = null) else it
             }

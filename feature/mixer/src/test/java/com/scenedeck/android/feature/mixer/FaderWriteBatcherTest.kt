@@ -13,7 +13,8 @@ class FaderWriteBatcherTest {
     @Test
     fun rapidPreviewsCoalesceToOneWrite() = runTest {
         val sent = mutableListOf<Pair<String, Double>>()
-        val batcher = FaderWriteBatcher(backgroundScope, 120) { name, mul -> sent += name to mul }
+        val batcher =
+            FaderWriteBatcher<String>(backgroundScope, 120) { name, mul -> sent += name to mul }
 
         batcher.preview("Mic", 1.0)
         batcher.preview("Mic", 0.8)
@@ -30,7 +31,8 @@ class FaderWriteBatcherTest {
     @Test
     fun commitSendsImmediatelyAndCancelsPending() = runTest {
         val sent = mutableListOf<Pair<String, Double>>()
-        val batcher = FaderWriteBatcher(backgroundScope, 120) { name, mul -> sent += name to mul }
+        val batcher =
+            FaderWriteBatcher<String>(backgroundScope, 120) { name, mul -> sent += name to mul }
 
         batcher.preview("Mic", 0.9)
         batcher.commit("Mic", 0.5)
@@ -46,7 +48,8 @@ class FaderWriteBatcherTest {
     @Test
     fun inputsAreBatchedIndependently() = runTest {
         val sent = mutableListOf<Pair<String, Double>>()
-        val batcher = FaderWriteBatcher(backgroundScope, 120) { name, mul -> sent += name to mul }
+        val batcher =
+            FaderWriteBatcher<String>(backgroundScope, 120) { name, mul -> sent += name to mul }
 
         batcher.preview("A", 0.5)
         batcher.preview("B", 0.25)

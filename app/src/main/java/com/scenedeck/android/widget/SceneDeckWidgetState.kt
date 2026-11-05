@@ -3,9 +3,11 @@ package com.scenedeck.android.widget
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.action.ActionParameters
 import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.data.WorkspaceKey
 import com.scenedeck.android.core.model.ConnectionState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -18,10 +20,14 @@ object SceneDeckWidgetKeys {
     val sceneCount = intPreferencesKey("sceneCount")
     val programScene = stringPreferencesKey("programScene")
     val connectionLabel = stringPreferencesKey("connectionLabel")
+    val profileId = longPreferencesKey("workspaceProfileId")
+    val collectionName = stringPreferencesKey("workspaceCollection")
 
     fun sceneName(slot: Int) = stringPreferencesKey("scene_$slot")
 
     val sceneNameParam = ActionParameters.Key<String>("sceneName")
+    val profileIdParam = ActionParameters.Key<Long>("workspaceProfileId")
+    val collectionParam = ActionParameters.Key<String>("workspaceCollection")
 }
 
 /** Short status word for the widget header (mirrors the StatusStrip labels). */
@@ -45,11 +51,16 @@ internal fun DeckState.toWidgetUpdate(): WidgetUpdate =
     WidgetUpdate(
         snapshot =
             WidgetSnapshot(
-                sceneNames = scenes.take(SceneDeckWidgetKeys.MAX_SCENES).map { it.name },
+                sceneNames =
+                    scenes
+                        .distinctBy { it.name }
+                        .take(SceneDeckWidgetKeys.MAX_SCENES)
+                        .map { it.name },
                 programScene = currentProgramScene,
                 connectionLabel = connectionLabelFor(connectionState),
+                workspace = workspace?.key,
             ),
-        ready = connectionState is ConnectionState.Ready,
+        ready = connectionState is ConnectionState.Ready && workspace != null,
     )
 
 internal data class WidgetUpdate(val snapshot: WidgetSnapshot, val ready: Boolean) {
@@ -68,10 +79,20 @@ data class WidgetSnapshot(
     val sceneNames: List<String> = emptyList(),
     val programScene: String? = null,
     val connectionLabel: String = "Offline",
+    val workspace: WorkspaceKey? = null,
 ) {
     /** Mutates [prefs] in place (Glance's updateAppWidgetState discards return values). */
     fun writeTo(prefs: MutablePreferences) {
-        val visibleScenes = sceneNames.take(SceneDeckWidgetKeys.MAX_SCENES)
+        val visibleScenes =
+            if (workspace != null) sceneNames.distinct().take(SceneDeckWidgetKeys.MAX_SCENES)
+            else emptyList()
+        if (workspace != null) {
+            prefs[SceneDeckWidgetKeys.profileId] = workspace.profileId
+            prefs[SceneDeckWidgetKeys.collectionName] = workspace.collectionName
+        } else {
+            prefs.remove(SceneDeckWidgetKeys.profileId)
+            prefs.remove(SceneDeckWidgetKeys.collectionName)
+        }
         prefs[SceneDeckWidgetKeys.sceneCount] = visibleScenes.size
         visibleScenes.forEachIndexed { slot, name ->
             prefs[SceneDeckWidgetKeys.sceneName(slot)] = name
@@ -96,13 +117,21 @@ data class WidgetSnapshot(
                     0,
                     SceneDeckWidgetKeys.MAX_SCENES,
                 )
+            val profile = prefs[SceneDeckWidgetKeys.profileId]
+            val collection = prefs[SceneDeckWidgetKeys.collectionName]
+            val workspace =
+                if (profile != null && profile > 0 && !collection.isNullOrBlank())
+                    WorkspaceKey(profile, collection)
+                else null
             return WidgetSnapshot(
                 sceneNames =
-                    (0 until count)
+                    (0 until if (workspace == null) 0 else count)
                         .mapNotNull { prefs[SceneDeckWidgetKeys.sceneName(it)] }
+                        .distinct()
                         .take(SceneDeckWidgetKeys.MAX_SCENES),
                 programScene = prefs[SceneDeckWidgetKeys.programScene],
                 connectionLabel = prefs[SceneDeckWidgetKeys.connectionLabel] ?: "Offline",
+                workspace = workspace,
             )
         }
     }
