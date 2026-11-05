@@ -4,8 +4,15 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ConnectionProfileEntity::class, SceneRegistryEntity::class],
-    version = 3,
+    entities =
+        [
+            ConnectionProfileEntity::class,
+            SceneRegistryEntity::class,
+            NamedDeckEntity::class,
+            NamedDeckMemberEntity::class,
+            WorkspaceDeckSelectionEntity::class,
+        ],
+    version = 4,
     exportSchema = true,
 )
 abstract class SceneDeckDatabase : RoomDatabase() {
@@ -14,4 +21,6 @@ abstract class SceneDeckDatabase : RoomDatabase() {
     abstract fun sceneRegistryDao(): SceneRegistryDao
 
     abstract fun workspaceSceneDao(): WorkspaceSceneDao
+
+    abstract fun namedDeckDao(): NamedDeckDao
 }

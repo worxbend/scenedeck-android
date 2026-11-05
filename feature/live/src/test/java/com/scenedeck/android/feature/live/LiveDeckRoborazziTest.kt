@@ -1,6 +1,10 @@
 package com.scenedeck.android.feature.live
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -13,6 +17,7 @@ import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.data.NamedDeckSnapshot
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.TEST_WORKSPACE
@@ -126,7 +131,10 @@ class LiveDeckRoborazziTest {
         composeRule.setContent {
             SceneDeckTheme(family = family, darkTheme = darkTheme) {
                 Surface {
+                    var options by remember { mutableStateOf(NamedDeckSnapshot()) }
                     LiveDeckContent(
+                        deckOptions = options,
+                        onDeckSelection = { options = options.copy(selection = it) },
                         deckState = displayedDeck,
                         telemetry = telemetry,
                         pendingScene = "Screen",
@@ -166,11 +174,11 @@ class LiveDeckRoborazziTest {
     @Test
     fun searchFiltersSceneNamesAndClosingRestoresCollection() {
         capture(ThemeFamily.SCENEDECK, true, "all_scenes_dark.png", includeSecondary = true)
-        composeRule.onNodeWithText("Find scene").performClick()
+        composeRule.onNodeWithContentDescription("Find scene").performClick()
         composeRule.onNodeWithText("Search scenes").performTextInput("utility")
         composeRule.onNodeWithText("Utility scene").assertIsDisplayed()
         composeRule.onNodeWithText("Cam 1").assertDoesNotExist()
-        composeRule.onNodeWithText("Close search").performClick()
+        composeRule.onNodeWithContentDescription("Close search").performClick()
         composeRule.onNodeWithText("Cam 1").assertIsDisplayed()
     }
 

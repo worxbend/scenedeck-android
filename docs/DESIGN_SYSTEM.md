@@ -223,3 +223,14 @@ an empty scene list. Scenes retains the output row independently. Key scene shee
 and Mixer extras to the displayed workspace so they close when it changes. Inventory's
 previous-curation recovery uses a normal confirmation dialog naming the destination
 collection and merge counts, with Copy / Cancel actions.
+
+### Named decks
+
+Scenes keeps All scenes and Primary-only Deck chips with a compact My decks selector
+and a 48dp search icon. The selected named deck appears in that selector. Manage decks
+opens an expanded sheet using StudioPageHeader/StudioSectionHeader, connection and
+collection identity, explicit Save/Back and contextual member menus. Membership uses
+checkbox rows; missing references say Unavailable in OBS and remain removable. Moves
+are disabled during search; the main grid also disables dragging with missing members.
+Import shows its destination and replacement counts before confirmation. Failed saves
+retain the editor draft; context changes dismiss the obsolete editor.

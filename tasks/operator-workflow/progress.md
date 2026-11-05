@@ -3,12 +3,11 @@
 ## Current checkpoint
 
 - Branch: `feat/operator-workflow`.
-- Active slice: **W1c — named decks** (next implementation).
-- Next action: read `decks-design.md`, add scoped deck/member/selection persistence
-  and lossless Room migration, then wire CRUD, membership/order, selection and transfer.
-  W1a and W1b are verified. W1c/W1d and all later milestones remain incomplete.
-- Full feature delivery: **in progress**. Workspace isolation and explicit previous
-  curation recovery are implemented and verified locally; no release was published.
+- Next slice: **W2 — local aliases and preview freshness**.
+- W1a–W1d are implemented and verified. Named decks are ready locally; all W2–W11
+  milestones remain incomplete. Start with the first unchecked item in `plan.md`.
+- Full feature delivery: **in progress**. This checkpoint completes workspace isolation
+  and named decks, not the entire goal. No release or remote publication was performed.
 - Blocking product questions: none. Show rundown is expressly excluded.
 
 ## 2026-11-05 — Workflow started
@@ -256,6 +255,77 @@
 - Current-checkpoint text and W1b checkbox updated. Historical in-progress entries
   above describe intermediate states, not remaining work. The durable goal stays active
   for W1c–W11; Show rundown remains excluded.
+
+## W1c — Named decks in progress
+
+- W1b is committed as `af3d2fa`; this continuation is **progress**, not full-goal
+  completion. W1c and all later checkpoints remain incomplete.
+- Added an uncommitted Room 4 migration for scoped named decks, members and selection.
+  Each deck has independent dense membership/order; profile deletion preserves it.
+  Composite joins include profile and collection. Built-in selection defaults to All.
+- NamedDeckRepository uses guarded Room transactions; OBS renames update deck members
+  in the same scoped transaction as curation. An editor carries its original deck
+  snapshot so concurrent edits/renames can reject stale saves.
+- Schema and data compilation passed. The first focused test attempt exposed a test
+  DAO adapter missing new methods and a SQL line-length violation; both corrected.
+  Focused tests are running in `/tmp/scenedeck-named-decks-tests.log` (not a pass yet).
+- Still required: production Scenes selector/manager, versioned backup/import with
+  preview, UI/migration/concurrency regressions, docs and complete gates/renders.
+
+## W1c — Integrated behavior and verification in progress
+
+- Implemented Scenes selection and expanded Manage decks sheet: create/rename/delete,
+  editable membership/order, unavailable references, persisted workspace selection,
+  named-only drag reorder and unchanged All/Primary/canonical/widget projection.
+  Deferred drag saves retain the original target; old editors reject renamed members.
+- Version-1 deck JSON has bounded input, destination preview, per-deck New/Replace
+  labels, atomic same-name replacement, stable destination IDs and retained selection.
+  File pickers capture origin; Android API 28 bounded reads are covered. Heavy parsing
+  and encoding run off the UI thread. No OBS scene-collection writes were introduced.
+- Product/architecture/design/agent/privacy docs now describe the implemented worktree.
+  Transfer limits and conflict rules are recorded in `decks-design.md`.
+- Focused data + live tests/static checks passed before the last regression additions:
+  `/tmp/scenedeck-named-decks-renders.log`, 139 tasks, and
+  `/tmp/scenedeck-named-decks-renders-final.log`, 134 tasks. Twelve new manager goldens
+  cover list/member/import pages in SceneDeck and OBS light/dark, with existing Live
+  goldens updated. Reviewed dark/light membership, main compact selector and import
+  previews; no clipping in those phone captures. No device/real-OBS claim is made.
+- Added ViewModel duplicate-save/failed-draft/context tests, API 28 file-picker tests,
+  real-file database reopen, and portable/stale import plus rename regressions.
+  The expanded focused run failed before the new ViewModel tests executed because
+  their implicit Robolectric SDK attempted inaccessible JDK FileDescriptor internals.
+  Pinned those tests to SDK 34, matching existing screen tests; final gate is rerunning.
+  The failed evidence is `/tmp/scenedeck-named-decks-final-focused.log`.
+- Current full gate is `/tmp/scenedeck-named-decks-quality.log` (session 53153). Source
+  is frozen for verification. Next: inspect result, explicit build/tests, update W1c/W1d
+  status only with actual evidence and commit. All W2–W11 features remain incomplete.
+
+## W1c/W1d — Verified named-deck checkpoint
+
+- **W1c and W1d are complete.** This goal turn is **progress** toward the full authorized
+  scope; W2–W11 remain open. Show rundown/cues/timed advancement remain excluded.
+- The first full gate built the app and passed tests but failed one ComposableNaming
+  lint rule on the new menu action. Renamed the component to `Action`, without a lint
+  suppression. That intermediate log remains `/tmp/scenedeck-named-decks-quality.log`.
+- **Full JDK 21/uv quality gate passed**, exit 0: 926 Gradle tasks, formatting,
+  complexity, Android lint, build/tests, seven Semgrep rules on 256 source files with
+  zero findings, and clean Gitleaks history/working-tree scans. Final evidence:
+  `/tmp/scenedeck-named-decks-quality-verified.log`.
+- **Explicit assembleDebug + testDebugUnitTest passed**, exit 0, 726 tasks, 8 s:
+  `/tmp/scenedeck-named-decks-explicit.log`. Aggregate XML: **659 tests / 116 suites,
+  zero failures/errors/skips** (37 tests added over W1b).
+- W1d evidence includes actual Room migration from versions 1/2/3, exact-scope joins
+  across repeated deck IDs/profile/collection names, independent membership/curation,
+  OBS rename conflicts, origin replacement before/during transactions and file pickers,
+  stale edits/previews, duplicate saves, failed drafts, and database close/reopen.
+  The complete suite also rechecks W1b bulk/Undo/widget/reconnect behavior.
+- Twelve new manager goldens cover listing, membership and import in SceneDeck/OBS
+  light/dark. Existing Live/Studio/output goldens were updated for the compact selector
+  and search icon. Final main, light/dark member and replacement-preview captures
+  inspected; final-source golden verification passed in the quality gate. Android API 28
+  import is covered by Robolectric; no physical-device, real-OBS or performance claim.
+- The original failed/intermediate logs above are historical. No remaining W1c defect
+  or product decision blocks the next slice. Continue W2 from the current branch.
 
 ## Decisions / limitations
 

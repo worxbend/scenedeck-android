@@ -1,6 +1,6 @@
 # SceneDeck Android privacy policy
 
-Effective date: October 3, 2026
+Effective date: November 5, 2026
 
 SceneDeck Android (`com.worxbend.scenedeck`) is an open-source OBS Studio remote
 control app maintained by Worxbend. This policy describes the app's data use.
@@ -13,8 +13,8 @@ audio settings, output status, performance readings, and requested scene thumbna
 This information is used to display and control your OBS session. SceneDeck does
 not operate a developer-hosted server that receives your OBS session data.
 
-Connection profiles, appearance settings, and scene curation are stored on your
-device. OBS passwords are stored using Android Keystore-backed encryption. Local
+Connection profiles, appearance settings, scene curation, and named decks (their
+names, scene membership, order, and workspace selection) are stored on your device. OBS passwords are stored using Android Keystore-backed encryption. Local
 OBS connections normally use `ws://`, which is not TLS encrypted. Network addresses,
 passwords, and OBS content are not sent to the SceneDeck developer by the app.
 
@@ -46,14 +46,17 @@ SceneDeck does not include a developer-operated advertising or analytics service
 
 Notifications and an optional foreground service support keeping your OBS connection
 active in the background. Home-screen widgets display selected session information
-on your device. When you export local curation metadata or share information,
+on your device. When you export local curation or named-deck metadata, or share information,
 the destination you choose receives that exported/shared information. Review it
 before sharing; do not publish your OBS credentials.
 
 ## Retention and deletion
 
 Local connection information remains until you delete the corresponding profile
-or clear the app's storage. Clearing app storage or uninstalling removes the app's
+or clear the app's storage. Scene curation and deck definitions are retained when a
+connection profile is deleted; deleting a deck in Manage decks removes that deck's
+local definition and membership. Exported backup files remain at the destination you
+chose until you delete them there. Clearing app storage or uninstalling removes the app's
 local data. You can revoke camera and notification permissions in Android settings.
 SceneDeck has no user-account registration and holds no developer-side account
 records. For the standard build, Google determines retention for SDK data handled by its services; clearing

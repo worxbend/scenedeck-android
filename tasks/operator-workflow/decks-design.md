@@ -1,7 +1,7 @@
 # W1c — Named deck implementation notes
 
-Status: planned, not implemented. W1b is verified. Continue the existing branch and
-contracts; no additional approval is needed for this authorized slice.
+Status: implemented and verified locally (W1c/W1d). See `progress.md` for the final
+quality/build/test/render evidence. No release was published.
 
 ## User behavior
 
@@ -49,3 +49,18 @@ contracts; no additional approval is needed for this authorized slice.
   projection staying unchanged, and accessible phone/light/dark/OBS renders.
 - Run the required gates at the coherent slice boundary. Keep W1c/W1d unchecked until
   their actual behavior and verification are complete.
+
+## Implemented decisions
+
+- Room 4 composite tables and one joined observation keep selection/membership atomic.
+  Whole-origin guards wrap transactions. Editors compare their original NamedDeck snapshot;
+  no database revision counter or device IDs are needed in the portable format.
+- JSON `scenedeck-decks` version 1 contains only names and ordered scene references.
+  Import matches trimmed, Locale.ROOT-lowercase names and explicitly replaces matching
+  definitions, keeps others and preserves selection. Duplicate names in one file fail.
+- Bounds: 100 decks/workspace, 80-character names without controls, 2,000 members/deck,
+  4,096 characters/reference and 4 MiB per transfer. Preserve literal scene names;
+  duplicates keep their first file position. Export rejects a document above its limit.
+- Membership editing retains missing references with an unavailable label. Reorder is
+  explicit via member menus or main-grid grips, disabled during search; main-grid drag
+  is also disabled if any member is missing. Saved draft failures remain visible.

@@ -50,7 +50,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.scenedeck.android.core.data.DeckSelection
 import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.data.NamedDeckSnapshot
+import com.scenedeck.android.core.data.NamedDeckState
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.Telemetry
 import com.scenedeck.android.core.designsystem.components.BroadcastStatus
@@ -58,6 +61,7 @@ import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholde
 import com.scenedeck.android.core.designsystem.components.SceneCard
 import com.scenedeck.android.core.designsystem.components.StudioPageHeader
 import com.scenedeck.android.core.designsystem.components.StudioSnackbarHost
+import com.scenedeck.android.core.designsystem.components.WorkspaceStatus
 import com.scenedeck.android.core.designsystem.components.studioFilterChipColors
 import com.scenedeck.android.core.designsystem.icons.SceneDeckIcons
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
@@ -70,9 +74,13 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 fun LiveScreen(
     modifier: Modifier = Modifier,
     viewModel: LiveViewModel = hiltViewModel(),
+    namedDecks: NamedDeckViewModel = hiltViewModel(),
     onNavigateToConnections: () -> Unit = {},
 ) {
     val deckState by viewModel.deckState.collectAsStateWithLifecycle()
+    val namedState by namedDecks.decks.collectAsStateWithLifecycle()
+    val options =
+        (namedState as? NamedDeckState.Ready)?.takeIf { it.origin == deckState.workspace }?.snapshot
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
     val pendingScene by viewModel.pendingScene.collectAsStateWithLifecycle()
     val confirmation by viewModel.confirmation.collectAsStateWithLifecycle()
@@ -88,13 +96,23 @@ fun LiveScreen(
         viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
     }
 
+    LaunchedEffect(namedDecks) {
+        namedDecks.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         when (val connection = deckState.connectionState) {
             is ConnectionState.Ready ->
-                key(deckState.workspace) {
+                key(deckState.workspace, options?.selection) {
                     val origin = deckState.workspace
                     LiveDeckContent(
                         deckState = deckState,
+                        deckOptions = options,
+                        deckOptionsFailed = namedState is NamedDeckState.Failed,
+                        onDeckSelection = { selection ->
+                            origin?.let { namedDecks.select(it, selection) }
+                        },
+                        onManageDecks = { origin?.let(namedDecks::open) },
                         telemetry = telemetry,
                         pendingScene = pendingScene,
                         hapticsEnabled = hapticsEnabled,
@@ -115,7 +133,9 @@ fun LiveScreen(
                         onToggleSceneItem = { name, id, enabled ->
                             origin?.let { viewModel.toggleSceneItem(it, name, id, enabled) }
                         },
-                        onReorder = { names -> origin?.let { viewModel.reorderDeck(it, names) } },
+                        onReorder = { names ->
+                            reorderSelectedDeck(viewModel, namedDecks, origin, options, names)
+                        },
                         onStudioToggle = { enabled ->
                             origin?.let { viewModel.toggleStudioMode(it, enabled) }
                         },
@@ -130,7 +150,10 @@ fun LiveScreen(
                         previewsEnabled = previewsEnabled,
                         onPreviewsToggle = viewModel::togglePreviews,
                         virtualCamPending = virtualCamPending,
-                        onRetryWorkspace = viewModel::retryWorkspace,
+                        onRetryWorkspace = {
+                            viewModel.retryWorkspace()
+                            namedDecks.retry()
+                        },
                     )
                 }
 
@@ -144,6 +167,8 @@ fun LiveScreen(
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
+    NamedDeckManagement(namedDecks, deckState)
+
     confirmation?.let {
         TransportConfirmationDialog(it, viewModel::confirmPending, viewModel::dismissConfirmation)
     }
@@ -152,6 +177,7 @@ fun LiveScreen(
 @Composable
 internal fun LiveDeckContent(
     deckState: DeckState,
+    deckOptions: NamedDeckSnapshot?,
     telemetry: Telemetry,
     pendingScene: String?,
     hapticsEnabled: Boolean,
@@ -178,22 +204,22 @@ internal fun LiveDeckContent(
     onPreviewsToggle: (Boolean) -> Unit,
     virtualCamPending: VirtualCamPending? = null,
     onRetryWorkspace: () -> Unit = {},
+    onDeckSelection: (DeckSelection) -> Unit = {},
+    onManageDecks: () -> Unit = {},
+    deckOptionsFailed: Boolean = false,
 ) {
     var quickEdit by remember { mutableStateOf<SceneCardState?>(null) }
 
     // Local order while dragging; re-syncs from the deck when not dragging.
-    var deckOnly by rememberSaveable { mutableStateOf(false) }
+    val selection = deckOptions?.selection ?: DeckSelection.All
+    val projection = projectNamedDeck(deckState, deckOptions)
     var reorderMode by rememberSaveable { mutableStateOf(false) }
     var tBarOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    // Reorder corrupts the full scene order when only a subset is visible, so it is
-    // disabled while the Deck filter (or a search) narrows the list.
-    val reorderAllowed = !deckOnly && searchQuery.isBlank()
-    val baseScenes = if (deckOnly) deckState.scenes else deckState.allScenes
-    // Numbers come from the unfiltered list so a search never renumbers the deck.
-    val positions = remember(baseScenes) { scenePositions(baseScenes) }
-    val visibleScenes = filterScenes(baseScenes, searchQuery)
+    val reorderAllowed = deckOptions != null && projection.allowsReorder(selection, searchQuery)
+    val positions = projection.positions
+    val visibleScenes = filterScenes(projection.scenes, searchQuery)
     var orderedScenes by remember { mutableStateOf(visibleScenes) }
     val gridState = rememberLazyGridState()
     val reorderableState =
@@ -211,7 +237,7 @@ internal fun LiveDeckContent(
     val streaming = telemetry.stream?.active == true
     val recording = telemetry.record?.active == true
     val showReorderGrips = reorderMode && reorderAllowed
-    val knownEmpty = deckState.workspace != null && orderedScenes.isEmpty()
+    val knownEmpty = deckState.workspace != null && deckOptions != null && orderedScenes.isEmpty()
 
     Column(
         modifier =
@@ -253,11 +279,12 @@ internal fun LiveDeckContent(
             tBarOpen,
         )
         DeckFilterSection(
-            deckOnly = deckOnly,
-            onDeckOnlyChange = {
-                deckOnly = it
-                if (it) reorderMode = false
+            deckOptions = deckOptions,
+            onDeckSelection = {
+                onDeckSelection(it)
+                reorderMode = false
             },
+            onManageDecks = onManageDecks,
             sceneCount = deckState.allScenes.size,
             searchOpen = searchOpen,
             onSearchToggle = {
@@ -272,6 +299,12 @@ internal fun LiveDeckContent(
         )
 
         DeckWorkspaceStatus(deckState, onRetryWorkspace)
+        if (deckState.workspace != null && deckOptions == null)
+            WorkspaceStatus(failed = deckOptionsFailed, onRetry = onRetryWorkspace)
+        if (projection.missing.isNotEmpty())
+            TextButton(onClick = onManageDecks) {
+                Text("${projection.missing.size} scenes unavailable · Manage deck")
+            }
 
         LazyVerticalGrid(
             modifier = Modifier.weight(1f),
@@ -482,8 +515,9 @@ private fun DeckSceneTile(
 /** Deck filter chips, the search field, and the empty-list hint (kept out of LiveDeckContent). */
 @Composable
 private fun DeckFilterSection(
-    deckOnly: Boolean,
-    onDeckOnlyChange: (Boolean) -> Unit,
+    deckOptions: NamedDeckSnapshot?,
+    onDeckSelection: (DeckSelection) -> Unit,
+    onManageDecks: () -> Unit,
     sceneCount: Int,
     searchOpen: Boolean,
     onSearchToggle: () -> Unit,
@@ -496,8 +530,9 @@ private fun DeckFilterSection(
     // Focus only when the user opens search, not when saved state restores it open.
     var focusOnOpen by remember { mutableStateOf(false) }
     DeckFilters(
-        deckOnly,
-        onDeckOnlyChange,
+        deckOptions,
+        onDeckSelection,
+        onManageDecks,
         sceneCount,
         searchOpen,
         {
@@ -512,7 +547,8 @@ private fun DeckFilterSection(
         val emptyMessage =
             when {
                 searchQuery.isNotBlank() -> R.string.no_matching_scenes
-                deckOnly -> R.string.empty_deck
+                deckOptions?.selection == DeckSelection.Primary -> R.string.empty_deck
+                deckOptions?.selection is DeckSelection.Named -> R.string.empty_named_deck
                 else -> R.string.empty_scenes
             }
         Text(
@@ -526,34 +562,43 @@ private fun DeckFilterSection(
 
 @Composable
 private fun DeckFilters(
-    deckOnly: Boolean,
-    onDeckOnlyChange: (Boolean) -> Unit,
+    deckOptions: NamedDeckSnapshot?,
+    onDeckSelection: (DeckSelection) -> Unit,
+    onManageDecks: () -> Unit,
     sceneCount: Int,
     searchOpen: Boolean,
     toggleSearch: () -> Unit,
     reorderMode: Boolean,
     finishReordering: () -> Unit,
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        FilterChip(
-            colors = studioFilterChipColors(),
-            border = null,
-            selected = !deckOnly,
-            onClick = { onDeckOnlyChange(false) },
-            label = { Text(stringResource(R.string.all_scenes, sceneCount)) },
-        )
-        FilterChip(
-            colors = studioFilterChipColors(),
-            border = null,
-            selected = deckOnly,
-            onClick = { onDeckOnlyChange(true) },
-            label = { Text(stringResource(R.string.deck_filter)) },
-        )
-        TextButton(onClick = toggleSearch) {
-            Text(stringResource(if (searchOpen) R.string.close_search else R.string.find_scene))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(
+            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                colors = studioFilterChipColors(),
+                border = null,
+                selected = deckOptions?.selection == DeckSelection.All,
+                enabled = deckOptions != null,
+                onClick = { onDeckSelection(DeckSelection.All) },
+                label = { Text(stringResource(R.string.all_scenes, sceneCount)) },
+            )
+            FilterChip(
+                colors = studioFilterChipColors(),
+                border = null,
+                selected = deckOptions?.selection == DeckSelection.Primary,
+                enabled = deckOptions != null,
+                onClick = { onDeckSelection(DeckSelection.Primary) },
+                label = { Text(stringResource(R.string.deck_filter)) },
+            )
+            NamedDeckSelector(deckOptions, onDeckSelection, onManageDecks)
+        }
+        IconButton(onClick = toggleSearch) {
+            Icon(
+                SceneDeckIcons.Search,
+                stringResource(if (searchOpen) R.string.close_search else R.string.find_scene),
+            )
         }
     }
     if (reorderMode) {
@@ -580,8 +625,10 @@ private fun PersistSceneOrder(
     onReorder: (List<String>) -> Unit,
 ) {
     var wasDragging by remember { mutableStateOf(false) }
+    var persist by remember { mutableStateOf(onReorder) }
     LaunchedEffect(dragging) {
-        if (wasDragging && !dragging) onReorder(sceneNames(scenes))
+        if (dragging) persist = onReorder
+        if (wasDragging && !dragging) persist(sceneNames(scenes))
         wasDragging = dragging
     }
 }

@@ -92,6 +92,7 @@ one module owns the wire protocol.**
 | Connection state machine | `:core:obs` ObsSession | connection-scoped service |
 | Deck/scenes/audio/events | `ObsStateRepository` | process (survives rotation) |
 | Registry (roles/colors/order) | `RegistryRepository` → Room + DataStore | persisted, YAML export |
+| Named decks, membership and selected deck | `NamedDeckRepository` → Room | persisted per workspace |
 | Connection profiles | `ProfileRepository` → Room | persisted |
 | Selected connection identity | `ObsSessionHolder` → `ActiveConnection` | process |
 | Resolved workspace identity | `WorkspaceRepository` | connection/collection revision |
@@ -167,7 +168,16 @@ and after suspension while retaining that namespace throughout. Compound mutatio
 share one mutex. Loading, failed, unavailable, and loaded-empty states are distinct.
 The old scope is only exposed through Inventory's explicit Copy previous curation
 preview. Recovery copies into one active workspace and retains its source. Named
-decks remain a separate, incomplete checkpoint in `tasks/operator-workflow/plan.md`.
+decks use Room schema 4 with composite scope keys for definitions, members and saved
+selection. One scoped query observes those tables together. Named-deck edits use Room
+transactions with origin checks before/after suspension; stale editor targets compare
+against their original definition. OBS renames update curation and membership in the
+same scoped transaction. Membership conflicts keep the existing destination position
+and renumber densely. Live applies a separate named-deck projection; canonical state,
+Graph/Doctor and the widget Primary projection remain independent.
+Deck transfer uses bounded versioned JSON and an explicit destination preview. Import
+matches normalized deck names, retains stable destination IDs/selection, and rejects
+changes since preview before an atomic merge. It never exports device/profile IDs.
 
 The W1b context foundation distinguishes last-used preferences from the profile
 actually connected. `ObsSessionHolder` invalidates `ActiveConnection` synchronously

@@ -75,6 +75,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(testFixtures(project(":core:data")))
+    testImplementation(libs.androidx.room.runtime)
+    testImplementation(libs.androidx.test.core)
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)

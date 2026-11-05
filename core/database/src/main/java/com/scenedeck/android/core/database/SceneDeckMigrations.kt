@@ -41,4 +41,34 @@ object SceneDeckMigrations {
                 db.execSQL("ALTER TABLE `scene_registry_scoped` RENAME TO `scene_registry`")
             }
         }
+    val MIGRATION_3_4 =
+        object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `named_decks` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`deckId` TEXT NOT NULL, `name` TEXT NOT NULL, `nameKey` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`, `deckId`))"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "`index_named_decks_connectionProfileId_sceneCollectionName_nameKey` ON " +
+                        "`named_decks` (`connectionProfileId`, `sceneCollectionName`, `nameKey`)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `named_deck_members` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`deckId` TEXT NOT NULL, `sceneName` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`, `deckId`, `sceneName`), " +
+                        "FOREIGN KEY(`connectionProfileId`, `sceneCollectionName`, `deckId`) " +
+                        "REFERENCES `named_decks`(`connectionProfileId`, `sceneCollectionName`, `deckId`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `workspace_deck_selection` (" +
+                        "`connectionProfileId` INTEGER NOT NULL, `sceneCollectionName` TEXT NOT NULL, " +
+                        "`selectedDeckId` TEXT NOT NULL, PRIMARY KEY(`connectionProfileId`, `sceneCollectionName`))"
+                )
+            }
+        }
 }

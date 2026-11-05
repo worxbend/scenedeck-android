@@ -50,6 +50,7 @@ dependencies {
     compileOnly(platform(libs.androidx.compose.bom))
     compileOnly(libs.androidx.compose.runtime)
 
+    implementation(libs.androidx.room.ktx)
     implementation(libs.javax.inject)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)

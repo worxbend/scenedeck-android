@@ -80,4 +80,5 @@
     <string name="reorder_hint">Drag the grips to arrange your deck</string>
     <string name="stream_stop_short">Stop</string>
     <string name="record_stop_short">Stop rec</string>
+    <string name="empty_named_deck">No available scenes in this deck. Open the deck selector and choose Manage decks to add scenes.</string>
 </resources>

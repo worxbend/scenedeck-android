@@ -235,7 +235,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
 
 - Verified: workspace-scoped curation and scene/Mixer/diagnostic state, explicit recovery
   of previous curation, origin-bound import/Undo/control actions and widget caches.
-- Next: named decks with independent membership/order, then the remaining authorized
+  Named decks now support independent membership/order, persisted workspace selection,
+  a focused editor and explicit versioned backup/import with replacement previews.
+- Next: local scene aliases and preview freshness, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

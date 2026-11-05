@@ -3,6 +3,7 @@ package com.scenedeck.android.core.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
+import com.scenedeck.android.core.database.NamedDeckMemberEntity
 import com.scenedeck.android.core.database.SceneDeckDatabase
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.database.WorkspaceSceneDao
@@ -477,5 +478,20 @@ class RegistryRepositoryTest {
 
         override suspend fun delete(profileId: Long, collectionName: String, sceneName: String) =
             delegate.delete(profileId, collectionName, sceneName)
+
+        override suspend fun membersAffectedByRename(
+            profileId: Long,
+            collectionName: String,
+            oldName: String,
+        ) = delegate.membersAffectedByRename(profileId, collectionName, oldName)
+
+        override suspend fun clearMembersForRename(
+            profileId: Long,
+            collectionName: String,
+            deckIds: List<String>,
+        ) = delegate.clearMembersForRename(profileId, collectionName, deckIds)
+
+        override suspend fun insertRenamedMembers(members: List<NamedDeckMemberEntity>) =
+            delegate.insertRenamedMembers(members)
     }
 }

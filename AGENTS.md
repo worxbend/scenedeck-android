@@ -111,15 +111,20 @@ must pass, and Compose preview(s) for changed screens must render.
   do not use onStart on that stream, which can lose events during initial discovery.
 - Room schema 3 preserves legacy registry rows under profile 0 / empty collection;
   scoped persistence keys profile + collection + scene. Legacy DAO queries must never
-  read/delete other scopes. Workspace activation remains tracked separately in W1b
-  of `tasks/operator-workflow/plan.md`; schema support alone is not feature completion.
+  read/delete other scopes. Room schema 4 adds scoped named-deck/member/selection tables
+  without deleting legacy curation; profile deletion never cascades into these tables.
 - ActiveConnection comes from ObsSessionHolder, never last-used preferences. A new
   command invalidates its identity before suspension; only the matching successful
   attempt confirms it. WorkspaceRepository resolves the collection on that target and
   Ready token, exposes failed discovery as unknown, and guards results synchronously.
   Scoped registry/UI/widget/cache activation uses WorkspaceSession captured by the
   displayed UI. Every registry operation takes that origin; import/picker and Undo
-  keep it. W1b activation is verified; named decks and W1d remain tracked separately.
+  keep it. Named decks have independent membership/order and persisted workspace selection;
+  Live-only projection must not change canonical Inventory/Graph/Doctor or widget Primary scenes.
+  Deck edits/import previews retain origin and original definitions; reject concurrent changes.
+  OBS renames update membership in the scoped curation transaction (existing destination keeps
+  position). Named deck JSON is versioned and bounded, with explicit same-name replacement
+  preview; keep legacy registry transfer compatibility. W1c/W1d verification is complete.
 - Legacy curation is recovery-only: explicit Copy previous curation stages a merge
   preview and preserves the source. Never add a global fallback to make tests pass.
 - Mixer snapshots, selected/pinned lists, media and sampled meters retain context;

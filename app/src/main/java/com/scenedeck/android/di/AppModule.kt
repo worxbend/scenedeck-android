@@ -33,7 +33,11 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, "scenedeck.db")
-            .addMigrations(SceneDeckMigrations.MIGRATION_1_2, SceneDeckMigrations.MIGRATION_2_3)
+            .addMigrations(
+                SceneDeckMigrations.MIGRATION_1_2,
+                SceneDeckMigrations.MIGRATION_2_3,
+                SceneDeckMigrations.MIGRATION_3_4,
+            )
             .build()
 
     @Provides

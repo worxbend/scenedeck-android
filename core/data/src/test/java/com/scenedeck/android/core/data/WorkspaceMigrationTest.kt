@@ -79,9 +79,35 @@ class WorkspaceMigrationTest {
         assertTrue(upgraded.workspaceSceneDao().observeAll(7, "Show").first().isEmpty())
     }
 
+    @Test
+    fun upgradeFromVersionThreePreservesBothRegistryScopesAndStartsWithAllDeck(): Unit =
+        runBlocking {
+            createHistoricalDatabase(3)
+            context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null).use { sqlite ->
+                sqlite.execSQL(
+                    "INSERT INTO scene_registry VALUES ('Camera', 'PRIMARY', NULL, NULL, 3, 0, '')"
+                )
+                sqlite.execSQL(
+                    "INSERT INTO scene_registry VALUES ('Camera', 'ARCHIVE', NULL, NULL, 1, 7, 'Studio')"
+                )
+            }
+            val upgraded = openMigratedDatabase()
+            assertEquals("PRIMARY", upgraded.sceneRegistryDao().byName("Camera")?.role)
+            assertEquals(
+                "ARCHIVE",
+                upgraded.workspaceSceneDao().byName(7, "Studio", "Camera")?.role,
+            )
+            val decks = upgraded.namedDeckDao().snapshot(7, "Studio").toDeckSnapshot()
+            assertEquals(NamedDeckSnapshot(), decks)
+        }
+
     private fun openMigratedDatabase(): SceneDeckDatabase =
         Room.databaseBuilder(context, SceneDeckDatabase::class.java, DATABASE_NAME)
-            .addMigrations(SceneDeckMigrations.MIGRATION_1_2, SceneDeckMigrations.MIGRATION_2_3)
+            .addMigrations(
+                SceneDeckMigrations.MIGRATION_1_2,
+                SceneDeckMigrations.MIGRATION_2_3,
+                SceneDeckMigrations.MIGRATION_3_4,
+            )
             .build()
             .also { database = it }
 

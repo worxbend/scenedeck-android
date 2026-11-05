@@ -40,9 +40,9 @@ small useful improvements while establishing shared state before automation.
 - [x] W1b: Bind registry/Inventory/Graph/Doctor/widget projection to an authoritative
   profile + collection context; handle connecting, collection changes, reconnection,
   profile deletion, migration, and stale asynchronous work.
-- [ ] W1c: Add named deck CRUD, independent membership and ordering, selection
+- [x] W1c: Add named deck CRUD, independent membership and ordering, selection
   persistence, and import/export. Keep built-in All and Deck behavior.
-- [ ] W1d: Verify same-name isolation, migration, rename conflicts, bulk operations,
+- [x] W1d: Verify same-name isolation, migration, rename conflicts, bulk operations,
   Undo/import scoping, widget actions, process restoration, and screen renders.
 
 ### W2 — Local aliases and preview freshness

@@ -36,13 +36,30 @@ colors, icons, ordering) lives in a local registry on the device.
 
 - Grid of **scene cards**: all OBS scenes by default; an optional **Deck** filter shows
   scenes assigned local role `Primary`. Mixer controls live on their dedicated tab.
-- Scene-name search preserves the All/Deck filter; reorder is disabled while searching.
+- Scene-name search preserves the selected deck; reorder is disabled while searching.
+- **My decks** adds local named decks per connection profile + OBS collection. Create,
+  rename, delete and select decks; selection is restored when the workspace resolves.
+  Membership/order are independent of roles and canonical Inventory order. Explicitly
+  selected scenes can have any role. Deleting the selected deck returns to All scenes.
+- Manage decks opens a focused sheet. Select/remove members, then use their menus to
+  move them; missing OBS scenes remain labeled and removable. The main grid can drag
+  named members when search is clear and all members are available. Search retains
+  original positions, including gaps from missing scenes. Old editors reject concurrent
+  edits and OBS renames instead of restoring stale references.
+- Deck backups use version-1 `scenedeck-decks` JSON, separate from registry YAML.
+  Import previews the destination and additions/replacements, then replaces same-name
+  deck definitions (case-insensitive) including membership/order. Other decks and the
+  current selection remain. Export excludes local IDs and connection details. Files
+  are bounded to 4 MiB; names to 80 characters, decks to 100, and members to 2,000 per
+  deck. Names are trimmed; scene references preserve literal names and first duplicates.
+  Picker/preview/confirmation retain the originating workspace. Unknown versions,
+  ambiguous duplicate names, stale previews and obsolete sessions are rejected.
 - Current **program scene** highlighted (Active state); others show Ready state.
 - Tap card → `SetCurrentProgramScene`. Haptic feedback + animated state flip.
 - Uniform card tiles use an icon well, numbered positions and separate scene/state
   labels, with no accent rail; grips appear only in explicit reorder mode.
 - Per-scene optional **accent color** and **icon** (local metadata).
-- Scene card order = the registry order, shared with Inventory and persisted locally.
+- All/Primary scene card order = the registry order, shared with Inventory and persisted locally.
   Scenes with a saved position come first; scenes never placed follow OBS's own list
   order (top scene has the highest `sceneIndex`), then name. Any drag (Scenes Reorder
   mode or Inventory) saves the whole arrangement as dense positions. Enable Reorder scenes

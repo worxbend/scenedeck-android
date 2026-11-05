@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -18,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.DeckState
+import com.scenedeck.android.core.data.NamedDeckSnapshot
 import com.scenedeck.android.core.data.SceneCardState
 import com.scenedeck.android.core.data.SceneRole
 import com.scenedeck.android.core.data.TEST_WORKSPACE
@@ -55,7 +60,10 @@ class StudioModeRoborazziTest {
         composeRule.setContent {
             SceneDeckTheme(family = ThemeFamily.SCENEDECK, darkTheme = true) {
                 Surface {
+                    var options by remember { mutableStateOf(NamedDeckSnapshot()) }
                     LiveDeckContent(
+                        deckOptions = options,
+                        onDeckSelection = { options = options.copy(selection = it) },
                         deckState = deck,
                         telemetry = Telemetry(connection = deck.connectionState),
                         pendingScene = null,

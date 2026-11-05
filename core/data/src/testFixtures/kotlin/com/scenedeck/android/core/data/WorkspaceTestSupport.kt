@@ -1,5 +1,6 @@
 package com.scenedeck.android.core.data
 
+import com.scenedeck.android.core.database.NamedDeckMemberEntity
 import com.scenedeck.android.core.database.SceneRegistryDao
 import com.scenedeck.android.core.database.SceneRegistryEntity
 import com.scenedeck.android.core.database.WorkspaceSceneDao
@@ -73,6 +74,20 @@ private class SingleWorkspaceTestDao(private val delegate: SceneRegistryDao) : W
         checkScope(profileId, collectionName)
         delegate.deleteStale(validSceneNames)
     }
+
+    override suspend fun membersAffectedByRename(
+        profileId: Long,
+        collectionName: String,
+        oldName: String,
+    ): List<NamedDeckMemberEntity> = emptyList()
+
+    override suspend fun clearMembersForRename(
+        profileId: Long,
+        collectionName: String,
+        deckIds: List<String>,
+    ) = Unit
+
+    override suspend fun insertRenamedMembers(members: List<NamedDeckMemberEntity>) = Unit
 
     override suspend fun rename(
         profileId: Long,
