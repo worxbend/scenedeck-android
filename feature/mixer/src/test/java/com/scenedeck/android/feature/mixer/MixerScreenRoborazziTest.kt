@@ -3,8 +3,10 @@ package com.scenedeck.android.feature.mixer
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.scenedeck.android.core.data.MixerInputState
@@ -17,6 +19,7 @@ import com.scenedeck.android.core.model.MediaStateKind
 import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.ObsVersionInfo
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -115,6 +118,28 @@ class MixerScreenRoborazziTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun channelOptionsOpenMediaToolsWithoutChangingPlayback() {
+        var opened: String? = null
+        var played = 0
+        composeRule.setContent {
+            SceneDeckTheme {
+                MixerContent(
+                    uiState = previewMixerUiState(),
+                    levelsStore = MeterLevelsStore(),
+                    motionLevel = MotionLevel.OFF,
+                    hapticsEnabled = false,
+                    callbacks = MixerCallbacks(onMediaPlayPause = { played++ }),
+                    onMediaClick = { opened = it },
+                )
+            }
+        }
+        composeRule.onNodeWithContentDescription("Channel options for Test Tone 440").performClick()
+        composeRule.onNodeWithText("Media tools").performClick()
+        assertEquals("Test Tone 440", opened)
+        assertEquals(0, played)
     }
 
     private fun previewMixerUiState(): MixerUiState =

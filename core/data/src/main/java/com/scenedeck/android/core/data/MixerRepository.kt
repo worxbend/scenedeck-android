@@ -3,7 +3,6 @@ package com.scenedeck.android.core.data
 import com.scenedeck.android.core.data.di.ApplicationScope
 import com.scenedeck.android.core.model.ConnectionState
 import com.scenedeck.android.core.model.MediaActionKind
-import com.scenedeck.android.core.model.MediaStatus
 import com.scenedeck.android.core.model.MixerScope
 import com.scenedeck.android.core.model.MonitorTypeKind
 import com.scenedeck.android.core.model.ObsEvent
@@ -15,12 +14,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -29,7 +26,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,11 +54,6 @@ data class MixerState(
     val failed: Boolean = false,
 )
 
-data class MixerMediaStatus(
-    val workspace: WorkspaceSession? = null,
-    val inputs: Map<String, MediaStatus> = emptyMap(),
-)
-
 /**
  * Owns audio discovery + live meter levels + mixer controls (docs/ARCHITECTURE.md rule 2; discovery
  * algorithm in [AudioDiscovery]).
@@ -77,6 +68,7 @@ constructor(
     private val settings: SettingsRepository,
     val workspaces: WorkspaceContext,
     @ApplicationScope private val scope: CoroutineScope,
+    clock: MonotonicClock,
 ) {
     private val discovery = AudioDiscovery(client)
     private val discoveryMutex = Mutex()
@@ -130,10 +122,24 @@ constructor(
             }
             .stateIn(scope, SharingStarted.WhileSubscribed(5_000), MixerState())
 
-    private val _mediaStatus = MutableStateFlow(MixerMediaStatus())
+    private val media =
+        MixerMediaController(
+            client,
+            workspaces,
+            clock,
+            scope,
+            snapshot.map { current ->
+                MediaSources(
+                    current.workspace,
+                    current.inputs
+                        .filter { it.inputKind in MEDIA_INPUT_KINDS }
+                        .mapTo(mutableSetOf()) { it.name },
+                )
+            },
+        )
 
     /** Tagged playback status, polled only while this workspace has an active collector. */
-    val mediaStatus: StateFlow<MixerMediaStatus> = _mediaStatus.asStateFlow()
+    val mediaStatus: StateFlow<MixerMediaStatus> = media.state
 
     fun isCurrent(origin: WorkspaceSession): Boolean {
         val ready = client.connectionState.value as? ConnectionState.Ready
@@ -170,7 +176,6 @@ constructor(
                 .collect { origin ->
                     synchronized(controlLock) {
                         snapshot.value = Snapshot(workspace = origin)
-                        _mediaStatus.value = MixerMediaStatus(origin)
                         volumeControls.clear()
                         muteControls.clear()
                         requestDiscovery()
@@ -217,37 +222,6 @@ constructor(
                 .map { it.audioAllowList }
                 .distinctUntilChanged()
                 .collect { requestDiscovery() }
-        }
-        scope.launch {
-            // Poll only while connected AND subscribed; mixerState emissions (e.g. per-frame
-            // fader previews) must not restart the loop.
-            combine(
-                    workspaces.state,
-                    client.connectionState,
-                    _mediaStatus.subscriptionCount.map { it > 0 }.distinctUntilChanged(),
-                ) { workspace, _, subscribed ->
-                    (workspace as? WorkspaceState.Ready)?.session?.takeIf {
-                        subscribed && isCurrent(it)
-                    }
-                }
-                .distinctUntilChanged()
-                .collectLatest { origin ->
-                    _mediaStatus.value = MixerMediaStatus(origin)
-                    if (origin != null) pollMediaLoop(origin)
-                }
-        }
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            client.eventsWithContext.collect { stamped ->
-                val origin = workspaces.currentSession() ?: return@collect
-                if (stamped.token != origin.token || !isCurrent(origin)) return@collect
-                when (val event = stamped.event) {
-                    is ObsEvent.MediaInputPlaybackStarted ->
-                        refreshMediaStatus(origin, event.inputName)
-                    is ObsEvent.MediaInputPlaybackEnded ->
-                        refreshMediaStatus(origin, event.inputName)
-                    else -> Unit
-                }
-            }
         }
     }
 
@@ -405,42 +379,17 @@ constructor(
         inputName: String,
         action: MediaActionKind,
     ) {
+        requireCurrent(origin)
+        if (media.isSeeking(origin, inputName)) return
         inWorkspace(origin) { triggerMediaInputAction(inputName, action) }
-        refreshMediaStatus(origin, inputName)
+        media.refresh(origin, inputName)
     }
 
-    suspend fun setMediaInputCursor(origin: WorkspaceSession, inputName: String, cursorMs: Long) =
-        inWorkspace(origin) { setMediaInputCursor(inputName, cursorMs) }
+    fun watchMediaInput(origin: WorkspaceSession, inputName: String): AutoCloseable =
+        media.watch(origin, inputName)
 
-    private suspend fun refreshMediaStatus(origin: WorkspaceSession, inputName: String) {
-        requestResult {
-            val status = inWorkspace(origin) { getMediaInputStatus(inputName) }
-            _mediaStatus.update { current ->
-                if (isCurrent(origin) && current.workspace == origin)
-                    current.copy(inputs = current.inputs + (inputName to status))
-                else current
-            }
-        }
-    }
-
-    private suspend fun pollMediaLoop(origin: WorkspaceSession) {
-        while (currentCoroutineContext().isActive && isCurrent(origin)) {
-            val mediaInputs =
-                snapshot.value
-                    .takeIf { it.workspace == origin }
-                    ?.inputs
-                    .orEmpty()
-                    .filter { it.inputKind in MEDIA_INPUT_KINDS }
-            val liveNames = mediaInputs.mapTo(mutableSetOf()) { it.name }
-            _mediaStatus.update { current ->
-                if (current.workspace == origin)
-                    current.copy(inputs = current.inputs.filterKeys { it in liveNames })
-                else current
-            }
-            mediaInputs.forEach { input -> refreshMediaStatus(origin, input.name) }
-            delay(MEDIA_POLL_MS)
-        }
-    }
+    suspend fun seekMedia(intent: MediaSeekIntent): Boolean =
+        media.seek(intent.target, intent.cursorMs, intent.durationMs)
 
     suspend fun getInputAudioBalance(origin: WorkspaceSession, inputName: String) =
         inWorkspace(origin) { getInputAudioBalance(inputName) }
@@ -473,10 +422,6 @@ constructor(
     }
 
     private companion object {
-        val MEDIA_INPUT_KINDS = setOf("ffmpeg_source", "vlc_source")
-
-        /** Media-status poll cadence; mirrored in MixerRepositoryTest. */
-        const val MEDIA_POLL_MS = 2_000L
         const val REFRESH_DEBOUNCE_MS = 300L
     }
 }

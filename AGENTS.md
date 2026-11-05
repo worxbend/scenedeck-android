@@ -190,6 +190,14 @@ must pass, and Compose preview(s) for changed screens must render.
   insertion sequence; retries use the same capture ID, label edits compare the original,
   and persisted data excludes credentials, raw responses and recording paths.
 
+- Mixer Media tools uses the shared subscribed reader; focused off-program sources add
+  temporary leases. Failed/expired reads are unknown and older reads cannot restore them.
+  Seek intents retain source revision and duration across the whole gesture, revalidate
+  before dispatch, clamp to 0…duration and reconcile a post-write read. One pending seek
+  per input, no automatic retry, and observed source/workspace changes cancel queued work.
+  Unknown duration disables seeking; locked channels remain readable. New behavior stays
+  within the existing core OBS request boundary.
+
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
 - Preflight is under More with optional links from start-output confirmations; the link

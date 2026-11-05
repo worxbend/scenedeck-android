@@ -39,7 +39,13 @@ class MixerRepositoryTest {
     fun mediaPollingRunsOnlyWhileSubscribed() = runTest {
         val client = MediaClient()
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { state -> state.inputs.any { it.name == "Music" } }
         runCurrent()
@@ -69,7 +75,13 @@ class MixerRepositoryTest {
     fun mediaStatusPrunesInputsRemovedMidSession() = runTest {
         val client = MediaClient()
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { state -> state.inputs.any { it.name == "Music" } }
         val collector = backgroundScope.launch { repository.mediaStatus.collect {} }
@@ -97,7 +109,13 @@ class MixerRepositoryTest {
                     throw IOException("socket closed")
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         val state = repository.mixerState.first { s -> s.inputs.any { it.name == "Music" } }
         assertEquals(1.0, state.inputs.single { it.name == "Music" }.volumeMul, 0.0)
@@ -129,7 +147,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
         val older = async {
@@ -155,7 +179,13 @@ class MixerRepositoryTest {
                     throw IOException("socket closed")
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { s -> s.inputs.any { it.name == "Music" } }
 
@@ -186,7 +216,13 @@ class MixerRepositoryTest {
                     }
                 }
             val repository =
-                MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+                MixerRepository(
+                    client,
+                    settings,
+                    MutableWorkspaceContext(),
+                    backgroundScope,
+                    MonotonicClock { testScheduler.currentTime },
+                )
             client.setReady()
             repository.mixerState.first { it.inputs.any { input -> input.name == "Music" } }
             val older = async {
@@ -214,7 +250,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         val write = async { repository.setInputMute(TEST_WORKSPACE, "Music", true) }
@@ -250,7 +292,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         // Keep the WhileSubscribed projection active while a real DataStore read suspends.
@@ -286,7 +334,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         val baseline = reads
@@ -321,7 +375,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.activeScene == "Main" }
         val published = mutableListOf<String?>()
@@ -352,7 +412,13 @@ class MixerRepositoryTest {
                 }
             }
         val repository =
-            MixerRepository(client, settings, MutableWorkspaceContext(), backgroundScope)
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.inputs.isNotEmpty() }
         val write = async { runCatching { repository.setInputMute(TEST_WORKSPACE, "Music", true) } }
@@ -378,7 +444,14 @@ class MixerRepositoryTest {
                 }
             }
         val workspaces = MutableWorkspaceContext()
-        val repository = MixerRepository(client, settings, workspaces, backgroundScope)
+        val repository =
+            MixerRepository(
+                client,
+                settings,
+                workspaces,
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.workspace == TEST_WORKSPACE }
         backgroundScope.launch { repository.mixerState.collect {} }
@@ -426,7 +499,14 @@ class MixerRepositoryTest {
                 }
             }
         val workspaces = MutableWorkspaceContext()
-        val repository = MixerRepository(client, settings, workspaces, backgroundScope)
+        val repository =
+            MixerRepository(
+                client,
+                settings,
+                workspaces,
+                backgroundScope,
+                MonotonicClock { testScheduler.currentTime },
+            )
         client.setReady()
         repository.mixerState.first { it.workspace == TEST_WORKSPACE }
         backgroundScope.launch { repository.mixerState.collect {} }

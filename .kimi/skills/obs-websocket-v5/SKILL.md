@@ -71,7 +71,7 @@ subscription, `GetSourceScreenshot`, studio-mode request set.
 | Config | `GetProfileList`, `SetCurrentProfile`, `GetSceneCollectionList`, `SetCurrentSceneCollection`, `GetVideoSettings` |
 | Outputs | `Get/Start/StopStream( Status)`, `Get/Start/StopRecord( Status)`, `PauseRecord`, `ResumeRecord`, `SplitRecordFile`, `CreateRecordChapter`, `ToggleVirtualCam` (M7) |
 | Audio | `GetSpecialInputs`, `Get/SetInputMute`, `Get/SetInputVolume` (multiplier), `SetInputAudioBalance/SyncOffset/MonitorType` (M7) |
-| Media (M7) | `GetMediaInputStatus`, `TriggerMediaInputAction` |
+| Media | `GetMediaInputStatus`, `SetMediaInputCursor`, `TriggerMediaInputAction` |
 | Sources (M6) | `GetSourceScreenshot` (JPEG, throttled) |
 
 ## Events handled
@@ -103,3 +103,8 @@ Optional recording controls use advertised GetVersion capabilities, not version 
 Keep recording-format failures sanitized and never retry uncertain writes. Recording
 state events have a nullable outputPath; the local RecordingEventData adapter corrects
 ktobs 0.5.0's non-null model. Recheck that workaround on dependency upgrades.
+
+Media seeking requires fresh playing/paused status with known positive duration; bound
+the cursor in the data layer because OBS does not check it against duration. Preserve the
+gesture source/duration through release, cancel obsolete queued work, reconcile a read
+started after acknowledgement and never retry an uncertain write automatically.

@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next incomplete checkpoint is W5.
+and progress evidence. The next incomplete checkpoint is W6.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -85,9 +85,9 @@ and progress evidence. The next incomplete checkpoint is W5.
   advanced split/chapter actions when supported, with confirmed/pending state.
 - [x] W5b: Add local timestamp bookmarks independent of OBS chapter availability;
   define recording/stream time bases and paused-recording behavior explicitly.
-- [ ] W5c: Expose media progress, remaining time, and bounded seek in Mixer options;
+- [x] W5c: Expose media progress, remaining time, and bounded seek in Mixer options;
   disable seeking when duration is unknown and reconcile subsequent OBS state.
-- [ ] W5d: Verify unsupported requests/formats, cancellation/timeouts, duplicate taps,
+- [x] W5d: Verify unsupported requests/formats, cancellation/timeouts, duplicate taps,
   recording state changes, seek bounds, and compact/light/dark previews.
 
 ### W6 — Local session history and export

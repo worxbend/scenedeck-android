@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.mixer
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MonotonicClock
 import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.TEST_WORKSPACE
@@ -71,7 +72,14 @@ class MixerViewModelTest {
                 )
             )
         holderScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        mixer = MixerRepository(client, settings, MutableWorkspaceContext(), holderScope)
+        mixer =
+            MixerRepository(
+                client,
+                settings,
+                MutableWorkspaceContext(),
+                holderScope,
+                MonotonicClock { System.nanoTime() / 1_000_000 },
+            )
         viewModel = MixerViewModel(mixer, settings, client)
     }
 
@@ -156,6 +164,24 @@ class MixerViewModelTest {
         viewModel.toggleLock(TEST_WORKSPACE, "Desktop Audio", true)
         val state = awaitState { it.inputs.first { input -> input.name == "Desktop Audio" }.locked }
         assertTrue(state.inputs.first { it.name == "Desktop Audio" }.locked)
+    }
+
+    @Test
+    fun focusedMediaLocksRemainAuthoritativeAfterLeavingProgram(): Unit = runBlocking {
+        client.setReady()
+        awaitState { it.inputs.any { input -> input.name == "Test Tone 440" } }
+        viewModel.toggleLock(TEST_WORKSPACE, "Test Tone 440", true)
+        awaitState { "Test Tone 440" in it.lockedInputs }
+        client.sceneListSnapshot = client.sceneListSnapshot.copy(currentProgramScene = "Quiet A")
+        (client.events as MutableSharedFlow<ObsEvent>).emit(
+            ObsEvent.CurrentProgramSceneChanged("Quiet A")
+        )
+        val offProgram = awaitState { it.activeScene == "Quiet A" }
+        assertFalse(offProgram.inputs.any { it.name == "Test Tone 440" })
+        assertTrue("Test Tone 440" in offProgram.lockedInputs)
+        viewModel.toggleLock(TEST_WORKSPACE, "Test Tone 440", false)
+        val unlocked = awaitState { "Test Tone 440" !in it.lockedInputs }
+        assertFalse(unlocked.inputs.any { it.name == "Test Tone 440" })
     }
 
     @Test

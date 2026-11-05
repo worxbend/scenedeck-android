@@ -70,6 +70,7 @@ fun MixerStrip(
     scopePath: String? = null,
     /** Optional extras affordance (audio extras sheet); hidden when null. */
     onExtrasClick: (() -> Unit)? = null,
+    onMediaClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     val colors = SceneDeckTheme.colors
@@ -128,7 +129,15 @@ fun MixerStrip(
                 )
             }
 
-            MixerFooter(name, muted, locked, onToggleMute, onToggleLock, onExtrasClick)
+            MixerFooter(
+                name,
+                muted,
+                locked,
+                onToggleMute,
+                onToggleLock,
+                onExtrasClick,
+                onMediaClick,
+            )
         }
     }
 }
@@ -176,6 +185,7 @@ private fun MixerFooter(
     onToggleMute: () -> Unit,
     onToggleLock: () -> Unit,
     onExtrasClick: (() -> Unit)?,
+    onMediaClick: (() -> Unit)?,
 ) {
     val colors = SceneDeckTheme.colors
     Row(
@@ -183,7 +193,7 @@ private fun MixerFooter(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MixerMuteButton(name, muted, locked, onToggleMute)
-        MixerOptions(name, locked, onToggleLock, onExtrasClick)
+        MixerOptions(name, locked, onToggleLock, onExtrasClick, onMediaClick)
     }
 }
 
@@ -229,17 +239,18 @@ private fun MixerOptions(
     locked: Boolean,
     onToggleLock: () -> Unit,
     onExtrasClick: (() -> Unit)?,
+    onMediaClick: (() -> Unit)?,
 ) {
     val colors = SceneDeckTheme.colors
     val optionsIcon =
         when {
             locked -> SceneIcon.LOCK.imageVector
-            onExtrasClick != null -> SceneIcon.SETTINGS.imageVector
+            (onExtrasClick != null || onMediaClick != null) -> SceneIcon.SETTINGS.imageVector
             else -> SceneIcon.LOCK_OPEN.imageVector
         }
     val optionsDescription =
         when {
-            onExtrasClick != null -> "Channel options for $name"
+            (onExtrasClick != null || onMediaClick != null) -> "Channel options for $name"
             locked -> "Unlock $name controls"
             else -> "Lock $name controls"
         }
@@ -248,7 +259,8 @@ private fun MixerOptions(
     Box {
         IconButton(
             onClick = {
-                if (onExtrasClick == null) onToggleLock() else optionsOpen = true
+                if (onExtrasClick == null && onMediaClick == null) onToggleLock()
+                else optionsOpen = true
             },
             modifier = Modifier.size(48.dp),
         ) {
@@ -259,7 +271,14 @@ private fun MixerOptions(
                 modifier = Modifier.size(18.dp),
             )
         }
-        MixerOptionsMenu(optionsOpen, { optionsOpen = false }, locked, onToggleLock, onExtrasClick)
+        MixerOptionsMenu(
+            optionsOpen,
+            { optionsOpen = false },
+            locked,
+            onToggleLock,
+            onExtrasClick,
+            onMediaClick,
+        )
     }
 }
 
@@ -270,6 +289,7 @@ private fun MixerOptionsMenu(
     locked: Boolean,
     onToggleLock: () -> Unit,
     onExtrasClick: (() -> Unit)?,
+    onMediaClick: (() -> Unit)?,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
@@ -285,6 +305,16 @@ private fun MixerOptionsMenu(
                 )
             },
         )
+        if (onMediaClick != null) {
+            DropdownMenuItem(
+                text = { Text("Media tools") },
+                onClick = {
+                    onDismiss()
+                    onMediaClick()
+                },
+                leadingIcon = { Icon(SceneIcon.VIDEO.imageVector, contentDescription = null) },
+            )
+        }
         if (onExtrasClick != null) {
             DropdownMenuItem(
                 text = { Text("Audio settings") },

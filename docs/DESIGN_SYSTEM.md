@@ -306,3 +306,15 @@ retain the draft and deletion names the concrete mark. Unsaved captures offer Re
 and Discard, with a polite inline message. Display the 500-mark retention limit and that
 local bookmarks do not create OBS chapters. Render SceneDeck/OBS light/dark and compact
 unknown-state variants.
+
+
+### Media tools
+
+Channel options group Media tools beside Audio settings. The media sheet opens expanded
+and scrolls in compact height. Use the shared Studio page header and JetBrains Mono for
+elapsed, remaining and duration. Unknown values use text, never a fabricated zero.
+The slider has a source-specific accessibility label and keeps its draft separate from
+confirmed elapsed time; a source/duration change cancels the held gesture. It sends only
+on release (including accessibility adjustment), with preference-controlled gesture-end
+haptics. Pending/outcome text uses a polite live region. Locked channels can inspect the
+sheet; disabled seeking explains why. Preserve the direct compact transport on each strip.

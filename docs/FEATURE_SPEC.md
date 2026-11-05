@@ -219,7 +219,7 @@ while recording is paused. Existing start/stop safety confirmations are unchange
 | Scene item visibility toggles | **SHIPPED M7**: "Sources" section in the deck card quick-edit sheet, live via `SceneItemEnableStateChanged` | M7 ✅ |
 | Audio balance / sync offset / monitor type | **SHIPPED M7**: per-strip extras sheet (balance 0..1, sync ±950 ms, monitor type), debounced writes | M7 ✅ |
 | Widgets & Wear OS tile | **Widget SHIPPED M7**: Glance mini-deck (up to 6 PRIMARY scenes, tally highlight, connect-then-act cold start). Wear OS tile still open | M7 ✅ / M8 |
-| Media controls (play/pause media sources) | **SHIPPED M7**: play/pause/restart + state chip on media-kind mixer strips (2 s poll) | M7 ✅ |
+| Media controls | Play/pause/restart + state chip; channel options → Media tools adds elapsed/remaining/duration and bounded seeking | M7 + W5 |
 | Quick-volume notification / foreground service | **SHIPPED M7**: keep-alive foreground service (dataSync, STICKY, timeout handling) + ongoing notification with connection, LIVE/REC output time (never a guessed idle) and program scene + Disconnect action; denied/blocked notification permission is explained with a notification-settings shortcut; `scenedeck://scene/{name}` deep link for automation with sanitized failure toasts (no profile, not connected, rejected switch) | M7 ✅ |
 
 Preview captions show elapsed time since successful receipt/decoding, using a monotonic
@@ -299,6 +299,32 @@ the Settings Haptics toggle and run only for new warnings while the activity is 
 background warnings are not replayed on return. There are no audible alerts or system
 alert notifications. Existing keep-alive output notifications stay unchanged; background
 monitoring and delivery depend on Android and the connection, not an alarm guarantee.
+
+### Media progress and seeking
+
+Mixer → channel options → **Media tools** opens an expanded, scrollable sheet for
+media-kind inputs. It shows separately reported elapsed, remaining and total time,
+with explicit playback state and unknown values. It uses the shared Mixer reader;
+opening an off-program source adds it to that reader only while the sheet is open.
+Normal polling remains subscribed and sequential, with a two-second delay per batch.
+Failed reads clear old values; a local one-second clock expires readings older than
+five seconds. The compact transport labels unavailable status **Unknown**.
+
+Seeking requires an advertised cursor request, a fresh playing/paused source, positive
+known duration and a valid cursor. Locked channels remain readable but cannot seek.
+Dragging previews a target locally and sends one write on release; accessibility
+adjustments also commit once. A gesture keeps its original workspace/source identity
+and duration. Source replacement or a changed duration discards that gesture. Before
+writing, the app re-reads status, checks the duration and clamps the target to 0…duration.
+Seeking does not change play/pause state, and another seek on that input is blocked
+until the pending command finishes. Compact play/restart controls wait during a seek.
+
+A post-write read supplies the actual displayed position. Feedback distinguishes a
+near-requested position, a different position, OBS rejection, changed media and unknown
+outcome. Near-requested means within one second, allowing observed read latency while
+playing; it is not a frame-accurate editing guarantee. Failed or timed-out writes are
+never automatically retried. Workspace replacement, removal/rename, or an observed
+playback boundary cancels queued seeks; a dispatched action may already have taken effect.
 
 ### Local timestamp bookmarks
 

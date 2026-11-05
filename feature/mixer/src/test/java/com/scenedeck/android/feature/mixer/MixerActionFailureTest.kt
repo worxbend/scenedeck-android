@@ -2,6 +2,7 @@ package com.scenedeck.android.feature.mixer
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MonotonicClock
 import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.TEST_WORKSPACE
@@ -43,7 +44,13 @@ class MixerActionFailureTest {
         repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         viewModel =
             MixerViewModel(
-                MixerRepository(client, settings, MutableWorkspaceContext(), repositoryScope),
+                MixerRepository(
+                    client,
+                    settings,
+                    MutableWorkspaceContext(),
+                    repositoryScope,
+                    MonotonicClock { System.nanoTime() / 1_000_000 },
+                ),
                 settings,
                 client,
             )

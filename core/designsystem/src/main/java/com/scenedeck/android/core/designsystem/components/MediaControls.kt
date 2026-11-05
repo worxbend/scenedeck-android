@@ -89,8 +89,8 @@ private fun MediaStateChip(state: MediaStateKind?) {
             MediaStateKind.ERROR -> "Error" to colors.meterRed
             MediaStateKind.OPENING,
             MediaStateKind.BUFFERING -> "Loading" to colors.idle
-            MediaStateKind.NONE,
-            null -> "No media" to colors.idle
+            MediaStateKind.NONE -> "No media" to colors.idle
+            null -> "Unknown" to colors.idle
         }
     Surface(
         shape = MaterialTheme.shapes.small,

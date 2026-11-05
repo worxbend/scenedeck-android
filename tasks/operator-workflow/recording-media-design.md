@@ -1,6 +1,6 @@
 # W5 recording and media tools
 
-Status: active. W5a–b are implemented and verified; W5c–d are incomplete. No rundown,
+Status: W5 is implemented and verified. The workflow continues at W6. No rundown,
 cue sequence, timed advancement or Replay Buffer behavior is added.
 
 ## Recording controls
@@ -30,13 +30,6 @@ cue sequence, timed advancement or Replay Buffer behavior is added.
 - Controls require a recording sample no older than three seconds. Event receipt
   invalidates previous counter evidence; unknown status disables writes. A one-second
   local freshness clock does not send OBS requests.
-
-## Remaining W5 decisions/work
-
-Media seeking (W5c) will use the existing shared Mixer media polling boundary.
-Validate duration/cursor, clamp seeks to the known duration, show elapsed/remaining,
-disable unknown-duration seeks, and reconcile actual OBS status after each write.
-The protocol itself does not bound the cursor against media duration.
 
 ## Sources checked 2026-11-05
 
@@ -88,12 +81,24 @@ uses [GetOutputDuration](https://github.com/obsproject/obs-websocket/blob/master
 which computes output duration from output frames/frame time. The app stores the
 reported value rather than estimating pause intervals from wall-clock time.
 
-## W5c resumption findings
+## W5c media decisions (verified)
 
-`MixerRepository` already owns a subscribed two-second media poll and
-`setMediaInputCursor`; `MediaStatus` already carries nullable cursor/duration. The current
-media cache has no read timestamps and silently retains prior values after failed reads.
-Before exposing progress/seeking, add freshness and read-order guards so a delayed earlier
-read cannot overwrite newer status or confirm a seek. Keep the existing shared polling
-boundary; validate duration, clamp targets, capability-gate writes, prevent duplicates,
-and reconcile a post-write status without automatically retrying uncertain writes.
+- The shared reader now expires samples (five-second admission age; one-second local
+  expiry tick), clears failed reads, rejects late older reads and tags input/playback
+  revisions. A focused source lease supports Selected/Pinned media without another poller.
+- Gesture intent contains target, duration and bounded cursor, and survives recomposition
+  without silently retargeting. Both admission and a fresh pre-write read reject duration
+  changes. One pending seek per source blocks duplicates and newly invoked compact transport controls.
+- Post-acknowledgement reads reconcile actual position. Near-requested feedback uses a
+  one-second tolerance plus observed read latency while playing; unexpected positions,
+  invalid/missing results, rejection and context changes have distinct honest outcomes.
+- The callback/cache/command state shares one lock, preventing lock-order inversion. Source
+  or workspace replacement cancels pending owners, including queued request admission.
+- Official source checked again: [OBS media request implementation](https://github.com/obsproject/obs-websocket/blob/master/src/requesthandler/RequestHandler_MediaInputs.cpp)
+  allows time values/seeking only for playing or paused sources and does not bound a seek
+  against duration. Existing typed `SetMediaInputCursor` adapter and deadline lane are reused.
+
+The open sheet reads the full saved lock set, independently of the current strip list,
+so moving off program neither invents a lock nor bypasses an existing one. Six media
+renders plus the earlier recording/bookmark renders verify W5 across the required themes.
+See `progress.md` for exact commands, results and the real-device verification limitation.

@@ -248,7 +248,9 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   with pending/confirmed state, sanitized format rejection and uncertain-write handling.
 - Verified: local timestamp bookmarks with separate output times, paused/unknown states,
   bounded persistence, offline label editing/deletion, and exact-moment save retries.
-- Next: media progress/seeking, then the remaining authorized
+- Verified: Mixer Media tools with actual elapsed/remaining/duration, bounded seeking,
+  fresh status, guarded gesture identity, pending/outcome feedback and off-program locks.
+- Next: local session history/export, then the remaining authorized
   improvements in `tasks/operator-workflow/plan.md`. Checkboxes there are the source of
   truth; foundations alone do not complete a feature.
 - Show rundown, cue lists and timed advancement are excluded. Presets will be invoked

@@ -30,6 +30,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -38,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.data.MixerInputState
+import com.scenedeck.android.core.data.MixerMediaStatus
 import com.scenedeck.android.core.data.WorkspaceSession
 import com.scenedeck.android.core.designsystem.components.DisconnectedPlaceholder
 import com.scenedeck.android.core.designsystem.components.MediaControls
@@ -101,7 +105,8 @@ fun MixerScreen(
                             viewModel,
                             motionLevel,
                             hapticsEnabled,
-                            if (mediaStatus.workspace == origin) mediaStatus.inputs else emptyMap(),
+                            if (mediaStatus.workspace == origin) mediaStatus
+                            else MixerMediaStatus(),
                         )
                     }
                 }
@@ -124,8 +129,10 @@ private fun ScopedMixerContent(
     viewModel: MixerViewModel,
     motionLevel: MotionLevel,
     hapticsEnabled: Boolean,
-    mediaStatus: Map<String, MediaStatus>,
+    mediaStatus: MixerMediaStatus,
 ) {
+    val haptics = LocalHapticFeedback.current
+    var mediaFor by remember { mutableStateOf<String?>(null) }
     var extrasFor by remember { mutableStateOf<String?>(null) }
     MixerContent(
         uiState = uiState,
@@ -133,9 +140,28 @@ private fun ScopedMixerContent(
         motionLevel = motionLevel,
         hapticsEnabled = hapticsEnabled,
         callbacks = viewModel.callbacks(origin),
-        mediaStatus = mediaStatus,
+        mediaStatus = mediaStatus.inputs,
+        seeking = mediaStatus.readings.filterValues { it.seeking }.keys,
+        onMediaClick = { mediaFor = it },
         onExtrasClick = { extrasFor = it },
     )
+    mediaFor?.let { inputName ->
+        DisposableEffect(origin, inputName) {
+            val lease = viewModel.watchMediaInput(origin, inputName)
+            onDispose { lease.close() }
+        }
+        MediaToolsSheet(
+            inputName,
+            mediaStatus.readings[inputName],
+            mediaStatus.seekSupported,
+            inputName in uiState.lockedInputs,
+            { intent ->
+                if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                viewModel.seekMedia(intent)
+            },
+            { mediaFor = null },
+        )
+    }
     extrasFor?.let { inputName ->
         AudioExtrasSheet(
             inputName = inputName,
@@ -158,6 +184,8 @@ internal fun MixerContent(
     modifier: Modifier = Modifier,
     mediaStatus: Map<String, MediaStatus> = emptyMap(),
     onExtrasClick: (String) -> Unit = {},
+    onMediaClick: (String) -> Unit = {},
+    seeking: Set<String> = emptySet(),
 ) {
     Column(
         modifier =
@@ -249,6 +277,8 @@ internal fun MixerContent(
                 callbacks = callbacks,
                 mediaStatus = mediaStatus,
                 onExtrasClick = onExtrasClick,
+                onMediaClick = onMediaClick,
+                seeking = seeking,
             )
         }
     }
@@ -320,6 +350,8 @@ private fun MixerStripRow(
     callbacks: MixerCallbacks,
     mediaStatus: Map<String, MediaStatus>,
     onExtrasClick: (String) -> Unit,
+    onMediaClick: (String) -> Unit,
+    seeking: Set<String>,
 ) {
     LazyRow(
         contentPadding = PaddingValues(bottom = 20.dp),
@@ -354,11 +386,14 @@ private fun MixerStripRow(
                     onToggleMute = { callbacks.onToggleMute(input.name, !input.muted) },
                     onToggleLock = { callbacks.onToggleLock(input.name, !input.locked) },
                     onExtrasClick = { onExtrasClick(input.name) },
+                    onMediaClick =
+                        if (input.inputKind in MEDIA_KINDS) ({ onMediaClick(input.name) })
+                        else null,
                 )
                 if (input.inputKind in MEDIA_KINDS) {
                     MediaControls(
                         state = mediaStatus[input.name]?.state,
-                        enabled = !input.locked,
+                        enabled = !input.locked && input.name !in seeking,
                         onPlayPause = { callbacks.onMediaPlayPause(input.name) },
                         onRestart = { callbacks.onMediaRestart(input.name) },
                         modifier = Modifier.width(120.dp).padding(top = 8.dp),

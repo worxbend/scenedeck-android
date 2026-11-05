@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.common.coroutineResult
 import com.scenedeck.android.core.data.DiscoveredInput
+import com.scenedeck.android.core.data.MediaSeekIntent
 import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.MixerInputState
 import com.scenedeck.android.core.data.MixerRepository
@@ -76,6 +77,7 @@ data class MixerUiState(
     val notInProgram: Boolean = false,
     val inputs: List<MixerInputState> = emptyList(),
     val sceneNames: List<String> = emptyList(),
+    val lockedInputs: Set<String> = emptySet(),
 )
 
 @HiltViewModel
@@ -163,6 +165,7 @@ constructor(
                         m == MixerMode.SELECTED && sel != null && sel != base.activeScene,
                     inputs = filtered,
                     sceneNames = base.sceneNames,
+                    lockedInputs = locks,
                 )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MixerUiState())
@@ -392,6 +395,15 @@ constructor(
 
     fun mediaRestart(origin: WorkspaceSession, inputName: String) {
         launchAction { mixer.triggerMediaInputAction(origin, inputName, MediaActionKind.RESTART) }
+    }
+
+    fun watchMediaInput(origin: WorkspaceSession, inputName: String): AutoCloseable =
+        mixer.watchMediaInput(origin, inputName)
+
+    fun seekMedia(intent: MediaSeekIntent) {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            mixer.seekMedia(intent)
+        }
     }
 
     // ── Audio extras (M7) ───────────────────────────────────────────────────

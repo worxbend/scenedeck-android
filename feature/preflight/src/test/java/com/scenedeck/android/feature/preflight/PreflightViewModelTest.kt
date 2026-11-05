@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.scenedeck.android.core.data.MixerRepository
+import com.scenedeck.android.core.data.MonotonicClock
 import com.scenedeck.android.core.data.MutableWorkspaceContext
 import com.scenedeck.android.core.data.ObsStateRepository
 import com.scenedeck.android.core.data.PreflightRepository
@@ -79,7 +80,7 @@ class PreflightViewModelTest {
                 PreflightRunner(fake.client, context),
                 fake.client,
                 ObsStateRepository(fake.client, registry, scope, settings),
-                MixerRepository(fake.client, settings, context, scope),
+                MixerRepository(fake.client, settings, context, scope, MonotonicClock { 0 }),
                 ProfileRepository(database.connectionProfileDao()),
             )
         store.put("preflight", model)

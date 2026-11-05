@@ -317,3 +317,19 @@ calendar time (`WallClock`) is separate from freshness (`MonotonicClock`); neith
 to extrapolate OBS positions. No credentials, host, port, raw response, recording path or
 media content is persisted. Offline access does not depend on a live workspace. The first
 `:feature:history` surface is Bookmarks; W6 history/event tracking/export is still pending.
+
+
+Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused
+source leases), `MediaPlaybackStore` (one lock for current context, read ordering and
+expiry) and `MediaSeekController` (one pending write per input and reconciliation).
+`MediaTarget` binds the workspace and a local input/playback revision. Old reads cannot
+replace a newer read/failure, and removal/rename/playback events invalidate the old target
+and cancel its pending seek. A focused off-program source joins the same polling loop;
+there is no screen-owned network poller. Clock injection uses the shared elapsed clock.
+
+`MediaSeekIntent` retains gesture target, duration and cursor from first movement through
+release. Admission and the pre-write read both validate the duration. Each request uses
+`ObsClient.withSession` and the existing ten-second admission/response deadline. A direct
+post-acknowledgement read reconciles actual position; no optimistic counter or automatic
+write retry is used. Cancelled callers propagate cancellation and release the pending slot.
+The UI distinguishes near-target, different, rejected, changed and unknown outcomes.

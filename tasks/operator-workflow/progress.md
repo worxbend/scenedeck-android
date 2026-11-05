@@ -673,6 +673,73 @@
   guards, capability checks, pending/outcome reconciliation and failure-path tests before
   exposing seek controls. See `recording-media-design.md` for concrete source findings.
 
+## W5c — Media progress/seeking implementation (verification in progress)
+
+- Previous turn committed verified W5b as `02aece3`; it made **progress** and left
+  a clean worktree. The full goal remains active; W5c–W11 were not completed by W5b.
+- Extracted the existing Mixer media poll into a shared controller with per-source
+  identity, read ordering, failed-read invalidation, monotonic expiry and focused
+  off-program source leases. Added a capability-gated seek controller with bounded
+  targets, duration revalidation, one pending seek per input, explicit post-write
+  reconciliation and cancellation on source/workspace replacement.
+- Added Media tools under channel options, with elapsed/remaining/duration, a single
+  release-to-seek slider and explicit unsupported/unknown/pending/outcome feedback.
+  Current compact controls remain; their missing status now reads Unknown.
+- Initial compile/static checks caught controller size, recursive type inference and
+  Compose complexity. Split cache/command/reader responsibilities and extracted the
+  slider without adding suppressions. Focused data/UI tests and renders are underway;
+  no W5c/d completion or real-OBS/device verification is claimed yet.
+- First full JDK21/uv gate passed (2m 7s, 1,112 tasks; 827 tests/146 suites),
+  `/tmp/scenedeck-media-quality.log`. Final audit then fixed a focused sheet incorrectly
+  treating an off-program/filtered channel as locked. The unfiltered persisted lock set
+  now travels in MixerUiState. Its focused regression passed (28s, 131 tasks),
+  `/tmp/scenedeck-media-lock.log`, after correcting the feature fake's event-emission API.
+  A final full gate is running against that correction; checkboxes remain open until it passes.
+- During one earlier focused rerun the formatter had not yet reported terminal when
+  the check was launched. Both handles were polled to terminal before the full gates;
+  final validation runs with a single Gradle owner and already formatted sources.
+- Source checked: official OBS `RequestHandler_MediaInputs.cpp` confirms that time
+  values and seeking require playing/paused media and that seek does not enforce the
+  duration bound. Existing core OBS adapter/request lane remains unchanged.
+
+## W5c–d — Verified media tools checkpoint
+
+- **W5 is complete; W6–W11 remain open.** This turn made **progress**. The durable
+  goal remains active and excludes Show rundown/cues/timed advancement.
+- Mixer channel options now open Media tools with actual elapsed/remaining/duration,
+  explicit unknown values and a bounded release-to-seek slider. Locks remain accurate
+  after a channel leaves program. Six new light/dark/SceneDeck/OBS/pending/compact renders
+  are checked in; SceneDeck light, OBS dark and compact unknown-outcome views were inspected.
+- Cache, reader and seek command responsibilities are separate, sharing one lock for
+  context/read ordering. Failed/stale readings cannot retain prior success. Focused
+  off-program channels lease the same reader. Gesture source and duration remain fixed
+  from first movement through release, with fresh pre-write validation and post-write
+  reconciliation. Queued seeks cancel on observed source/workspace replacement.
+- Focused data/static/UI checks passed (48s, 139 tasks,
+  `/tmp/scenedeck-media-focused.log`). The additional gesture check caught a missing
+  cancellation message, then passed after rendering it (1m 4s, 138 tasks,
+  `/tmp/scenedeck-media-gesture.log`). The off-program lock regression passed separately
+  (28s, 131 tasks), `/tmp/scenedeck-media-lock.log`.
+- Final JDK21/uv `scripts/check-quality.sh` passed **exit 0, 56s, 1,112 tasks**:
+  `/tmp/scenedeck-media-quality-final.log`. Formatting, complexity, Android lint,
+  debug build, unit and Roborazzi checks passed. Semgrep ran seven rules over 308 files
+  with zero findings; Gitleaks history (69 commits) and tree scans found no leaks.
+- Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 1s,
+  876 tasks**, `/tmp/scenedeck-media-explicit.log`. Aggregate debug-test XML: **828 tests /
+  146 suites, zero failures/errors/skips**. The 29 added tests cover media data/control
+  failure paths, bounds, duplicate/canceled/replaced seeks, gesture identity, menu entry,
+  source locks, accessibility and renders. Prior recording/bookmark checks also pass,
+  completing W5d's combined verification. `git diff --check` is clean.
+- Updated FEATURE_SPEC, ARCHITECTURE, DESIGN_SYSTEM, ROADMAP, AGENTS, protocol skill
+  guidance and workflow resumption files. No real-OBS/device verification, measured
+  performance, release or publication is claimed.
+- Next: **W6 local session history/export**. Inspect schema 7 and BookmarksRepository,
+  shared Stats/ObsClient context events and LiveAlertsRepository. Define bounded local
+  observation sessions, event ordering/deduplication, disconnect/process gaps, retention
+  and sanitized export before wiring the History surface. W7 preset-result integration
+  must remain explicitly tracked until real preset execution exists; a placeholder event
+  type alone is not completed end-to-end history support.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the
