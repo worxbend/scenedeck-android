@@ -28,7 +28,9 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +57,7 @@ import com.scenedeck.android.navigation.ShellLayout
 import com.scenedeck.android.navigation.icon
 import com.scenedeck.android.navigation.label
 import com.scenedeck.android.navigation.shellLayout
+import com.scenedeck.android.shortcuts.LocalShortcutHost
 import com.scenedeck.android.ui.components.BackgroundSettingsSheet
 import com.scenedeck.android.ui.components.KeepScreenOnEffect
 import com.scenedeck.android.ui.components.StatusStrip
@@ -115,9 +118,14 @@ private fun SceneDeckShell(
 ) {
     KeepScreenOnEffect(enabled = appState.keepScreenOn && connectionState is ConnectionState.Ready)
 
+    val shortcuts = LocalShortcutHost.current
+    DisposableEffect(shortcuts) { onDispose { shortcuts?.admission?.navigating() } }
     val backStack = rememberNavBackStack(SceneDeckDestination.Live)
     LaunchedEffect(startWithConnections) {
-        if (startWithConnections) backStack.selectTopLevel(SceneDeckDestination.Connections)
+        if (startWithConnections) {
+            shortcuts?.admission?.navigating()
+            backStack.selectTopLevel(SceneDeckDestination.Connections)
+        }
     }
     val current = backStack.lastOrNull() as? SceneDeckDestination
     // Onboarding/Help is a pushed route: full-screen, navigation-suite chrome hidden.
@@ -125,7 +133,10 @@ private fun SceneDeckShell(
     var moreSheetOpen by rememberSaveable { mutableStateOf(false) }
     var backgroundSheetOpen by rememberSaveable { mutableStateOf(false) }
 
+    SideEffect { shortcuts?.admission?.shell(current, moreSheetOpen || backgroundSheetOpen) }
+
     val selectTopLevel: (SceneDeckDestination) -> Unit = { destination ->
+        if (current != destination) shortcuts?.admission?.navigating()
         backStack.selectTopLevel(destination)
     }
 
@@ -155,7 +166,10 @@ private fun SceneDeckShell(
             }
             item(
                 selected = current in SceneDeckDestination.overflow,
-                onClick = { moreSheetOpen = true },
+                onClick = {
+                    shortcuts?.admission?.navigating()
+                    moreSheetOpen = true
+                },
                 icon = { Icon(SceneDeckIcons.More, contentDescription = "More") },
                 label = { Text("More") },
             )
@@ -167,7 +181,10 @@ private fun SceneDeckShell(
                 NavDisplay(
                     backStack = backStack,
                     modifier = displayModifier,
-                    onBack = { backStack.removeLastOrNull() },
+                    onBack = {
+                        shortcuts?.admission?.navigating()
+                        backStack.removeLastOrNull()
+                    },
                     entryProvider = sceneDeckEntryProvider(appState, backStack, selectTopLevel),
                 )
             },
@@ -180,7 +197,10 @@ private fun SceneDeckShell(
                     StatusStrip(
                         state = stripState,
                         onConnectionClick = { selectTopLevel(SceneDeckDestination.Connections) },
-                        onConnectionLongClick = { backgroundSheetOpen = true },
+                        onConnectionLongClick = {
+                            shortcuts?.admission?.navigating()
+                            backgroundSheetOpen = true
+                        },
                         animateConnection = appState.motionLevel == MotionLevel.FULL,
                         compact = layout.compactStatusStrip,
                         windowInsets = stripInsets,
@@ -198,11 +218,13 @@ private fun SceneDeckShell(
         StudioToolsSheet(
             onDismiss = { moreSheetOpen = false },
             onDestination = { destination ->
+                shortcuts?.admission?.navigating()
                 moreSheetOpen = false
                 if (destination == SceneDeckDestination.Onboarding) backStack.add(destination)
                 else selectTopLevel(destination)
             },
             onBackgroundSettings = {
+                shortcuts?.admission?.navigating()
                 moreSheetOpen = false
                 backgroundSheetOpen = true
             },
@@ -272,6 +294,8 @@ private val SceneDeckDestination.description: String
                 SceneDeckDestination.Alerts -> R.string.alerts_description
                 SceneDeckDestination.Bookmarks -> R.string.bookmarks_description
                 SceneDeckDestination.History -> R.string.history_description
+                SceneDeckDestination.Presets -> R.string.presets_description
+                SceneDeckDestination.Shortcuts -> R.string.shortcuts_description
                 SceneDeckDestination.Connections -> R.string.connections_description
                 SceneDeckDestination.Settings -> R.string.settings_description
                 else -> R.string.help_description

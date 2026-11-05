@@ -138,6 +138,7 @@ dependencies {
     implementation(project(":feature:alerts"))
     implementation(project(":feature:history"))
     implementation(project(":feature:presets"))
+    implementation(project(":feature:shortcuts"))
     implementation(project(":feature:connections"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:onboarding"))

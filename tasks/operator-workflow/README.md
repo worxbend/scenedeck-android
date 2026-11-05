@@ -2,12 +2,12 @@
 
 Status: **active**. Authorized 2026-11-05: implement the feature recommendations,
 excluding **Show rundown**. This is the resumption entry point for this work.
-W1–W7 are implemented and verified, including the Presets editor, single-use output
-consent, bounded execution/cancellation and user-triggered History results. Resume at
-**W8 — keyboard and compatible foot-pedal bindings**. W8–W11 remain required.
-The W8 storage/key-input foundation and guarded action backend are verified. The
-user-facing flow is not wired; resume with editor/help, confirmation UI and app routing.
-Use [shortcuts-design.md](shortcuts-design.md) for scope, admission and verification.
+W1–W8 are implemented and verified, including Presets and the scoped keyboard/compatible
+foot-pedal editor, foreground key routing, single-use output consent and cancellation.
+Resume at **W9 — offline demo mode**. W9–W11 remain required; the durable goal is active.
+Use [shortcuts-design.md](shortcuts-design.md) for the delivered W8 contract and evidence.
+Demo needs an isolated simulated OBS boundary, deliberate onboarding/More entry and exit,
+and proof that real connections, credentials and curation cannot be reached or overwritten.
 Keep the originating-workspace, consent and unknown-result contracts in
 [presets-design.md](presets-design.md) and [history-design.md](history-design.md) when
 adding shortcut entry points. Show rundown, cue lists and timed advancement remain excluded.

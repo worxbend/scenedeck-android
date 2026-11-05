@@ -28,6 +28,7 @@ one module owns the wire protocol.**
 ├─ :feature:alerts          live warning details, speech consent and compact shell bar
 ├─ :feature:history         local timestamp bookmarks, observation history and JSON export
 ├─ :feature:presets         scoped step editor, preparation/consent and invocation results
+├─ :feature:shortcuts       scoped bindings, explicit key capture, editor and help
 ├─ :feature:connections     profile management, QR pairing, connect flow
 ├─ :feature:settings        settings screens
 └─ :feature:onboarding      first-run wizard + help
@@ -419,7 +420,7 @@ process-local; durable results belong to History. Shared action/result wording l
 `:core:ui`, which depends on `:core:data`; feature modules remain peers without dependencies
 on each other. See `tasks/operator-workflow/presets-design.md`.
 
-Shortcut configuration and invocation remain pending under W8.
+Shortcut configuration lives in `:feature:shortcuts`; foreground routing belongs to `:app`.
 
 Room schema 12 adds `shortcut_bindings`, keyed by profile + collection + stable binding
 ID, with a unique scoped key/modifier index. `ShortcutRepository` stores at most 32
@@ -436,10 +437,17 @@ active context. Its bounded device/key latches suppress repeats and duplicate do
 key-up only releases ownership. It canonicalizes letters, digits, F1–F12 and numpad digits,
 collapses modifier sides and ignores lock-state bits, reserving editing/navigation/system
 keys. `ShortcutTextInputBoundary` tracks Compose input-session leases independently of
-IME visibility. These adapters are not yet wired into MainActivity or the shell. The
-configuration UI and lifecycle/route/modal admission remain W8 work;
-storage and adapter tests alone do not complete keyboard/pedal support. See
-`tasks/operator-workflow/shortcuts-design.md`.
+IME visibility. MainActivity calls child dispatch first, then checks both pre/post-child
+text-input state and the host's current eligibility. The canonical Android key mapper and
+searchable OBS target chooser are shared through `:core:ui`; feature modules stay peers.
+`ShortcutsViewModel` combines workspace/target projections and the scoped editor controller.
+Stable draft/editor/delete IDs reject obsolete callbacks; failed operations retain drafts.
+`ShortcutHostViewModel` owns the foreground command job and immutable confirmation/notice
+state. `ShortcutAdmission` invalidates route/modal state synchronously before shell navigation,
+then applies the committed route. Resume/pause owns the binding subscription and cancels work
+when backgrounded. Window focus gates keys; losing focus cancels preparation/execution but
+preserves an owned output confirmation. Neither consent nor invocations are saved/restored.
+See `tasks/operator-workflow/shortcuts-design.md`.
 
 `ShortcutRunner` now owns one invocation from read-only preparation through optional
 single-use output consent and execution; competing calls return false without changing
@@ -458,8 +466,10 @@ target values and sends explicit start/stop commands. Mixer mute uses the reposi
 existing pending-write tokens. Busy recording tools reject recording commands. Scoped
 events, definition/context changes and policy changes interrupt pending work; subscriptions
 start before preparation. Take ignores the expected preview exchange after dispatch and
-confirms its captured scene in program. Frontend lifecycle gating and the review/dialog
-integration remain required before this backend is exposed to keyboard input.
+confirms its captured scene in program. The app host launches undispatched to reserve one
+invocation synchronously, rejects competing keys without queuing, and cancels on navigation
+or background. Its confirmation binds callbacks to the current run ID; sanitized failure
+and uncertainty feedback is visible while successful actions remain quiet.
 
 
 Mixer's media reader is split into `MixerMediaController` (subscribed polling and focused

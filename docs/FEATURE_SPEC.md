@@ -435,15 +435,32 @@ History storage status. Process interruption never resumes a run or confirmation
 Presets are individually invoked; they do not add cue scheduling, delays, loops,
 scripting or collection editing.
 
-### Keyboard and compatible foot pedals — W8 pending
+### Keyboard and compatible foot pedals
 
-Shortcut configuration and invocation are not yet available in the app. The current
-foundation adds scoped local storage without default bindings and isolated input/focus
-adapters, plus a guarded action runner with single-use output consent. More → Shortcuts,
-supported-action editing/help and foreground invocation still
-require integration and verification. The planned scope and acceptance checks are in
-`tasks/operator-workflow/shortcuts-design.md`; no global/background or universal pedal
-support is implied by this foundation.
+More → **Shortcuts** configures up to 32 bindings for the current connection profile +
+OBS collection. New bindings have no assigned key. Record a supported chord, choose an
+explicit action and save; edit, disable or delete it later. Disabled bindings retain
+reserved chords; conflicts keep the draft for correction. Scene aliases are display-only,
+and searchable target choices return the exact OBS name. Overlong targets are invalid,
+never silently shortened. Concurrent edits and workspace changes retain the original draft.
+
+Supported actions are scene selection (preview in Studio mode, program otherwise), Take
+preview, input mute/unmute, and explicit start/stop stream/recording. Supported keys are
+A–Z, 0–9, F1–F12 and numpad digits with Ctrl/Alt/Shift/Meta; modifier sides are equivalent,
+lock-state bits are ignored, and navigation/editing/system keys remain reserved. Help
+explains that a compatible pedal must emit Android keyboard events; device-specific
+configuration and universal hardware compatibility are not promised.
+
+Shortcuts run only while foreground and focused on Scenes, Mixer or Stats. Child controls,
+text editing (even with the software keyboard hidden), menus and dialogs keep priority.
+Holding a key fires once; key-up releases it. There is no global/background interception.
+Navigation or backgrounding cancels pending work and consent. The app's own output dialog
+may take window focus without cancelling itself. Output Safety uses a concrete, single-use
+60-second confirmation; another invocation is rejected without queuing. Fresh Studio,
+target, policy and connection checks still apply. Failed or unknown results are visible;
+success is quiet. Uncertain writes never retry automatically, and process recreation does
+not resume an invocation. Verification evidence and hardware limitations are recorded in
+`tasks/operator-workflow/shortcuts-design.md` and `progress.md`.
 
 ## 9. Settings
 

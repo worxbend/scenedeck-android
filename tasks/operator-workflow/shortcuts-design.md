@@ -1,13 +1,14 @@
 # Keyboard and compatible foot pedals — W8
 
-Status: **storage, input and action backend implemented; app integration pending** after the
-verified W7 checkpoint `5dd9a21`. This document distinguishes the foundation from planned
-behavior. W8a/b/c remain unchecked until the whole configuration and invocation flow is
-implemented and verified. Verification evidence lives in `progress.md`.
+Status: **implemented and verified — W8a/b/c complete**. The storage and guarded executor
+are connected to More → Shortcuts and the foreground app shell. Room, action/backend,
+input/editor/lifecycle and required preview tests pass, along with the full JDK21/uv gate
+and explicit debug build/unit tests. Exact evidence lives in `progress.md`. No physical
+keyboard/pedal, device performance or real-OBS validation is claimed. W9–W11 remain required.
 
 ## User flow and scope
 
-More → Shortcuts will manage bindings for the connected profile + OBS collection.
+More → Shortcuts manages bindings for the connected profile + OBS collection.
 There are no automatically active default shortcuts. An operator explicitly records a
 key chord, selects its action/target and saves it. Each binding can be edited, disabled
 or cleared. Help explains supported keys, modifier handling, active-screen restrictions,
@@ -50,8 +51,7 @@ This finite allow-list avoids overriding Enter/Space/Tab/D-pad activation and na
 
 The isolated Android adapter expects the normal focused child to have the first
 opportunity to handle the event, then considers an unhandled key for a shortcut. Explicit
-text-input-session, window/lifecycle and active-route guards are still required when it
-is installed; unhandled F-keys in a text field must not run OBS actions. The pinned Compose
+text-input-session, window/lifecycle and active-route guards are installed in MainActivity; unhandled F-keys in a text field must not run OBS actions. The pinned Compose
 text-input interception API is verified with focused hardware-key tests, including hidden
 software keyboard state. Keep this guard independent of software-keyboard visibility.
 
@@ -85,8 +85,9 @@ remain quiet; failures and uncertainty must be visible.
 The foundation implements `ShortcutBinding`/`ShortcutDraft`, `ShortcutRepository`,
 the schema migration, `ShortcutRunner`/`SharedShortcutExecutionSource` and isolated app
 `ShortcutKeyRouter`/`ShortcutTextInputBoundary`.
-Neither adapter is installed in MainActivity. Keep that integration coupled to the
-editor/help and guarded executor; do not expose bindings that can bypass their policy.
+The editor/help and app host now use these adapters together with the guarded executor.
+The canonical key mapper and searchable OBS name chooser live in core:ui, shared without
+feature-to-feature dependencies. Configuration never sends OBS control writes.
 The router takes an activation epoch plus a Ready snapshot (or null), calls no OBS APIs,
 and relies on the caller to recheck current lifecycle/window/route/modal/text-input
 eligibility on every event. Text-input leases remain active with a hidden software
@@ -107,12 +108,26 @@ propagates. Dispatched, unconfirmed work is unknown and never automatically retr
 Take confirms the captured scene in program and permits its normal preview exchange after
 dispatch. No invocation or consent survives process interruption.
 
-App integration still needs a foreground caller and lifecycle/navigation cancellation.
-Window focus gates key admission but an owned output dialog must not cancel its own
-confirmation just because that dialog takes window focus. Keep route/background changes
-and dismiss callbacks separate from that focus guard. Key capture in the editor will need
-the same canonical mapper as the app router; move that adapter into shared `:core:ui`
-when adding `:feature:shortcuts`, rather than importing app code from a feature.
+`ShortcutHostViewModel` owns the foreground job. MainActivity invokes child dispatch before
+runtime admission and checks text-input state from both sides of that child call. Shell
+navigation and opening More/background sheets synchronously invalidate admission before
+changing state. Resume/pause manages binding subscription and cancels on background;
+window focus changes reset key ownership. The owned output dialog retains its consent
+while taking focus, and callbacks keep the run ID. No invocation/consent is saved state.
+Failure/unknown feedback puts the outcome first and excludes raw target-name prefixes,
+so a long OBS name cannot hide uncertainty beyond Android's toast limit. The public
+Activity dispatch hook has a method-local RestrictedApi suppression because its inherited
+implementation is on AndroidX core's restricted compatibility base; superclass dispatch
+is preserved and the pinned class annotation was inspected. No broad lint baseline is used.
+
+The editor starts with no chord; explicit capture ignores repeats/modifier-only presses,
+explains reserved keys and closes on lifecycle stop. Disabled bindings reserve keys until
+deleted. Stable editor/deletion IDs reject stale callbacks, concurrent saves compare the
+original definition, and changed workspaces retain/disable the original draft. Overlong
+literal target names reject instead of truncating. Lists, editor/capture/help and concrete
+output consent render in SceneDeck/OBS light/dark with compact/large-font checks.
+
+Verified coverage:
 
 - Real Room migration/reopen, scope isolation, chord conflicts, bounds/corruption,
   idempotent creation, revisions, failed drafts and cancellation.

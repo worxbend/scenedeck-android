@@ -7,6 +7,7 @@ import com.scenedeck.android.core.data.ShortcutChord
 import com.scenedeck.android.core.data.ShortcutState
 import com.scenedeck.android.core.data.TEST_WORKSPACE
 import com.scenedeck.android.core.model.ObsSessionToken
+import com.scenedeck.android.core.ui.shortcutChordOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

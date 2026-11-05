@@ -350,3 +350,15 @@ each target and labels each required output checkbox with its concrete action. R
 show partial/unknown outcomes in text, retain the original workspace and offer scoped
 cancellation. Status/IME insets apply outside the scroll container; compact-height and
 large-font layouts remain scrollable. No cue list, timeline scheduling or rundown styling.
+
+### Shortcut editor and confirmation
+
+More → Shortcuts uses the studio header, tonal binding cards, explicit key capture and a
+scrollable editor. Each card exposes its chord, concrete action and enable switch; disabled
+keys remain visibly reserved. Target fields retain raw OBS names, with aliases alongside.
+The shared expanded name chooser searches both labels and OBS identity. Action choices wrap;
+status/IME insets remain outside scrolling. Help and output confirmation use scrollable
+Material dialogs with reachable decisions in compact-height/large-text windows. Configuration
+never invokes an OBS action. Native controls/text entry retain keyboard priority; only an
+explicit recording dialog captures a new supported key. Runtime confirmation names the
+concrete output action and its original workspace and never offers a generic toggle.

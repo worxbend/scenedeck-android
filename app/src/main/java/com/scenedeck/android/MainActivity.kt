@@ -1,7 +1,9 @@
 package com.scenedeck.android
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,12 +23,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scenedeck.android.core.designsystem.components.LocalRetryNow
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.navigation.SceneLinkParser
+import com.scenedeck.android.shortcuts.LocalShortcutHost
+import com.scenedeck.android.shortcuts.ShortcutHostFeedback
+import com.scenedeck.android.shortcuts.ShortcutHostViewModel
+import com.scenedeck.android.shortcuts.ShortcutTextInputBoundary
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val appViewModel: AppViewModel by viewModels()
+    private val shortcuts: ShortcutHostViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -67,21 +74,52 @@ class MainActivity : ComponentActivity() {
                 motionLevel = appState.motionLevel,
                 density = uiDensity,
             ) {
-                CompositionLocalProvider(LocalRetryNow provides retryNow) {
-                    SceneDeckApp(
-                        appState = appState,
-                        connectionState = connectionState,
-                        stripState = stripState,
-                        onboardingCompleted = onboardingCompleted,
-                        skipToConnections = skipToConnections,
-                        onOnboardingSkip = {
-                            skipToConnections = true
-                            appViewModel.completeOnboarding()
-                        },
-                    )
+                CompositionLocalProvider(
+                    LocalRetryNow provides retryNow,
+                    LocalShortcutHost provides shortcuts.host,
+                ) {
+                    ShortcutTextInputBoundary(shortcuts.host.textInput) {
+                        SceneDeckApp(
+                            appState = appState,
+                            connectionState = connectionState,
+                            stripState = stripState,
+                            onboardingCompleted = onboardingCompleted,
+                            skipToConnections = skipToConnections,
+                            onOnboardingSkip = {
+                                shortcuts.host.admission.navigating()
+                                skipToConnections = true
+                                appViewModel.completeOnboarding()
+                            },
+                        )
+                        ShortcutHostFeedback(shortcuts.host)
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        shortcuts.host.foreground(true)
+    }
+
+    override fun onPause() {
+        shortcuts.host.foreground(false)
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        shortcuts.host.focus(hasFocus)
+    }
+
+    // Public Activity hook inherited through AndroidX core's restricted compatibility base.
+    // Keep superclass dispatch so focused children and system keys retain their normal path.
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val editing = shortcuts.host.textInput.editing
+        val childHandled = super.dispatchKeyEvent(event)
+        return shortcuts.host.dispatch(event, childHandled, editing)
     }
 
     override fun onNewIntent(intent: Intent) {

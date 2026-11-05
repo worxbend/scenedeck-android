@@ -64,6 +64,13 @@ object SceneDeckIcons {
     val Presets: ImageVector =
         appIcon("Presets", "M4,4h6v6H4z", "M4,14h6v6H4z", "M14,4l7,4l-7,4z", "M14,17h7")
 
+    val Shortcuts: ImageVector =
+        appIcon(
+            "Shortcuts",
+            "M4,5h16a2,2 0 0 1 2,2v10a2,2 0 0 1 -2,2H4a2,2 0 0 1 -2,-2V7a2,2 0 0 1 2,-2z",
+            "M6,9h0.01 M10,9h0.01 M14,9h0.01 M18,9h0.01 M6,12h0.01 M10,12h0.01 M14,12h0.01 M18,12h0.01 M7,16h10",
+        )
+
     val Alerts: ImageVector =
         appIcon(
             "Alerts",

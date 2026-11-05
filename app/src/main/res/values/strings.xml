@@ -18,4 +18,6 @@
     <string name="alerts_description">Sustained warnings and optional speech monitoring</string>
     <string name="bookmarks_description">Local timestamp bookmarks</string>
     <string name="history_description">Local observations and export</string>
+    <string name="shortcuts_description">Keyboard and compatible foot-pedal bindings</string>
+    <string name="presets_description">Prepare and run saved groups of actions</string>
 </resources>

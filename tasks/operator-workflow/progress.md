@@ -1155,6 +1155,67 @@
   focus gates key admission separately. Verify the full user flow and required theme,
   compact-height and accessibility renders before completing W8. Continue W9–W11 afterward.
 
+### 2026-11-05 — W8 editor and foreground shortcut integration verified
+
+- Resumed the uncommitted editor work on `c851400`; the previous goal turn made progress.
+  Revalidated that no formatter was live (the interrupted call had not created its log),
+  then completed W8 without expanding into Show rundown. W1–W8 are verified; W9 demo,
+  W10 tablet layout and W11 integration remain required and the full durable goal stays active.
+- Added `:feature:shortcuts` under More with scoped list/create/edit/delete, explicit key
+  capture, enable/disable, reserved-key/chord-conflict feedback, target chooser and help.
+  New drafts have no default chord. Disabled bindings reserve chords until deleted.
+  Stable editor/deletion/draft IDs and optimistic revisions reject stale callbacks and
+  concurrent changes; failed saves retain the original workspace and draft. Overlong
+  literal names stay invalid instead of silently truncating to another possible target.
+- Moved the canonical Android key mapper to `:core:ui` and extracted the expanded OBS name
+  chooser from Presets into shared UI. Presets keeps a thin data adapter; all its prior
+  golden/alias-search tests pass unchanged. Shortcuts search aliases but save literal OBS
+  names; configuration has no OBS write dependency or default active binding. Added the
+  shared keyboard glyph and the module's existing catalog/Compose/Hilt dependencies.
+- MainActivity dispatches to focused children first and checks text-input state before
+  and after that call. `ShortcutHostViewModel` owns the caller job, immutable confirmation/
+  notice state and a foreground binding subscription. `ShortcutAdmission` gates Scenes/
+  Mixer/Stats, window focus and shell modal state; navigation invalidates synchronously
+  before back-stack changes. Foreground pause cancels work and clears keys. Focus loss
+  blocks input/cancels preparation or execution, while an owned output dialog preserves
+  its own consent. Nothing persists/resumes an invocation. Competing keys never queue.
+- Concrete stream/record confirmations bind to one run ID; expiry and authoritative
+  policy/target checks remain in the existing runner. Failure/unknown outcomes are visible,
+  success stays quiet, and runtime messages start with the outcome so long OBS target names
+  cannot hide uncertainty beyond Android's toast limit. No automatic write retries.
+- Added 23 tests across four suites: actual Room editor conflicts/scopes/revisions/delete/
+  stable retries; host child/text/route/modal/workspace admission, held keys/focus reset,
+  dialog focus versus navigation, background read/write cancellation, competing invocations,
+  no restored consent, bounded safe feedback; Compose actual key capture/reserved keys,
+  alias chooser, stale editor and compact/large-text decisions. Existing backend tests
+  retain Studio/Take, capabilities, renamed targets, locks, real repositories and uncertain
+  response coverage. No real-OBS, physical keyboard/pedal, device or performance claim.
+- Recorded 23 new goldens: list/editor/capture/help in SceneDeck and OBS light/dark,
+  compact editor and large-font stale draft, plus output consent in all four variants and
+  compact large text. Visually inspected list/editor/help/capture and compact/large-text
+  outputs; decisions remain reachable and raw identities readable. Required preview
+  renders and existing Presets goldens verify in the full gate.
+- Initial compile/static checks found missing shared UI dependencies, editor complexity/
+  long prose and a Kotlin newline-after-return error; corrected these without weakening
+  checks. Initial full gate reached a RestrictedApi lint error on the public Activity
+  dispatch override inherited through AndroidX core's restricted compatibility base.
+  Inspected pinned core 1.19.1/activity 1.13.0 bytecode and retained superclass child
+  dispatch with a documented method-local suppression; no blanket baseline. Initial
+  gate evidence: `/tmp/scenedeck-shortcuts-ui-quality.log`.
+- Focused recording/tests passed **exit 0, 1m 10s, 432 tasks**
+  (`/tmp/scenedeck-shortcuts-ui-record2.log`). Final formatter ran separately.
+  Final JDK21/uv `scripts/check-quality.sh` passed **exit 0**, Gradle **1m 14s,
+  1,239 tasks**, in `/tmp/scenedeck-shortcuts-ui-quality-verified.log`.
+  Full results: **1,080 tests / 187 suites, zero failures/errors/skips**. Semgrep seven
+  rules, 410 files, zero findings; Gitleaks 77 commits plus worktree, zero leaks.
+  Explicit JDK21 `./gradlew assembleDebug testDebugUnitTest` passed **exit 0, 8s,
+  978 tasks** (`/tmp/scenedeck-shortcuts-ui-explicit.log`). `git diff --check` passed.
+- Updated product/architecture/design/roadmap/privacy docs, AGENTS, Compose skill and
+  durable plan/resumption/design records. **Next: W9** isolated local demo mode with
+  deliberate onboarding/More entry and exit; demonstrate no real credentials/network/
+  curation reachability, process recreation and return to real profiles. Then W10/W11.
+  F-Droid parity/final integration are still explicit W11 requirements, not claimed here.
+
 ## Decisions / limitations
 
 - Include the five additional improvements from the recommendation, alongside the

@@ -259,12 +259,13 @@ M6 Studio+Preview ─ M7 Power Features ─ M8 Polish & Launch
   execution/cancellation. Results retain the original workspace and History observation,
   including partial/unknown outcomes; navigation clears consent while deliberate runs
   continue across tabs. Required theme/compact/large-text renders and failure paths pass.
-- Next: keyboard/compatible foot-pedal bindings, demo mode, tablet operator layout and
-  final integration checks in `tasks/operator-workflow/plan.md`. Checkboxes there remain
-  the source of truth; all remaining authorized improvements are still required.
-- W8 foundation is in progress: scoped binding storage and isolated key/focus adapters.
-  The action backend now implements fresh Studio/target checks and bounded single-use
-  output consent. Editor/help, app routing and actual invocation are still required; keyboard/pedal
-  support is not yet exposed and no W8 completion box is checked.
+- Verified: More → Shortcuts provides scoped binding CRUD, explicit key capture, enable/
+  disable, conflict handling and help. Foreground Scenes/Mixer/Stats routing preserves
+  child/text/modal priority, repeat suppression, concrete output consent and cancellation
+  on navigation/background. Failed/unknown results remain visible without write retries.
+  Room, lifecycle/input and required theme/compact/large-text checks pass; no physical
+  keyboard/pedal or real-OBS verification is claimed.
+- Next: offline demo mode, tablet operator layout and final integration checks in
+  `tasks/operator-workflow/plan.md`. All remaining authorized improvements are required.
 - Show rundown, cue lists and timed advancement are excluded. Presets are invoked
   independently. No release or store publication is part of this workflow.

@@ -15,8 +15,11 @@ not operate a developer-hosted server that receives your OBS session data.
 
 Connection profiles, appearance settings, scene curation (including local scene labels),
 named decks (names, membership, order and selection), local action preset definitions
-(names and ordered control targets), and preflight setup/manual checklist
-confirmations are stored on your device. Local timestamp bookmarks store their label,
+(names and ordered control targets), keyboard/compatible-pedal shortcut definitions
+(key chords, enabled state and explicit control targets), and preflight setup/manual
+checklist confirmations are stored on your device. Shortcut definitions belong to a
+connection profile and collection; recording a binding stores that chord, not a history
+of your typing. Shortcuts have no global/background keyboard listener. Local timestamp bookmarks store their label,
 connection-profile identity, collection name, device timestamp, and observed output
 elapsed times/states/sample ages. They contain no credentials or recording file paths.
 Preflight reports are held in memory for the current workspace; optional signal checks inspect OBS meter values, not microphone
@@ -83,7 +86,8 @@ delete individual marks in Bookmarks. The newest 500 are retained, with older ma
 removed automatically. Deleting a bookmark removes its history association, and label
 edits appear in subsequent history reads/exports. History retains the newest 30
 observations by default (configurable to 10 or 100), each with up to 500 history entries
-and 50 preset run records. Preset definitions survive connection-profile deletion.
+and 50 preset run records. Preset and shortcut definitions survive connection-profile deletion.
+Remove individual bindings from More → Shortcuts; disabled bindings retain their saved definitions.
 More → Presets lets you delete a definition without deleting its past History results;
 clearing app storage removes both.
 You can delete individual observations or clear history under More → History. This

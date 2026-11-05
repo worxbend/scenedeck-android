@@ -68,7 +68,7 @@ small useful improvements while establishing shared state before automation.
 ### W4 — Live alerts
 
 Telemetry foundation and live-alert behavior/UI are verified; see `live-alerts-design.md`
-and progress evidence. The next implementation checkpoint is W8; W6/W7 user flows are verified.
+and progress evidence. The next implementation checkpoint is W9; W6/W7 user flows are verified.
 
 - [x] W4a: Reduce shared telemetry into sustained dropped-frame, render-load,
   recording-space, and connection-loss warnings with hysteresis and cooldowns.
@@ -122,17 +122,17 @@ Real-OBS/device validation is not implied by fake-boundary/JVM/render evidence.
 
 ### W8 — Keyboard and compatible foot pedals
 
-Design and foundation: `shortcuts-design.md`. Scoped storage and input adapters are
-implemented separately from the still-required editor and app routing. The OBS executor
-is implemented, with its integration still pending;
-all W8 boxes remain unchecked until the user flow and guards are verified together.
+The scoped editor/help and foreground invocation flow are verified. See
+`shortcuts-design.md` and the progress log for Room, input/consent/cancellation, theme,
+compact-height, large-text and full-gate evidence. No physical-pedal or real-OBS check
+is implied by the JVM and render results.
 
-- [ ] W8a: Add scoped configurable key bindings to supported actions, conflict
+- [x] W8a: Add scoped configurable key bindings to supported actions, conflict
   reporting, clear/edit, and discoverable shortcut help.
-- [ ] W8b: Respect text-entry focus, modifiers, key-up/repeat semantics, Studio mode,
+- [x] W8b: Respect text-entry focus, modifiers, key-up/repeat semantics, Studio mode,
   output confirmations, and connection state. Pedals are devices that emit key events;
   do not claim universal hardware support or global background interception.
-- [ ] W8c: Verify focus, repeat suppression, bindings after rename/context change,
+- [x] W8c: Verify focus, repeat suppression, bindings after rename/context change,
   and accessibility; record any physical-device checks separately.
 
 ### W9 — Demo mode

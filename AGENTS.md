@@ -250,13 +250,17 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - Replay Buffer is excluded from Android: no replay controls or background polling.
 
-- W8 shortcut foundation: Room schema 12 stores at most 32 bindings per profile +
+- Shortcuts under More: Room schema 12 stores at most 32 bindings per profile +
   collection, with unique chords even when disabled, stable IDs and compared revisions.
   Strict typed JSON is bounded to 8 KiB characters; target names stay literal. Configuration
-  never invokes actions and there are no default bindings. App key/text-input adapters
-  are not yet connected to MainActivity: editor and lifecycle/modal routing remain
-  incomplete. Resume `tasks/operator-workflow/shortcuts-design.md`;
-  do not mark W8 complete from persistence or adapter tests alone.
+  never invokes actions and there are no default bindings. Editor/help preserves failed
+  drafts and literal names; overlong names reject instead of truncating. MainActivity
+  dispatches to children first; text-input leases work with the IME hidden. Runtime keys
+  require foreground/window focus and Scenes/Mixer/Stats, with shell modal/navigation
+  invalidation before mutation. Key state resets across focus/lifecycle/route/workspace.
+  Navigation/background cancels pending work; an owned output dialog taking window focus
+  must preserve its own consent. Results are sanitized; unknown writes remain visible.
+  Verify the complete flow in `tasks/operator-workflow/shortcuts-design.md`.
 - ShortcutRunner holds one invocation through preparation/consent/execution and rejects
   competing invocations without queuing. Caller lifetime owns it; app foreground routing
   must cancel on navigation/background. Single-use confirmation IDs expire after 60 seconds
