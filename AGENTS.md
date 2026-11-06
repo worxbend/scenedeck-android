@@ -324,8 +324,9 @@ must pass, and Compose preview(s) for changed screens must render.
 
 - AGP build-tool security minimums are constrained on the root buildscript `classpath`,
   with catalog versions documented in TECH_STACK.md; avoid forcing those jars into
-  Android runtime configurations. Recheck `buildEnvironment` and debug signing after
-  changing them.
+  Android runtime configurations. Guava minima are 33.7.2-jre for build tools and a
+  separate 33.7.2-android app implementation constraint. Recheck `buildEnvironment`,
+  runtime dependency selection and debug signing after changing them.
 
 ## Delivery contract
 

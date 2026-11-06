@@ -1,6 +1,6 @@
 # Progress
 
-## Current checkpoint
+## Initial checkpoint
 
 - Active: T1 theme resolution. Branch `feat/operator-workflow`, clean baseline `9a57d3d`.
 - User chose both more palettes and accent/true-black controls; no open product questions.
@@ -123,3 +123,29 @@
 - v0.2.1 release quality/security gate succeeded; signed APK/AAB build is running.
   F-Droid and CodeQL verification at the tag's main commit both succeeded. Push the CI
   corrections to main and verify its new run; leave the release tag immutable.
+
+## Final release preparation — v0.2.2
+
+- Main CI correction committed/pushed as c6f568a. GitHub's push response surfaced the open
+  Dependabot alert 8: AGP's buildscript selects Guava 33.4.0-jre, affected by
+  CVE-2026-102554 (unbounded Java deserialization allocation). Upstream confirms
+  33.7.2-jre as patched: https://github.com/google/guava/releases/tag/v33.7.2.
+- Build inspection confirmed the JRE tool minimum selects 33.7.2-jre. It also revealed a
+  distinct Android 33.3.1-android transitive dependency through media/CameraX/coroutines.
+  Added a separate catalog-backed app implementation minimum of 33.7.2-android; the JRE
+  jar stays confined to build tools. Verify both selections, debug signing and full
+  tests/quality before tagging.
+- Cancelled v0.2.1 before signed artifacts/publication; its quality/security gate had passed.
+  Keep v0.2.0 and v0.2.1 tags immutable. Final release is v0.2.2 / code1013, including
+  test/reporting corrections and patched build tools. F-Droid publication remains separate.
+- Updated release notes, version metadata, TECH_STACK/AGENTS and workflow tracking. Metadata
+  (15), Fastlane lane (20) and workflow syntax checks pass for the new version.
+- Final patched dependency resolution is verified in guava-resolved.log: root tools use
+  33.7.2-jre and app debug runtime uses 33.7.2-android. Full quality-022.log passed in
+  6m55s (1,242 Gradle tasks), Semgrep zero findings and both secret scans clean. XML
+  aggregate remains 1,169 tests / 203 suites, zero failures/errors/skips. F-Droid debug
+  build also passed (24s, 468 tasks), followed by normal versioned assembleDebug and
+  testDebugUnitTest (34s, 981 tasks). Normal output is restored, version0.2.2/code1013;
+  debug APK signature verification passed. Ready to commit/push/tag.
+- CI correction c6f568a is fully green on main: CI42207873675, F-Droid42207872206 and
+  CodeQL42207872178. The final dependency/release commit must get its own remote checks.

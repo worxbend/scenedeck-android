@@ -115,6 +115,11 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
+    constraints {
+        implementation("com.google.guava:guava:${libs.versions.guava.android.security.get()}") {
+            because("CVE-2026-102554: bound deserialization allocations in Android dependencies")
+        }
+    }
     // Keep application and instrumentation runtime constraints compatible.
     implementation(libs.androidx.concurrent.futures)
     implementation(libs.androidx.concurrent.futures.ktx)

@@ -21,6 +21,9 @@ buildscript {
             add("classpath", "org.apache.commons:commons-lang3:${securityCatalog.findVersion("commons-lang3-security").get().requiredVersion}") {
                 because("CVE-2025-48924: avoid uncontrolled recursion")
             }
+            add("classpath", "com.google.guava:guava:${securityCatalog.findVersion("guava-security").get().requiredVersion}") {
+                because("CVE-2026-102554: bound deserialization allocations in build tools")
+            }
         }
     }
 }

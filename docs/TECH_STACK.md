@@ -130,6 +130,9 @@ robolectric = "4.17"
 - Semgrep1.156.0: checked-in security rules, local scan, no metrics submission.
 - Android Lint checks all Android modules; CI stores reports and fails on errors.
 - Concurrent futures/ktx1.2.0 and error-prone annotations2.30.0 align app/instrumentation runtime constraints.
+- `guava-android-security` 33.7.2-android is an app implementation constraint for the
+  existing CameraX/media/coroutines transitive dependency (CVE-2026-102554). It is
+  separate from the JRE build-tool minimum; no JRE jar is forced into Android runtime.
 - `scripts/check-quality.sh` runs the complete gate; requires JDK21 and uv.
 - CI uploads Detekt SARIF separately for app/core/feature (at most 20 runs per upload),
   preserving each module's category and findings. The collector fails if a group outgrows
@@ -159,11 +162,13 @@ together to keep the resolved build-tool family consistent.
 | `jose4j-security` | 0.9.6 | AGP tooling: compressed JWE denial of service (CVE-2024-29371) |
 | `jdom2-security` | 2.0.6.1 | Jetifier: XML entity processing (CVE-2021-33813) |
 | `commons-lang3-security` | 3.18.0 | SDK repository / Commons Compress: recursive class-name parsing (CVE-2025-48924) |
+| `guava-security` | 33.7.2-jre | AGP tooling: unbounded deserialization allocations (CVE-2026-102554), surfaced by Dependabot alert 8 on 2026-11-06 |
 
 Primary release evidence: [Bouncy Castle 1.85 security fixes](https://www.bouncycastle.org/resources/new-release-bouncy-castle-java-1-85/),
 [JOSE4J release tags](https://bitbucket.org/b_c/jose4j/downloads/?iframe=true&spa=0&tab=tags),
-[JDOM 2.0.6.1 release](https://www.jdom.org/news/), and
-[Apache Commons Lang 3.18.0 changes](https://github.com/apache/commons-lang/blob/rel/commons-lang-3.18.0/src/changes/changes.xml).
+[JDOM 2.0.6.1 release](https://www.jdom.org/news/),
+[Apache Commons Lang 3.18.0 changes](https://github.com/apache/commons-lang/blob/rel/commons-lang-3.18.0/src/changes/changes.xml), and
+[Guava 33.7.2](https://github.com/google/guava/releases/tag/v33.7.2).
 
 Verify the actual selection with `./gradlew buildEnvironment`; `:app:assembleDebug`
 exercises the patched AGP tooling and debug signing. Existing UI and JVM tests must
