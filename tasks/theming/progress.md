@@ -90,3 +90,36 @@
   and reworded the current line; no blanket path/rule exclusion and no credential exposure.
 - Preserve the published v0.2.0 tag. Corrected release will be v0.2.1 / code1012, with
   the same feature set and validated security correction. Verify its tag workflow/artifacts.
+
+## Corrected remote verification in progress
+
+- v0.2.1 resolves to 3f1ccf42418540e96e2c1671425ed3b96c749fe1; subsequent CI-only
+  corrections go to main without moving the published tag.
+- Corrected history/worktree secret scans passed locally; metadata (15) and publish-lane
+  (20) tests passed. Main CI security job is also green after the fingerprint correction.
+- Release run: https://github.com/worxbend/scenedeck-android/actions/runs/42206398820
+- Main CI: https://github.com/worxbend/scenedeck-android/actions/runs/42206394065
+- F-Droid verification: https://github.com/worxbend/scenedeck-android/actions/runs/42206394224
+- CodeQL: https://github.com/worxbend/scenedeck-android/actions/runs/42206394128
+- Superseded v0.2.0 and old-main runs were cancelled; tags remain immutable. Resume by
+  reading these remote runs. Do not claim release assets published until the tag run finishes.
+
+## CI timing regression correction
+
+- Corrected main CI unit run exposed StatsViewModelTest.mapsTelemetryIntoUiState expecting
+  CPU12.5 while history samples had arrived ahead of the independent telemetry StateFlow.
+  Existing canvas-FPS test already waits for both feeds for the same reason. The mapping
+  assertion now awaits the fixture's positive CPU reading as well as a sample, then retains
+  all exact numeric assertions. Test teardown also cancels the ViewModel scope.
+- This is a test synchronization/cleanup fix; production sources and release behavior are
+  unchanged. Fresh full JDK21/uv quality gate passed (20s Gradle; all tests/security clean),
+  recorded in build/theming-verification/quality-stats-test.log.
+- Main static analysis itself passed, but GitHub rejected the combined SARIF upload:
+  23 runs exceeded its 20-run limit. Collector/upload steps now group app/core/feature
+  separately (1/8/14 runs), preserving results and stable per-module categories. Collector
+  rejects new unconfigured groups or overflow; three fixture tests prove coverage,
+  category stability, stale cleanup and fail-closed bounds. All fixture tests and real
+  collection passed locally. This affects CI reporting only.
+- v0.2.1 release quality/security gate succeeded; signed APK/AAB build is running.
+  F-Droid and CodeQL verification at the tag's main commit both succeeded. Push the CI
+  corrections to main and verify its new run; leave the release tag immutable.

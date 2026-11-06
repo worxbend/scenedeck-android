@@ -52,7 +52,8 @@ must pass, and Compose preview(s) for changed screens must render.
 - `.editorconfig` mirrors the ktfmt kotlinlang style; keep IDE settings aligned.
 - `scripts/install-git-hooks.sh` installs the pre-commit hook (ktfmt + detekt on staged Kotlin).
 - `scripts/check-quality.sh` is the full local gate (JDK 21 + uv); CI runs the same checks as
-  parallel GitHub Actions jobs with SARIF code-scanning uploads.
+  parallel GitHub Actions jobs with SARIF code-scanning uploads. Detekt uploads are grouped
+  by app/core/feature to stay within GitHub's 20-run limit; preserve every module category.
 
 ## Current UX contract
 

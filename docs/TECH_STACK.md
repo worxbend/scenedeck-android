@@ -131,6 +131,9 @@ robolectric = "4.17"
 - Android Lint checks all Android modules; CI stores reports and fails on errors.
 - Concurrent futures/ktx1.2.0 and error-prone annotations2.30.0 align app/instrumentation runtime constraints.
 - `scripts/check-quality.sh` runs the complete gate; requires JDK21 and uv.
+- CI uploads Detekt SARIF separately for app/core/feature (at most 20 runs per upload),
+  preserving each module's category and findings. The collector fails if a group outgrows
+  that limit or a new module group has no configured upload.
 - Gitleaks8.30.1: checksum-verified Linux scanner for working tree and Git history.
 - Hosted CodeQL Kotlin/Java security-extended checks use a manual build; Dependabot proposes weekly updates.
 - Reviewed lint upgrade advisories remain tied to the pinned stack; see HARDENING.md.

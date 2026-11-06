@@ -1,6 +1,7 @@
 package com.scenedeck.android.feature.stats
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.lifecycle.viewModelScope
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.StatsRepository
 import com.scenedeck.android.core.datastore.SceneDeckSettingsStore
@@ -84,13 +85,15 @@ class StatsViewModelTest {
 
     @After
     fun tearDown() {
+        viewModel.viewModelScope.cancel()
         pollScope.cancel()
     }
 
     @Test
     fun mapsTelemetryIntoUiState(): Unit = runBlocking {
         client.setReady()
-        val state = awaitState { it.sampleCount > 0 }
+        // History and telemetry are independent StateFlows; await both fixture readings.
+        val state = awaitState { it.sampleCount > 0 && it.cpuUsagePct > 0.0 }
 
         assertTrue(state.connection is ConnectionState.Ready)
         assertEquals(59.94f, state.fps, 1e-3f)
