@@ -149,3 +149,52 @@
   debug APK signature verification passed. Ready to commit/push/tag.
 - CI correction c6f568a is fully green on main: CI42207873675, F-Droid42207872206 and
   CodeQL42207872178. The final dependency/release commit must get its own remote checks.
+
+## Final remote verification in progress
+
+- main and annotated v0.2.2 point to 945db8012bd557c934b3fb9d7c2a675cfcde4510;
+  remote refs verified. Version0.2.2/code1013 debug APK manifest and signature verified.
+- Release: https://github.com/worxbend/scenedeck-android/actions/runs/42209606626
+- Main CI: https://github.com/worxbend/scenedeck-android/actions/runs/42209601728
+- Tag CI: https://github.com/worxbend/scenedeck-android/actions/runs/42209606576
+- F-Droid: https://github.com/worxbend/scenedeck-android/actions/runs/42209601581
+- Main CodeQL: https://github.com/worxbend/scenedeck-android/actions/runs/42209601573
+- Tag CodeQL: https://github.com/worxbend/scenedeck-android/actions/runs/42209606675
+- All are running/queued at this checkpoint. After the release publishes, install curated
+  notes from docs/releases/0.2.2.md, verify APK/AAB checksum and the known upload certificate
+  (48e613d25d603670a423da9ee69f980ef8f687cd4518756724e372f4427f8800), record actual
+  outcomes and close T6. Keep the visible emulator/OBS showcase available for the user.
+- Main and tag CI plus both CodeQL runs have succeeded. GitHub's dependency graph now
+  records the patched root JRE tools and app Android runtime, but alert8 remains open
+  after moving from 33.4.0-jre to standalone-library 33.3.1-android metadata. Other
+  auxiliary/test configurations also appear in the SBOM. Do not claim zero Dependabot
+  alerts or a repository-wide Guava upgrade; this release patches the selected root
+  build tools and final app runtime. Broader dependency-graph cleanup is separate scope.
+- Final F-Droid source/release verification succeeded. Release gate succeeded with 1,242
+  Gradle tasks (12m33s), all metadata/publish contract tests, Semgrep zero findings and
+  both Gitleaks scans clean. Log: build/theming-verification/release-022-verify.log.
+  Signed normal APK/AAB build is running; do not mark publication complete before assets
+  and checksums/certificate are verified.
+
+## Complete — 2026-11-06
+
+- v0.2.2 is published as the latest stable GitHub release with curated notes:
+  https://github.com/worxbend/scenedeck-android/releases/tag/v0.2.2.
+  Release workflow42209606626 succeeded, including signed normal APK/AAB build and
+  publication. Google Play was intentionally not enabled; no F-Droid publication tag
+  was created. Earlier candidate tags remain immutable without published release assets.
+- All final source checks succeeded at 945db8012bd557c934b3fb9d7c2a675cfcde4510:
+  main/tag CI, main/tag CodeQL, F-Droid source/release build and release quality/security.
+  Run links are recorded above. Local final evidence remains 1,169 tests / 203 suites,
+  zero failures/errors/skips; normal/F-Droid builds and required renders pass.
+- Downloaded the published APK/AAB/SHA256SUMS. Both checksums match. APK v2 signature
+  and AAB JAR signature verify; both match the existing upload certificate recorded
+  above. APK manifest confirms com.worxbend.scenedeck, version0.2.2/code1013, target36.
+  APK digest: c350eec1865c45a882a8d455ad2586c1db60c9489a1f24f7185fdff86db9fa45.
+  AAB digest: ed1504a84ac3644bab15aab4734691891c9be5a9e7731acf3c670c23b03a5419.
+- Close README/plan/ROADMAP/AGENTS with this documentation-only follow-up; no production
+  changes after the verified tag. T0–T6 are complete. Preserve operator-workflow and the
+  older tasks/plan.md review. The visible emulator remains available for the user.
+- Known separate follow-up: Dependabot alert8 still represents auxiliary/library/test
+  configurations, as recorded above. The release app/runtime and root tool selection
+  are patched; no claim of a repository-wide dependency audit or zero advisories.

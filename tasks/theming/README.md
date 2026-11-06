@@ -1,7 +1,7 @@
 # UI theming workflow
 
-Status: **implemented and verified; publication in progress**. User authorized both additional palettes and accent/true-black controls,
-then explicitly requested a workflow. Continue the first incomplete checkpoint in plan.md.
+Status: **complete — 2026-11-06**. User authorized both additional palettes and accent/true-black controls,
+then explicitly requested a workflow. All checkpoints in plan.md are complete.
 The completed operator workflow under `tasks/operator-workflow` is preserved.
 
 ## Scope and decisions
@@ -22,7 +22,7 @@ The completed operator workflow under `tasks/operator-workflow` is preserved.
   writer; app state observes committed settings, so storage failure cannot imply success.
 - No new libraries, OBS actions, global curation writes, font downloads or arbitrary
   imported themes. The user subsequently authorized pushing main and cutting a release;
-  the final candidate is v0.2.2. Release verification also patches transitive Guava minima;
+  the published release is v0.2.2. Release verification also patches transitive Guava minima;
   see progress.md. Demo keeps its separate ephemeral settings.
 
 Verification: JDK21/uv full quality gate, explicit normal build/tests, F-Droid build,
@@ -32,10 +32,15 @@ Keep planned work distinct from shipped behavior. No physical device/performance
 
 ## Verified delivery
 
-T1–T4 are complete: 1,169 tests / 203 suites, full JDK21/uv quality/security gate,
+T0–T6 are complete: 1,169 tests / 203 suites, full JDK21/uv quality/security gate,
 normal debug build/tests, F-Droid debug build and required renders pass. Emulator evidence
 covers preview/Apply/Cancel, relaunch, rotation, both variants and demo isolation. The visible
 emulator is connected to the user's local OBS and left for exploration. See progress.md.
 
-User subsequently authorized all local commits to main and a release tag. Final candidate: v0.2.2 (code 1013).
-Remote publication and release workflow verification are the remaining checkpoint.
+All implementation commits are on main. [SceneDeck 0.2.2](https://github.com/worxbend/scenedeck-android/releases/tag/v0.2.2)
+(code 1013) is published with signed APK/AAB and checksums. Main/tag CI, CodeQL, F-Droid
+source/release verification and the signed-release workflow passed. Downloaded artifacts
+match their checksums and the existing upload certificate; the APK's version is verified.
+The completion record is a documentation-only follow-up to the verified release commit.
+See progress.md for exact evidence and the remaining auxiliary dependency-graph alert;
+this workflow does not claim zero repository-wide dependency advisories.

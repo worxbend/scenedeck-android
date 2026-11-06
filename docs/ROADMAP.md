@@ -1,12 +1,14 @@
 # Roadmap — SceneDeck Android
 
-## Active follow-up — UI theming
+## Completed follow-up — UI theming (2026-11-06)
 
 The user requested more palettes plus accent and true-black controls. Implementation and
 verification are tracked in [the theming workflow](../tasks/theming/README.md). New palette
-resolution, persisted appearance and the preview/Apply editor are implemented and locally
+resolution, persisted appearance and the preview/Apply editor are implemented and
 verified: 1,169 tests / 203 suites, full quality/security, normal/F-Droid builds and required
-renders pass. The user authorized publication; v0.2.2 remote release verification is pending.
+renders pass. [v0.2.2](https://github.com/worxbend/scenedeck-android/releases/tag/v0.2.2)
+is published with verified signed APK/AAB and checksums. Main/tag CI, CodeQL, F-Droid
+source/release verification and signed-release gates passed at the release commit.
 
 ## Completed follow-up — operator workflow (2026-11-05)
 

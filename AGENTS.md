@@ -15,7 +15,8 @@ desktop Linux app at `../scenedeck` (Rust/GTK4). Read these before making change
 
 ## Project-level skills
 
-Active theming work resumes from `tasks/theming/README.md` and its plan/progress files.
+The completed theming workflow and v0.2.2 release verification are recorded in
+`tasks/theming/README.md` and its plan/progress files.
 
 The completed operator workflow is recorded in `tasks/operator-workflow/README.md` and its
 plan/progress files. The authorized scope excludes Show rundown (including cue lists and timed
