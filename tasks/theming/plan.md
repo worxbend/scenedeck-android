@@ -10,4 +10,4 @@
 - [x] T4: Verify behavior and renders; run full JDK21 quality, normal build/tests and
   F-Droid checks; review final diff and update product/design/architecture/AGENTS docs.
 - [ ] T5: Record final evidence, commit local changes and complete the durable goal.
-- [ ] T6: User-authorized main push and v0.2.0 release tag; verify remote refs and release workflow/artifacts.
+- [ ] T6: User-authorized main push and v0.2.1 release tag; verify remote refs and release workflow/artifacts.

@@ -22,7 +22,7 @@ The completed operator workflow under `tasks/operator-workflow` is preserved.
   writer; app state observes committed settings, so storage failure cannot imply success.
 - No dependency additions, OBS actions, global curation writes, font downloads, arbitrary
   imported themes, unrequested external publication. The user subsequently authorized pushing main and
-  cutting v0.2.0; see progress.md for release verification. Demo keeps its separate ephemeral settings.
+  cutting v0.2.1; see progress.md for release verification. Demo keeps its separate ephemeral settings.
 
 Verification: JDK21/uv full quality gate, explicit normal build/tests, F-Droid build,
 contrast assertions for new color combinations, persistence/restoration/failure tests,
@@ -36,5 +36,5 @@ normal debug build/tests, F-Droid debug build and required renders pass. Emulato
 covers preview/Apply/Cancel, relaunch, rotation, both variants and demo isolation. The visible
 emulator is connected to the user's local OBS and left for exploration. See progress.md.
 
-User subsequently authorized all local commits to main and release tag v0.2.0 (code 1011).
+User subsequently authorized all local commits to main and release tag v0.2.1 (code 1012).
 Remote publication and release workflow verification are the remaining checkpoint.

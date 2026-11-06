@@ -1,3 +1,6 @@
 # Public APK signing-certificate SHA-256 (F-Droid AllowedAPKSigningKeys), not a secret.
 b4440b58682548dab125fcc8928195add9ba32a0:fdroid/metadata/com.worxbend.scenedeck.yml:generic-api-key:28
 fdroid/metadata/com.worxbend.scenedeck.yml:generic-api-key:28
+
+# Documentation literal Ocean/Violet/True black, not a credential (one historical line only).
+58aa55d594e8b2c30a98d94bca9c00c3c8733fa6:tasks/theming/progress.md:generic-api-key:53

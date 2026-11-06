@@ -50,7 +50,7 @@
   suites**, zero failures/errors/skips, including up-to-date results.
 - Final F-Droid debug build passed (22s, 468 tasks): `build/theming-verification/fdroid.log`.
   Normal build output restored. No dependency pins, permissions or signing changes.
-- Owned API36 x86_64 emulator: Ocean/Violet/True black preview did not write preferences;
+- Owned Android 36 emulator: Ocean/Violet/True black preview did not write preferences;
   Apply changed the app; process restart retained it. Reset defaults then Cancel preserved
   saved preference bytes. Demo Apply left live preferences unchanged (SHA-256 comparison),
   and Exit restored live appearance. F-Droid showed manual connection entry without QR;
@@ -80,3 +80,13 @@
   separate; this request publishes the normal v0.2.0 release.
 - Release contract tests passed: 15 Python metadata tests and 20 stubbed Fastlane checks.
   Rechecking versioned F-Droid and normal output before commits/push.
+
+## Publication correction
+
+- main pushed at 8465797; annotated v0.2.0 points to that release preparation commit.
+- CI security job127851096207 flagged a generic-api-key false positive in the documentation
+  phrase describing Ocean/Violet/True black. SARIF identifies only progress.md line53 in
+  commit58aa55d. Added that exact historical fingerprint to the existing .gitleaksignore
+  and reworded the current line; no blanket path/rule exclusion and no credential exposure.
+- Preserve the published v0.2.0 tag. Corrected release will be v0.2.1 / code1012, with
+  the same feature set and validated security correction. Verify its tag workflow/artifacts.

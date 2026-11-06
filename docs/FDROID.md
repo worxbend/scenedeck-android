@@ -59,7 +59,7 @@ service-account JSON, or signing passwords are required:
   -PfdroidBuild=true
 ```
 
-F-Droid versions come from `fdroid/version.properties` (currently 0.2.0 / 1011).
+F-Droid versions come from `fdroid/version.properties` (currently 0.2.1 / 1012).
 The normal GitHub/Play workflow can still pass explicit release version properties.
 
 The release output is `app/build/outputs/apk/release/app-release-unsigned.apk`.
