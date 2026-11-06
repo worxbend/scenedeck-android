@@ -47,6 +47,18 @@ enum class ThemeFamily {
     /** Fresh green-teal; light-friendly. */
     MINT_CONTROL,
 
+    /** Deep blue surfaces and sea-glass highlights. */
+    OCEAN,
+
+    /** Warm rose and plum studio surfaces. */
+    ROSEWOOD,
+
+    /** Golden controls and warm charcoal. */
+    AMBER,
+
+    /** Quiet warm neutrals and sage details. */
+    PAPER,
+
     /** Accessibility-max contrast. */
     HIGH_CONTRAST,
 }
@@ -80,6 +92,8 @@ fun SceneDeckTheme(
     dynamicColor: Boolean = false,
     motionLevel: MotionLevel = MotionLevel.FULL,
     density: UiDensity = UiDensity.COMFORTABLE,
+    accent: ThemeAccent = ThemeAccent.DEFAULT,
+    trueBlack: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val baseScheme = colorSchemeFor(family, darkTheme)
@@ -102,7 +116,14 @@ fun SceneDeckTheme(
         LocalSceneDeckSpacing provides spacingFor(density),
     ) {
         MaterialExpressiveTheme(
-            colorScheme = colorScheme,
+            colorScheme =
+                personalizeScheme(
+                    colorScheme,
+                    darkTheme,
+                    accent,
+                    trueBlack,
+                    family == ThemeFamily.HIGH_CONTRAST && !dynamic,
+                ),
             shapes = SceneDeckShapes,
             typography = SceneDeckTypography,
             motionScheme = motionSchemeFor(motionLevel),

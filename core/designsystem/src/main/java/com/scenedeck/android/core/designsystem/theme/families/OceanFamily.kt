@@ -1,0 +1,76 @@
+package com.scenedeck.android.core.designsystem.theme.families
+
+import androidx.compose.ui.graphics.Color
+
+/** Original SceneDeck Ocean palette, paired for light and dark operation. */
+internal object OceanFamily {
+    val light =
+        SceneDeckFamily.light.copy(
+            primary = Color(0xFF006779),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFA9EDFA),
+            onPrimaryContainer = Color(0xFF002027),
+            secondary = Color(0xFF49636A),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFCCE8EF),
+            onSecondaryContainer = Color(0xFF041F25),
+            tertiary = Color(0xFF525B92),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFDFE0FF),
+            onTertiaryContainer = Color(0xFF0D174B),
+            background = Color(0xFFF3FAFC),
+            onBackground = Color(0xFF152026),
+            surfaceVariant = Color(0xFFDCE8EC),
+            onSurfaceVariant = Color(0xFF405158),
+            surfaceContainerLowest = Color(0xFFFFFFFF),
+            surfaceContainerLow = Color(0xFFEBF3F6),
+            surfaceContainer = Color(0xFFE5EEF2),
+            surfaceContainerHigh = Color(0xFFDCE8EC),
+            surfaceContainerHighest = Color(0xFFD2E1E6),
+            outlineVariant = Color(0xFFBCCDD4),
+            outline = Color(0xFF6E8088),
+            inverseSurface = Color(0xFF27353B),
+            inverseOnSurface = Color(0xFFEAF4F8),
+            inversePrimary = Color(0xFF67D9E8),
+            surface = Color(0xFFF3FAFC),
+            onSurface = Color(0xFF152026),
+            surfaceDim = Color(0xFFD2E1E6),
+            surfaceBright = Color(0xFFF3FAFC),
+            surfaceTint = Color(0xFF006779),
+        )
+
+    val dark =
+        SceneDeckFamily.dark.copy(
+            primary = Color(0xFF67D9E8),
+            onPrimary = Color(0xFF00363E),
+            primaryContainer = Color(0xFF004F58),
+            onPrimaryContainer = Color(0xFFA9EDFA),
+            secondary = Color(0xFFB0CDD4),
+            onSecondary = Color(0xFF1B343B),
+            secondaryContainer = Color(0xFF324B52),
+            onSecondaryContainer = Color(0xFFCCE8EF),
+            tertiary = Color(0xFFBBC3FF),
+            onTertiary = Color(0xFF232C61),
+            tertiaryContainer = Color(0xFF3A4479),
+            onTertiaryContainer = Color(0xFFDFE0FF),
+            background = Color(0xFF0C1720),
+            onBackground = Color(0xFFDFEAF1),
+            surfaceVariant = Color(0xFF273841),
+            onSurfaceVariant = Color(0xFFB4C7D0),
+            surfaceContainerLowest = Color(0xFF071219),
+            surfaceContainerLow = Color(0xFF121F28),
+            surfaceContainer = Color(0xFF182832),
+            surfaceContainerHigh = Color(0xFF243640),
+            surfaceContainerHighest = Color(0xFF30434D),
+            outlineVariant = Color(0xFF3C515C),
+            outline = Color(0xFF7D96A3),
+            inverseSurface = Color(0xFFDFEAF1),
+            inverseOnSurface = Color(0xFF27353B),
+            inversePrimary = Color(0xFF006779),
+            surface = Color(0xFF0C1720),
+            onSurface = Color(0xFFDFEAF1),
+            surfaceDim = Color(0xFF0C1720),
+            surfaceBright = Color(0xFF30434D),
+            surfaceTint = Color(0xFF67D9E8),
+        )
+}

@@ -107,10 +107,10 @@ private fun ThemeFamilyRow(
             Spacer(Modifier.width(16.dp))
             Text(
                 text = family.displayName,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(Modifier.weight(1f))
             if (selected) {
                 Icon(
                     imageVector = CheckIcon,
