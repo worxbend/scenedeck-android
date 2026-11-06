@@ -15,7 +15,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -41,7 +40,6 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.data.MeterRefresh
 import com.scenedeck.android.core.data.OutputSafety
 import com.scenedeck.android.core.designsystem.components.StudioIconWell
@@ -56,31 +54,22 @@ import com.scenedeck.android.core.designsystem.icons.imageVector
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
 import com.scenedeck.android.core.designsystem.theme.SceneDeckTheme
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
-import com.scenedeck.android.core.designsystem.theme.ThemeSwitcher
 import com.scenedeck.android.core.designsystem.theme.UiDensity
-import com.scenedeck.android.core.designsystem.theme.families.displayName
 
-/**
- * Settings (FEATURE_SPEC §9). The theme section hosts the design system's [ThemeSwitcher]; mode,
- * motion, dynamic color and haptics round out Settings v1 (full persistence arrives in M2).
- */
+/** Persisted settings, with a separate preview-and-Apply appearance editor. */
 @Composable
 fun SettingsScreen(
-    currentTheme: ThemeFamily,
-    onThemeSelect: (ThemeFamily) -> Unit,
-    darkMode: DarkMode,
-    onDarkModeChange: (DarkMode) -> Unit,
     motionLevel: MotionLevel,
     onMotionLevelChange: (MotionLevel) -> Unit,
-    dynamicColor: Boolean,
-    onDynamicColorChange: (Boolean) -> Unit,
     haptics: Boolean,
     onHapticsChange: (Boolean) -> Unit,
     keepScreenOn: Boolean,
     onKeepScreenOnChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
+    appearanceViewModel: AppearanceViewModel = hiltViewModel(),
 ) {
+    val appearance by appearanceViewModel.state.collectAsStateWithLifecycle()
     val outputSafety by viewModel.outputSafety.collectAsStateWithLifecycle()
     val layoutAndAudio by viewModel.layoutAndAudio.collectAsStateWithLifecycle()
     val audioInputChoices by viewModel.audioInputChoices.collectAsStateWithLifecycle()
@@ -88,16 +77,15 @@ fun SettingsScreen(
     LaunchedEffect(viewModel) {
         viewModel.errors.collect { snackbarHostState.showSnackbar(it) }
     }
+    LaunchedEffect(appearance.error, appearance.draft) {
+        if (appearance.draft == null) appearance.error?.let { snackbarHostState.showSnackbar(it) }
+    }
     Box(modifier.fillMaxSize()) {
         SettingsContent(
-            currentTheme = currentTheme,
-            onThemeSelect = onThemeSelect,
-            darkMode = darkMode,
-            onDarkModeChange = onDarkModeChange,
+            appearance = appearance.current,
+            onCustomizeAppearance = appearanceViewModel::open,
             motionLevel = motionLevel,
             onMotionLevelChange = onMotionLevelChange,
-            dynamicColor = dynamicColor,
-            onDynamicColorChange = onDynamicColorChange,
             haptics = haptics,
             onHapticsChange = onHapticsChange,
             keepScreenOn = keepScreenOn,
@@ -120,20 +108,23 @@ fun SettingsScreen(
             modifier = Modifier,
         )
         StudioSnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+        if (appearance.draft != null)
+            AppearanceEditor(
+                appearance,
+                appearanceViewModel::edit,
+                appearanceViewModel::save,
+                appearanceViewModel::close,
+            )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsContent(
-    currentTheme: ThemeFamily,
-    onThemeSelect: (ThemeFamily) -> Unit,
-    darkMode: DarkMode,
-    onDarkModeChange: (DarkMode) -> Unit,
+    appearance: AppearanceSettings?,
+    onCustomizeAppearance: () -> Unit,
     motionLevel: MotionLevel,
     onMotionLevelChange: (MotionLevel) -> Unit,
-    dynamicColor: Boolean,
-    onDynamicColorChange: (Boolean) -> Unit,
     haptics: Boolean,
     onHapticsChange: (Boolean) -> Unit,
     keepScreenOn: Boolean,
@@ -148,7 +139,6 @@ internal fun SettingsContent(
     audioInputChoices: AudioInputChoices = AudioInputChoices(),
     layoutAndAudioActions: LayoutAndAudioActions = LayoutAndAudioActions(),
 ) {
-    var showThemes by rememberSaveable { mutableStateOf(false) }
     var showAllowList by rememberSaveable { mutableStateOf(false) }
     if (showAllowList) {
         AudioAllowListSheet(
@@ -161,24 +151,6 @@ internal fun SettingsContent(
     val spacing = SceneDeckTheme.spacing
     val uriHandler = LocalUriHandler.current
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
-    if (showThemes) {
-        ModalBottomSheet(onDismissRequest = { showThemes = false }) {
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
-                Text(
-                    stringResource(R.string.section_theme),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                Spacer(Modifier.height(16.dp))
-                ThemeSwitcher(
-                    current = currentTheme,
-                    onSelect = {
-                        onThemeSelect(it)
-                        showThemes = false
-                    },
-                )
-            }
-        }
-    }
     Column(
         modifier =
             modifier
@@ -195,58 +167,8 @@ internal fun SettingsContent(
         )
         Spacer(Modifier.height(20.dp))
 
-        SectionLabel(stringResource(R.string.section_theme))
-        Surface(
-            onClick = { showThemes = true },
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                StudioIconWell(SceneIcon.SPARKLES.imageVector, tone = StudioTone.TERTIARY)
-                Text(
-                    currentTheme.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    stringResource(R.string.change_theme),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        }
-        Spacer(Modifier.height(24.dp))
-
         SectionLabel(stringResource(R.string.section_appearance))
-        SettingsPanel {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                DarkMode.entries.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        colors = studioSegmentedButtonColors(),
-                        selected = darkMode == mode,
-                        onClick = { onDarkModeChange(mode) },
-                        shape =
-                            SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = DarkMode.entries.size,
-                            ),
-                    ) {
-                        Text(
-                            when (mode) {
-                                DarkMode.SYSTEM -> stringResource(R.string.dark_mode_system)
-                                DarkMode.LIGHT -> stringResource(R.string.dark_mode_light)
-                                DarkMode.DARK -> stringResource(R.string.dark_mode_dark)
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        AppearanceOverview(appearance, onCustomizeAppearance)
         Spacer(Modifier.height(24.dp))
 
         SectionLabel(stringResource(R.string.section_layout))
@@ -290,14 +212,6 @@ internal fun SettingsContent(
 
         SectionLabel(stringResource(R.string.section_feedback))
         SettingsPanel {
-            ToggleRow(
-                title = stringResource(R.string.dynamic_color),
-                icon = SceneIcon.SPARKLES.imageVector,
-                tone = StudioTone.TERTIARY,
-                subtitle = stringResource(R.string.dynamic_color_desc),
-                checked = dynamicColor,
-                onCheckedChange = onDynamicColorChange,
-            )
             ToggleRow(
                 title = stringResource(R.string.haptics),
                 icon = SceneIcon.BOLT.imageVector,
@@ -452,14 +366,10 @@ internal fun SettingsFixture(
 ) {
     Surface {
         SettingsContent(
-            currentTheme = family,
-            onThemeSelect = {},
-            darkMode = DarkMode.SYSTEM,
-            onDarkModeChange = {},
+            appearance = AppearanceSettings(family = family),
+            onCustomizeAppearance = {},
             motionLevel = MotionLevel.FULL,
             onMotionLevelChange = {},
-            dynamicColor = false,
-            onDynamicColorChange = {},
             haptics = true,
             onHapticsChange = {},
             keepScreenOn = false,

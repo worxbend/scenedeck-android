@@ -12,6 +12,7 @@ import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.data.SettingsRepository
 import com.scenedeck.android.core.data.UserSettings
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
+import com.scenedeck.android.core.designsystem.theme.ThemeAccent
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -20,8 +21,8 @@ import kotlinx.coroutines.flow.drop
 /**
  * Hoisted, session-scoped app state: theme family, dark-mode override, dynamic color, motion level,
  * haptics and keep-screen-on. Survives configuration changes via [rememberSaveable] (instant
- * restoration layer); the source of truth is [SettingsRepository] (Preferences DataStore),
- * applied/written through by [rememberSceneDeckAppState].
+ * restoration layer); the source of truth is [SettingsRepository] (Preferences DataStore), observed
+ * by [rememberSceneDeckAppState]. Appearance saves belong to the Settings editor.
  */
 class SceneDeckAppState(initial: Initial = Initial()) {
     /** Initial values, grouped to keep the [SceneDeckAppState] constructor small. */
@@ -32,8 +33,12 @@ class SceneDeckAppState(initial: Initial = Initial()) {
         val motionLevel: MotionLevel = MotionLevel.FULL,
         val haptics: Boolean = true,
         val keepScreenOn: Boolean = false,
+        val themeAccent: ThemeAccent = ThemeAccent.DEFAULT,
+        val trueBlack: Boolean = false,
     )
 
+    var themeAccent by mutableStateOf(initial.themeAccent)
+    var trueBlack by mutableStateOf(initial.trueBlack)
     var themeFamily by mutableStateOf(initial.themeFamily)
     var darkMode by mutableStateOf(initial.darkMode)
     var dynamicColor by mutableStateOf(initial.dynamicColor)
@@ -53,6 +58,8 @@ class SceneDeckAppState(initial: Initial = Initial()) {
     fun toSaveableMap(): Map<String, Any> =
         mapOf(
             KEY_THEME_FAMILY to themeFamily.name,
+            KEY_THEME_ACCENT to themeAccent.name,
+            KEY_TRUE_BLACK to trueBlack,
             KEY_DARK_MODE to darkMode.name,
             KEY_DYNAMIC_COLOR to dynamicColor,
             KEY_MOTION_LEVEL to motionLevel.name,
@@ -62,6 +69,8 @@ class SceneDeckAppState(initial: Initial = Initial()) {
 
     /** Applies a persisted settings snapshot (repository → state direction). */
     internal fun applySnapshot(settings: UserSettings) {
+        themeAccent = ThemeAccent.fromName(settings.themeAccent)
+        trueBlack = settings.trueBlack
         themeFamily = enumValueOrDefault(settings.themeFamily, ThemeFamily.SCENEDECK)
         darkMode = settings.darkMode
         dynamicColor = settings.dynamicColor
@@ -71,6 +80,8 @@ class SceneDeckAppState(initial: Initial = Initial()) {
     }
 
     companion object {
+        private const val KEY_THEME_ACCENT = "themeAccent"
+        private const val KEY_TRUE_BLACK = "trueBlack"
         private const val KEY_THEME_FAMILY = "themeFamily"
         private const val KEY_DARK_MODE = "darkMode"
         private const val KEY_DYNAMIC_COLOR = "dynamicColor"
@@ -87,6 +98,9 @@ class SceneDeckAppState(initial: Initial = Initial()) {
                             map[KEY_THEME_FAMILY] as? String,
                             ThemeFamily.SCENEDECK,
                         ),
+                    themeAccent =
+                        ThemeAccent.fromName(map[KEY_THEME_ACCENT] as? String ?: "DEFAULT"),
+                    trueBlack = map[KEY_TRUE_BLACK] as? Boolean ?: false,
                     darkMode = enumValueOrDefault(map[KEY_DARK_MODE] as? String, DarkMode.SYSTEM),
                     dynamicColor = map[KEY_DYNAMIC_COLOR] as? Boolean ?: false,
                     motionLevel =
@@ -112,7 +126,7 @@ class SceneDeckAppState(initial: Initial = Initial()) {
 
 /**
  * Creates the app state and, when [settings] is provided, keeps it in sync with persisted settings
- * both ways: repository → state (external changes) and state → repository (user toggles).
+ * repository → state for appearance; motion/haptics/screen-on still write back user toggles.
  * [rememberSaveable] stays the instant restoration layer so there is no settings-read flash on
  * rotation.
  */
@@ -127,9 +141,6 @@ fun rememberSceneDeckAppState(settings: SettingsRepository? = null): SceneDeckAp
         LaunchedEffect(settings) {
             snapshotFlow {
                     UserSettings(
-                        themeFamily = state.themeFamily.name,
-                        darkMode = state.darkMode,
-                        dynamicColor = state.dynamicColor,
                         motionLevel = state.motionLevel.name,
                         haptics = state.haptics,
                         keepScreenOn = state.keepScreenOn,
@@ -140,9 +151,6 @@ fun rememberSceneDeckAppState(settings: SettingsRepository? = null): SceneDeckAp
                 .collectLatest { snapshot ->
                     settings.update {
                         it.copy(
-                            themeFamily = snapshot.themeFamily,
-                            darkMode = snapshot.darkMode,
-                            dynamicColor = snapshot.dynamicColor,
                             motionLevel = snapshot.motionLevel,
                             haptics = snapshot.haptics,
                             keepScreenOn = snapshot.keepScreenOn,

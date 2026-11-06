@@ -38,6 +38,8 @@ data class UserSettings(
     val uiDensity: String = "COMFORTABLE",
     /** Mixer meter refresh behavior (FEATURE_SPEC §9). */
     val meterRefresh: MeterRefresh = MeterRefresh.SMOOTH,
+    val themeAccent: String = "DEFAULT",
+    val trueBlack: Boolean = false,
 )
 
 @Singleton
@@ -95,6 +97,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
     private fun UserSettings.toSnapshot() =
         SettingsSnapshot(
             themeFamily = themeFamily,
+            themeAccent = themeAccent,
+            trueBlack = trueBlack,
             darkMode = darkMode.name,
             dynamicColor = dynamicColor,
             motionLevel = motionLevel,
@@ -121,6 +125,8 @@ class SettingsRepository @Inject constructor(private val store: SceneDeckSetting
     private fun SettingsSnapshot.toUserSettings() =
         UserSettings(
             themeFamily = themeFamily,
+            themeAccent = themeAccent,
+            trueBlack = trueBlack,
             darkMode = darkMode.toDarkModeOrDefault(),
             dynamicColor = dynamicColor,
             motionLevel = motionLevel,

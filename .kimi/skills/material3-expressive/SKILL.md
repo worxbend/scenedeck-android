@@ -16,7 +16,7 @@ Full spec: `docs/DESIGN_SYSTEM.md`. Follow it; this file is the working checklis
   motionScheme = motionSchemeFor(userMotionLevel), typography = SceneDeckTypography)`.
 - Theme families (see DESIGN_SYSTEM.md §2): SceneDeck (default), OBS, Obsidian, Nord,
   Dracula, Solarized Dark, Stream Red, Studio Purple, Sunset Coral, Mint Control,
-  High Contrast, Material You (dynamic color, Android 12+). Each = light + dark
+  Ocean, Rosewood, Amber, Paper, High Contrast, Material You (dynamic color, Android 12+). Each = light + dark
   `ColorScheme`; never hardcode a color in a feature module.
 - **Semantic colors are product law**: Program scene = red tally family; Preview =
   green. Stream transport = blue idle Stream / red active Stop; elapsed stream time
@@ -81,3 +81,11 @@ Use StudioWorkspace for Scenes/Mixer adaptive controls/content, based on availab
 rather than device type. Keep insets outside scrollers and command/search owners above
 placement. SceneMonitor uses shared tally colors and cached-image freshness; do not create
 another screenshot poller. Render tablet/compact/large-text variants in four core themes.
+
+## Appearance customization
+
+Keep palette/wallpaper → accent → dark-only True black resolution in core/designsystem.
+Accents change primary roles only. High Contrast without wallpaper preserves its own roles.
+AppearanceViewModel owns preview drafts and atomic Apply; the shell observes committed
+appearance. Keep Apply/Cancel outside scrolling. New text-role pairs need numeric contrast
+checks as well as light/dark/compact/large-text renders. See tasks/theming/README.md.

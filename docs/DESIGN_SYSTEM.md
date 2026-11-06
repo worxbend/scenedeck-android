@@ -20,9 +20,11 @@ tally-light energy, but disciplined by Material 3 Expressive.
 ## 2. Theming architecture (core feature)
 
 `MaterialExpressiveTheme` wrapper with a `SceneDeckThemeFamily` enum. Users pick:
-**System / Light / Dark** + one theme family + optional **dynamic color** (Material You).
+**System / Light / Dark**, a palette, optional wallpaper colors, a primary accent and
+optional **True black** dark backgrounds. Settings → Customize appearance previews choices
+locally; Apply saves them together, Cancel discards them, and Reset defaults changes the draft.
 
-Built-in theme families (port of the desktop's 12 themes + new mobile exclusives):
+Fifteen fixed theme families plus Android wallpaper colors:
 
 | Family | Character | Source |
 |---|---|---|
@@ -36,12 +38,34 @@ Built-in theme families (port of the desktop's 12 themes + new mobile exclusives
 | `Studio Purple` | rich purple production vibe | desktop port |
 | `Sunset Coral` | warm coral/amber, light-friendly | new |
 | `Mint Control` | fresh green-teal, light-friendly | new |
+| `Ocean` | deep blue surfaces and sea-glass highlights | original mobile palette |
+| `Rosewood` | warm rose and plum surfaces | original mobile palette |
+| `Amber` | golden controls and warm charcoal | original mobile palette |
+| `Paper` | warm neutrals and sage details | original mobile palette |
 | `High Contrast` | accessibility-max | desktop port |
 | `Material You` | dynamic color from wallpaper | Android 12+ |
 
 Implementation: each family = `ColorScheme` (light+dark) + optional shape/typography
 tweaks, defined in `:core:designsystem/theme/families/`. Preview every component
 against every family via multi-preview annotations; Roborazzi goldens per family.
+
+Appearance resolves the palette (or Android 12+ wallpaper scheme), then the selected accent,
+then True black in dark mode. Accent choices are Palette default, Azure, Teal, Violet, Rose,
+Amber and Lime. They replace primary/onPrimary, primaryContainer/onPrimaryContainer,
+inversePrimary and surfaceTint only. Secondary/tertiary, error and broadcast semantics stay
+independent. High Contrast without wallpaper colors keeps its own accent and surface roles;
+custom choices remain saved for other palettes. Selecting a palette disables wallpaper colors.
+Unsupported wallpaper colors fall back to the selected palette.
+
+True black makes background/surface/surfaceDim/surfaceContainerLowest black and uses neutral
+near-black container layers for visible control separation. Light mode is unchanged. No
+battery-saving claim is made. ThemePreview is read-only and uses a nested SceneDeckTheme;
+previewing never changes global state. Editor choices scroll, with Apply/Cancel outside the
+scroll region. The palette picker keeps light/dark swatches and wraps long names.
+
+New text-role pairs and accent combinations are checked against a 4.5:1 minimum contrast
+ratio using [WCAG contrast guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum).
+This verifies those color pairs, not complete application accessibility conformance.
 
 ## 3. Color semantics (fixed across themes)
 

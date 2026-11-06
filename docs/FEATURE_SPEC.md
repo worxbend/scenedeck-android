@@ -509,9 +509,21 @@ and their observations carry the DEMO collection identity.
 
 - Public privacy-policy link covering local OBS data and Google SDK diagnostics.
 
-- Connection profiles; Output Safety toggles; theme (System/Light/Dark) + theme family
-  (see DESIGN_SYSTEM.md); dynamic color (Material You) toggle.
-- Appearance uses a focused theme picker sheet; settings toggle rows are tappable.
+- **Customize appearance** opens a focused preview editor. Fifteen fixed light/dark
+  palettes include Ocean, Rosewood, Amber and Paper alongside the original choices.
+  Modes are System/Light/Dark; Android 12+ can use wallpaper colors instead of a palette.
+  Selecting a palette disables wallpaper colors; older Android versions retain the palette.
+- Accent choices: Palette default, Azure, Teal, Violet, Rose, Amber and Lime. Highlights
+  change while program/preview/output/meter colors retain their meaning. Optional True
+  black applies black backgrounds with layered panels only in dark mode. High Contrast
+  without wallpaper colors preserves its own accent/surface contrast treatment.
+- Changes affect the local preview until **Apply** saves all appearance fields together.
+  **Cancel** discards the draft; **Reset defaults** resets the draft and still requires Apply.
+  Drafts survive rotation, not process death. Duplicate saves are gated; failed or conflicting
+  saves keep the draft and show a sanitized error. Changes in another editor reject old saves.
+  Other preferences and live/demo storage isolation are preserved. Controls scroll while
+  Apply/Cancel remain reachable in compact/large-text windows.
+- Settings toggle rows are tappable; connection profiles and Output Safety remain available.
 - Connection profile edit/delete actions use a contextual menu; deletion asks for confirmation.
 - Profile forms open fully expanded and scroll with the keyboard; they group identity/server/security, use host/port keyboard navigation, and provide a secure password visibility toggle. Editing endpoint fields invalidates stale connection-test feedback.
 - Inventory role choices use a sheet; Doctor reports can filter by severity.
@@ -519,7 +531,7 @@ and their observations carry the DEMO collection identity.
 - UI density (compact / comfortable), haptics toggle. Density is persisted in DataStore
   and drives `SceneDeckTheme.spacing` (page gutter, section/item gaps, row padding); it is
   applied to the page headers, section headers, Inventory, Graph and Settings. Touch
-  targets stay ≥ 48 dp. Scenes, Mixer and Stats keep their fixed layouts for now.
+  targets stay ≥ 48 dp. Scenes and Mixer adapt their panes using available content bounds.
 - Audio allow-list (Settings → Mixer): a checklist of audio inputs found across every
   OBS scene (same discovery rules, allow-list ignored) plus already saved names. Empty =
   every input; the Mixer re-runs discovery when the list changes. Inputs that only exist

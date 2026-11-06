@@ -15,6 +15,8 @@ desktop Linux app at `../scenedeck` (Rust/GTK4). Read these before making change
 
 ## Project-level skills
 
+Active theming work resumes from `tasks/theming/README.md` and its plan/progress files.
+
 The completed operator workflow is recorded in `tasks/operator-workflow/README.md` and its
 plan/progress files. The authorized scope excludes Show rundown (including cue lists and timed
 advancement); multi-action presets are independently invoked. Planned checkpoints
@@ -62,6 +64,14 @@ must pass, and Compose preview(s) for changed screens must render.
 - Mixer mute stays direct; channel options group lock and advanced settings.
 - Stats prioritize key readings and compact tonal gauge panels.
 - Stats FPS/render thresholds derive from the OBS canvas FPS (`GetVideoSettings`); 60 fps is only the unknown fallback. STREAM LIVE chip is program red, REC chip amber.
+- Appearance is edited through a preview/Apply/Cancel sheet, owned by AppearanceViewModel.
+  Palette/mode/wallpaper/accent/True black save atomically against original appearance;
+  failed/conflicting saves retain drafts, duplicate saves gate and cancellation propagates.
+  App state observes committed appearance and never reverse-writes those fields. DataStore
+  defaults preserve old installs; demo keeps ephemeral settings. Accents affect primary roles
+  only; broadcast/meter/error semantics stay fixed. True black applies only to dark mode.
+  High Contrast without wallpaper colors preserves its accent/surfaces; palette selection
+  disables wallpaper colors. Keep Apply/Cancel outside editor scrolling and verify contrast.
 - Default styling: charcoal/azure studio palette; scene grid tiles use restrained accents and theme-aware labels.
 - Scene cards show numbered positions (search keeps deck numbers); drag grips appear only in explicit reorder mode, where captions/a11y describe reordering instead of switching.
 - Studio T-bar is full-width; fraction follows the absolute pointer, fires past 80% on release. VCam shows Stop (tertiary) when active and Starting…/Stopping… until OBS confirms.

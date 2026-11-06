@@ -121,6 +121,18 @@ class SettingsRepositoryTest {
         assertEquals(40, repository.settings.first().lockedInputs.size)
     }
 
+    @Test
+    fun appearanceRoundTripsAndUnrelatedUpdatesPreserveIt(): Unit = runBlocking {
+        assertEquals("DEFAULT", repository.settings.first().themeAccent)
+        assertFalse(repository.settings.first().trueBlack)
+        repository.update { it.copy(themeFamily = "OCEAN", themeAccent = "TEAL", trueBlack = true) }
+        repository.update { it.copy(lockedInputs = setOf("Mic")) }
+        val restored = repository.settings.first()
+        assertEquals("OCEAN", restored.themeFamily)
+        assertEquals("TEAL", restored.themeAccent)
+        assertTrue(restored.trueBlack)
+    }
+
     internal companion object {
         fun newIsolatedStore(): SceneDeckSettingsStore =
             SceneDeckSettingsStore.forTesting(

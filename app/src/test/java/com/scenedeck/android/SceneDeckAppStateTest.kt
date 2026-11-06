@@ -2,6 +2,7 @@ package com.scenedeck.android
 
 import com.scenedeck.android.core.data.DarkMode
 import com.scenedeck.android.core.designsystem.theme.MotionLevel
+import com.scenedeck.android.core.designsystem.theme.ThemeAccent
 import com.scenedeck.android.core.designsystem.theme.ThemeFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,6 +53,8 @@ class SceneDeckAppStateTest {
     fun `saveable map round trip preserves values`() {
         val state = SceneDeckAppState()
         state.darkMode = DarkMode.LIGHT
+        state.themeAccent = ThemeAccent.TEAL
+        state.trueBlack = true
         state.dynamicColor = true
         state.motionLevel = MotionLevel.OFF
 
@@ -59,6 +62,8 @@ class SceneDeckAppStateTest {
 
         assertEquals(ThemeFamily.SCENEDECK, restored.themeFamily)
         assertEquals(DarkMode.LIGHT, restored.darkMode)
+        assertEquals(ThemeAccent.TEAL, restored.themeAccent)
+        assertTrue(restored.trueBlack)
         assertTrue(restored.dynamicColor)
         assertEquals(MotionLevel.OFF, restored.motionLevel)
     }

@@ -116,6 +116,21 @@ one module owns the wire protocol.**
 | Stats/read receipt times and ring buffer (2 min) | `StatsRepository` | connection + collection generation |
 | Screen UI state | feature ViewModels | config-change scoped |
 
+## Appearance settings
+
+AppearanceViewModel owns immutable current/original/draft/saving/error state. It observes
+SettingsRepository and compares the opening appearance values in one atomic update of family,
+mode, wallpaper, accent and True black. Unrelated preferences are copied from the transaction's
+current snapshot. Failures retain drafts; cancellation propagates. ViewModel lifetime retains
+drafts across rotation; process recreation has no saved draft or pending Apply.
+
+SceneDeckAppState observes committed appearance and restores its display projection from saved
+state. Appearance fields are excluded from its reverse writer, which still handles motion,
+haptics and screen-on. MainActivity passes accent/True black to the shared theme wrapper;
+preview uses a nested wrapper with no repository writes. All color decisions remain in
+core/designsystem. DataStore adds defaulted `themeAccent`/`trueBlack` keys; existing installations
+retain prior appearance. Demo uses the same code with its ephemeral settings binding.
+
 ## Adaptive presentation
 
 `StudioWorkspace` in core/designsystem measures two stable Compose slots from available

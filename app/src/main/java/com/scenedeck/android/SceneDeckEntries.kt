@@ -140,14 +140,8 @@ private fun EntryProviderScope<NavKey>.doctorEntry(selectTopLevel: (SceneDeckDes
 private fun EntryProviderScope<NavKey>.settingsEntry(appState: SceneDeckAppState) {
     entry<SceneDeckDestination.Settings> {
         SettingsScreen(
-            currentTheme = appState.themeFamily,
-            onThemeSelect = { appState.themeFamily = it },
-            darkMode = appState.darkMode,
-            onDarkModeChange = { appState.darkMode = it },
             motionLevel = appState.motionLevel,
             onMotionLevelChange = { appState.motionLevel = it },
-            dynamicColor = appState.dynamicColor,
-            onDynamicColorChange = { appState.dynamicColor = it },
             haptics = appState.haptics,
             onHapticsChange = { appState.haptics = it },
             keepScreenOn = appState.keepScreenOn,

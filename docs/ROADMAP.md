@@ -1,5 +1,13 @@
 # Roadmap — SceneDeck Android
 
+## Active follow-up — UI theming
+
+The user requested more palettes plus accent and true-black controls. Implementation and
+verification are tracked in [the theming workflow](../tasks/theming/README.md). New palette
+resolution, persisted appearance and the preview/Apply editor are implemented and locally
+verified: 1,169 tests / 203 suites, full quality/security, normal/F-Droid builds and required
+renders pass. The user authorized v0.2.0 publication; remote release verification is pending.
+
 ## Completed follow-up — operator workflow (2026-11-05)
 
 Implementation is tracked in [the durable workflow](../tasks/operator-workflow/README.md).

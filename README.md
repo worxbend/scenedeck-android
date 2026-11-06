@@ -38,7 +38,8 @@ rebuilt with Kotlin and Jetpack Compose.
 - **Your actions:** scoped multi-action presets and configurable foreground keyboard/
   compatible foot-pedal bindings with output confirmations.
 - **Practice offline:** a clearly labeled local demo, isolated from your real OBS profiles.
-- **Your vibe:** dark/light themes, multiple palettes, dynamic color and reduced-motion options.
+- **Your vibe:** 15 light/dark palettes, wallpaper colors, six accent choices and True black
+  backgrounds, with preview/Apply controls and reduced-motion options.
 - **Extras:** scene curation, dependency graph, Doctor checks, saved connections, QR pairing,
   an Android widget and optional background connection.
 

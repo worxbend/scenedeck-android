@@ -83,6 +83,8 @@ open class MainActivity : ComponentActivity() {
             dynamicColor = appState.dynamicColor,
             motionLevel = appState.motionLevel,
             density = uiDensity,
+            accent = appState.themeAccent,
+            trueBlack = appState.trueBlack,
         ) {
             CompositionLocalProvider(
                 LocalRetryNow provides retryNow,

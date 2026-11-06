@@ -54,6 +54,8 @@ data class SettingsSnapshot(
     val uiDensity: String = "COMFORTABLE",
     /** Mixer meter refresh: SMOOTH / BALANCED / SAVER / OFF. */
     val meterRefresh: String = "SMOOTH",
+    val themeAccent: String = "DEFAULT",
+    val trueBlack: Boolean = false,
 )
 
 /** Typed Preferences-DataStore access for user settings (FEATURE_SPEC §9). */
@@ -67,6 +69,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
     /** Applies read/modify/write as one DataStore transaction, preserving concurrent edits. */
     suspend fun update(transform: (SettingsSnapshot) -> SettingsSnapshot) = edit { prefs ->
         val updated = transform(prefs.toSnapshot())
+        prefs[KEY_THEME_ACCENT] = updated.themeAccent
+        prefs[KEY_TRUE_BLACK] = updated.trueBlack
         prefs[KEY_THEME_FAMILY] = updated.themeFamily
         prefs[KEY_DARK_MODE] = updated.darkMode
         prefs[KEY_DYNAMIC_COLOR] = updated.dynamicColor
@@ -103,6 +107,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
     private fun Preferences.toSnapshot(): SettingsSnapshot =
         SettingsSnapshot(
             themeFamily = valueOrDefault(KEY_THEME_FAMILY, "SCENEDECK"),
+            themeAccent = valueOrDefault(KEY_THEME_ACCENT, "DEFAULT"),
+            trueBlack = valueOrDefault(KEY_TRUE_BLACK, false),
             darkMode = valueOrDefault(KEY_DARK_MODE, "SYSTEM"),
             dynamicColor = valueOrDefault(KEY_DYNAMIC_COLOR, false),
             motionLevel = valueOrDefault(KEY_MOTION_LEVEL, "FULL"),
@@ -201,6 +207,8 @@ class SceneDeckSettingsStore private constructor(private val dataStore: DataStor
         fun forTesting(dataStore: DataStore<Preferences>): SceneDeckSettingsStore =
             SceneDeckSettingsStore(dataStore)
 
+        private val KEY_THEME_ACCENT = stringPreferencesKey("themeAccent")
+        private val KEY_TRUE_BLACK = booleanPreferencesKey("trueBlack")
         private val KEY_THEME_FAMILY = stringPreferencesKey("themeFamily")
         private val KEY_DARK_MODE = stringPreferencesKey("darkMode")
         private val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamicColor")

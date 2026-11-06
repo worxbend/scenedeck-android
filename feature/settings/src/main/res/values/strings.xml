@@ -62,4 +62,17 @@
     <string name="change_theme">Choose</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="privacy_policy_url" translatable="false">https://github.com/worxbend/scenedeck-android/blob/main/docs/PRIVACY_POLICY.md</string>
+    <string name="customize_appearance">Customize appearance</string>
+    <string name="choose_palette">Choose palette</string>
+    <string name="back_to_appearance">Back to appearance</string>
+    <string name="apply_appearance">Apply</string>
+    <string name="saving_appearance">Saving…</string>
+    <string name="cancel_appearance">Cancel</string>
+    <string name="reset_appearance">Reset defaults</string>
+    <string name="accent_color">Accent color</string>
+    <string name="true_black">True black</string>
+    <string name="true_black_help">Use black backgrounds in dark mode, with layered control panels.</string>
+    <string name="wallpaper_help">Use Android wallpaper colors. Choosing a palette turns this off. Available on Android 12 and later.</string>
+    <string name="high_contrast_preserved">High Contrast keeps its own accent and contrast surfaces.</string>
+    <string name="appearance_preview_help">Preview only. Apply saves your choices. Broadcast status and meter colors keep their meaning.</string>
 </resources>
