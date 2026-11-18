@@ -186,7 +186,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: scenedeck-release-${{ needs.prepare.outputs.version_code }}
           path: dist
@@ -219,7 +219,7 @@ jobs:
       AAB_PATH: ${{ github.workspace }}/dist/scenedeck-android-release.aab
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: scenedeck-release-${{ needs.prepare.outputs.version_code }}
           path: dist
